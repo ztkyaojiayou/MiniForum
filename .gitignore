@@ -16,3 +16,6 @@ Thumbs.db
 # 构建产物
 *.class
 *.jar
+
+# nanobot 会话数据
+.nanobot/
