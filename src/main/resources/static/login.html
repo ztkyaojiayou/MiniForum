@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理系统 - 登录</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+            background: #f0f2f5;
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 40px;
+            width: 380px;
+            max-width: 90%;
+        }
+        .login-card h1 {
+            text-align: center;
+            font-size: 24px;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+        }
+        .login-card .subtitle {
+            text-align: center;
+            color: #999;
+            font-size: 13px;
+            margin-bottom: 28px;
+        }
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; font-size: 13px; color: #666; margin-bottom: 6px; }
+        .form-group input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color .2s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #4a7cff;
+            box-shadow: 0 0 0 2px rgba(74,124,255,0.15);
+        }
+        .btn {
+            width: 100%;
+            padding: 11px;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all .2s;
+            color: #fff;
+            background: #4a7cff;
+        }
+        .btn:hover { background: #3a66e0; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .error-msg {
+            color: #ff4d4f;
+            font-size: 13px;
+            margin-top: 12px;
+            text-align: center;
+            min-height: 18px;
+        }
+        .hint {
+            margin-top: 20px;
+            padding: 10px 14px;
+            background: #f6ffed;
+            border: 1px solid #b7eb8f;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #389e0d;
+        }
+        .hint code { background: #e6fffb; padding: 1px 4px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h1>🔐 用户管理系统</h1>
+        <div class="subtitle">请登录后继续操作</div>
+        <form id="loginForm">
+            <div class="form-group">
+                <label>用户名</label>
+                <input type="text" id="username" required autocomplete="username" placeholder="请输入用户名">
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" id="password" required autocomplete="current-password" placeholder="请输入密码">
+            </div>
+            <button type="submit" class="btn" id="loginBtn">登 录</button>
+        </form>
+        <div class="error-msg" id="errorMsg"></div>
+        <div class="hint">💡 默认管理员账号：<code>admin</code> / <code>admin123</code></div>
+    </div>
+
+    <script>
+        async function login() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const errorMsg = document.getElementById('errorMsg');
+            const btn = document.getElementById('loginBtn');
+            errorMsg.textContent = '';
+            btn.disabled = true;
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.message || '登录失败');
+                }
+                window.location.href = '/index.html';
+            } catch (e) {
+                errorMsg.textContent = '❌ ' + e.message;
+                btn.disabled = false;
+            }
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            login();
+        });
+    </script>
+</body>
+</html>

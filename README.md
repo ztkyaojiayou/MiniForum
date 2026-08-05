@@ -29,19 +29,26 @@
 my-first-nanobot-server/
 ├── src/main/java/com/example/usermanagement/
 │   ├── controller/          # REST 控制器
-│   │   └── UserController.java
+│   │   ├── UserController.java
+│   │   └── AuthController.java   # 登录认证接口
 │   ├── entity/              # 实体类
 │   │   └── User.java
 │   ├── service/             # 业务逻辑层
-│   │   └── UserService.java
+│   │   ├── UserService.java
+│   │   └── AuthService.java      # 登录认证服务
 │   ├── repository/          # 数据访问层（内存存储）
 │   │   └── UserRepository.java
+│   ├── config/              # 配置
+│   │   ├── AuthInterceptor.java  # 登录拦截器
+│   │   └── WebConfig.java        # Web 配置
 │   ├── exception/           # 异常处理
 │   │   ├── GlobalExceptionHandler.java
 │   │   └── ResourceNotFoundException.java
 │   └── UserManagementApplication.java  # 启动类
 ├── src/main/resources/
-│   ├── static/index.html    # Web 前端页面
+│   ├── static/
+│   │   ├── index.html       # Web 主页面（需登录）
+│   │   └── login.html       # 登录页面
 │   └── application.yml      # 配置文件
 ├── pom.xml                  # Maven 配置
 └── README.md
@@ -73,8 +80,25 @@ java -jar target/user-management-1.0.0.jar
 ```
 
 启动后访问：
-- Web 前端页面：<http://localhost:8080>
-- API 接口：<http://localhost:8080/api/users>
+- 登录页面：<http://localhost:8080/login.html>（默认账号 `admin / admin123`）
+- Web 主页面：<http://localhost:8080/index.html>（需登录后访问）
+- API 接口：<http://localhost:8080/api/users>（需登录，携带 Session Cookie）
+
+## 登录认证
+
+系统提供了基于 **Session** 的简单登录认证功能。
+
+- 默认管理员账号：`admin` / `admin123`（首次启动自动创建）
+- 所有 `/api/users/**` 接口均需登录后访问，未登录返回 `401`
+- 前端 `index.html` 会自动校验登录状态，未登录跳转到 `login.html`
+
+### 登录认证接口
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/api/auth/login` | 登录，请求体 `{"username":"admin","password":"admin123"}` |
+| `POST` | `/api/auth/logout` | 退出登录 |
+| `GET` | `/api/auth/me` | 获取当前登录用户信息 |
 
 ## 配置
 

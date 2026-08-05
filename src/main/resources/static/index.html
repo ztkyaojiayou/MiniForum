@@ -110,11 +110,32 @@
         .modal .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
         .btn-cancel { background: #fff; color: #666; border: 1px solid #d9d9d9; }
         .btn-cancel:hover { background: #f5f5f5; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .header h1 { margin-bottom: 0; }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            color: #555;
+        }
+        .user-info .username { font-weight: 600; color: #4a7cff; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📋 用户管理系统</h1>
+        <div class="header">
+            <h1>📋 用户管理系统</h1>
+            <div class="user-info">
+                <span>👤 <span class="username" id="currentUser"></span></span>
+                <button class="btn btn-warning btn-sm" onclick="logout()">退出登录</button>
+            </div>
+        </div>
 
         <!-- 新增用户 -->
         <div class="card">
@@ -355,8 +376,32 @@
             if (e.target === this) closeModal();
         });
 
-        // 初始化
-        loadUsers();
+        // ---------- 登录校验 ----------
+        async function checkLogin() {
+            try {
+                const res = await fetch('/api/auth/me');
+                const data = await res.json();
+                if (!res.ok) {
+                    // 未登录，跳转到登录页
+                    window.location.href = '/login.html';
+                    return;
+                }
+                document.getElementById('currentUser').textContent = data.username;
+                loadUsers();
+            } catch (e) {
+                window.location.href = '/login.html';
+            }
+        }
+
+        async function logout() {
+            try {
+                await fetch('/api/auth/logout', { method: 'POST' });
+            } catch (e) {}
+            window.location.href = '/login.html';
+        }
+
+        // 初始化：先校验登录，再加载用户列表
+        checkLogin();
     </script>
 </body>
 </html>
