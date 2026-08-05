@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理系统</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+            background: #f0f2f5;
+            color: #333;
+            padding: 30px 20px;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            margin-bottom: 24px;
+            color: #1a1a2e;
+            font-size: 28px;
+        }
+        .card {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .card h2 { font-size: 18px; margin-bottom: 16px; color: #1a1a2e; }
+        form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+        .form-group { display: flex; flex-direction: column; flex: 1 1 150px; }
+        .form-group label { font-size: 13px; color: #666; margin-bottom: 4px; }
+        .form-group input {
+            padding: 8px 10px;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color .2s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #4a7cff;
+            box-shadow: 0 0 0 2px rgba(74,124,255,0.15);
+        }
+        .btn {
+            padding: 8px 18px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all .2s;
+            color: #fff;
+        }
+        .btn-primary { background: #4a7cff; }
+        .btn-primary:hover { background: #3a66e0; }
+        .btn-success { background: #52c41a; }
+        .btn-success:hover { background: #43a813; }
+        .btn-warning { background: #faad14; }
+        .btn-warning:hover { background: #d9940f; }
+        .btn-danger { background: #ff4d4f; }
+        .btn-danger:hover { background: #e03a3c; }
+        .btn-sm { padding: 4px 10px; font-size: 13px; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f0f0f0; }
+        th { background: #fafafa; font-weight: 600; color: #555; }
+        tr:hover td { background: #fafbff; }
+        .actions { display: flex; gap: 6px; }
+        .empty { text-align: center; color: #999; padding: 30px 0; }
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: #333;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 14px;
+            opacity: 0;
+            transition: all .3s;
+            z-index: 999;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .toast.error { background: #ff4d4f; }
+        .toast.success { background: #52c41a; }
+        .loading { text-align: center; color: #999; padding: 20px; }
+        .modal-mask {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-mask.show { display: flex; }
+        .modal {
+            background: #fff;
+            border-radius: 10px;
+            padding: 28px;
+            width: 400px;
+            max-width: 90%;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+        }
+        .modal h3 { margin-bottom: 20px; }
+        .modal .form-group { margin-bottom: 14px; }
+        .modal .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+        .btn-cancel { background: #fff; color: #666; border: 1px solid #d9d9d9; }
+        .btn-cancel:hover { background: #f5f5f5; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📋 用户管理系统</h1>
+
+        <!-- 新增用户 -->
+        <div class="card">
+            <h2>➕ 新增用户</h2>
+            <form id="createForm">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" id="createUsername" required maxlength="50" placeholder="请输入用户名">
+                </div>
+                <div class="form-group">
+                    <label>邮箱</label>
+                    <input type="email" id="createEmail" required placeholder="user@example.com">
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" id="createPassword" required minlength="6" maxlength="20" placeholder="6-20位">
+                </div>
+                <div class="form-group">
+                    <label>年龄</label>
+                    <input type="number" id="createAge" required min="0" max="150" placeholder="请输入年龄">
+                </div>
+                <button type="submit" class="btn btn-primary">添加</button>
+            </form>
+        </div>
+
+        <!-- 用户列表 -->
+        <div class="card">
+            <h2>👥 用户列表</h2>
+            <div id="loading" class="loading">加载中...</div>
+            <table id="userTable" style="display:none;">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>用户名</th>
+                        <th>邮箱</th>
+                        <th>年龄</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="userBody"></tbody>
+            </table>
+            <div id="empty" class="empty" style="display:none;">暂无用户，请添加</div>
+        </div>
+    </div>
+
+    <!-- 编辑弹窗 -->
+    <div class="modal-mask" id="editModal">
+        <div class="modal">
+            <h3>✏️ 编辑用户</h3>
+            <input type="hidden" id="editId">
+            <div class="form-group">
+                <label>用户名</label>
+                <input type="text" id="editUsername" required maxlength="50">
+            </div>
+            <div class="form-group">
+                <label>邮箱</label>
+                <input type="email" id="editEmail" required>
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" id="editPassword" minlength="6" maxlength="20">
+            </div>
+            <div class="form-group">
+                <label>年龄</label>
+                <input type="number" id="editAge" min="0" max="150" required>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-cancel" onclick="closeModal()">取消</button>
+                <button class="btn btn-success" onclick="saveEdit()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const API = '/api/users';
+
+        // ---------- 工具 ----------
+        function showToast(msg, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast show ' + (type || '');
+            setTimeout(() => { toast.className = 'toast'; }, 2500);
+        }
+
+        async function request(url, options) {
+            const res = await fetch(url, options);
+            if (!res.ok) {
+                let msg = '请求失败 (' + res.status + ')';
+                try {
+                    const data = await res.json();
+                    if (data.message) msg = data.message;
+                } catch (e) {}
+                throw new Error(msg);
+            }
+            if (res.status === 204) return null;
+            return res.json();
+        }
+
+        // ---------- 列表 ----------
+        async function loadUsers() {
+            const loading = document.getElementById('loading');
+            const table = document.getElementById('userTable');
+            const empty = document.getElementById('empty');
+            loading.style.display = 'block';
+            table.style.display = 'none';
+            empty.style.display = 'none';
+            try {
+                const users = await request(API);
+                const body = document.getElementById('userBody');
+                body.innerHTML = '';
+                if (users.length === 0) {
+                    empty.style.display = 'block';
+                } else {
+                    users.forEach(u => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${u.id}</td>
+                            <td>${escapeHtml(u.username)}</td>
+                            <td>${escapeHtml(u.email)}</td>
+                            <td>${u.age}</td>
+                            <td>
+                                <div class="actions">
+                                    <button class="btn btn-warning btn-sm" onclick="openEdit(${u.id})">编辑</button>
+                                    <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})">删除</button>
+                                </div>
+                            </td>`;
+                        body.appendChild(tr);
+                    });
+                    table.style.display = 'table';
+                }
+            } catch (e) {
+                showToast(e.message, 'error');
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // ---------- 新增 ----------
+        document.getElementById('createForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const user = {
+                username: document.getElementById('createUsername').value.trim(),
+                email: document.getElementById('createEmail').value.trim(),
+                password: document.getElementById('createPassword').value,
+                age: parseInt(document.getElementById('createAge').value, 10)
+            };
+            try {
+                await request(API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(user)
+                });
+                showToast('✅ 添加成功', 'success');
+                this.reset();
+                loadUsers();
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
+            }
+        });
+
+        // ---------- 编辑 ----------
+        function openEdit(id) {
+            // 从当前表格行获取数据
+            const rows = document.querySelectorAll('#userBody tr');
+            let user = null;
+            rows.forEach(tr => {
+                const cells = tr.children;
+                if (parseInt(cells[0].textContent, 10) === id) {
+                    user = {
+                        id,
+                        username: cells[1].textContent,
+                        email: cells[2].textContent,
+                        age: parseInt(cells[3].textContent, 10)
+                    };
+                }
+            });
+            if (!user) return;
+            document.getElementById('editId').value = user.id;
+            document.getElementById('editUsername').value = user.username;
+            document.getElementById('editEmail').value = user.email;
+            document.getElementById('editPassword').value = '';
+            document.getElementById('editAge').value = user.age;
+            document.getElementById('editModal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').classList.remove('show');
+        }
+
+        async function saveEdit() {
+            const id = document.getElementById('editId').value;
+            const user = {
+                username: document.getElementById('editUsername').value.trim(),
+                email: document.getElementById('editEmail').value.trim(),
+                password: document.getElementById('editPassword').value,
+                age: parseInt(document.getElementById('editAge').value, 10)
+            };
+            if (!user.password) {
+                showToast('❌ 密码不能为空', 'error');
+                return;
+            }
+            try {
+                await request(API + '/' + id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(user)
+                });
+                showToast('✅ 修改成功', 'success');
+                closeModal();
+                loadUsers();
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
+            }
+        }
+
+        // ---------- 删除 ----------
+        async function deleteUser(id) {
+            if (!confirm('确定要删除用户 ID=' + id + ' 吗？')) return;
+            try {
+                await request(API + '/' + id, { method: 'DELETE' });
+                showToast('🗑️ 删除成功', 'success');
+                loadUsers();
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
+            }
+        }
+
+        // 点击遮罩关闭弹窗
+        document.getElementById('editModal').addEventListener('click', function (e) {
+            if (e.target === this) closeModal();
+        });
+
+        // 初始化
+        loadUsers();
+    </script>
+</body>
+</html>

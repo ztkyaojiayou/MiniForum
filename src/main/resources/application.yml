@@ -1,0 +1,10 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: user-management
+
+logging:
+  level:
+    com.example.usermanagement: info
