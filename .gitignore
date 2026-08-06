@@ -19,3 +19,11 @@ Thumbs.db
 
 # nanobot 会话数据
 .nanobot/
+
+# 临时/调试文件
+\!LOG_FILE!
+cookies.txt
+out.txt
+
+# 运行时日志目录
+logs/
