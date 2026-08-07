@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>决策转盘</title>
+    <script>
+        (function () {
+            var saved = localStorage.getItem('theme');
+            var theme = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <style>
+        :root, [data-theme="light"] {
+            --bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --text: #333333;
+            --text-heading: #1a1a2e;
+            --muted: #999999;
+            --muted-2: #666666;
+            --border: #d9d9d9;
+            --primary: #4a7cff;
+            --primary-hover: #3a66e0;
+            --shadow: rgba(0,0,0,0.1);
+            --input-bg: #ffffff;
+        }
+        [data-theme="dark"] {
+            --bg: #1a1a2e;
+            --card-bg: #24243e;
+            --text: #e4e4e4;
+            --text-heading: #ffffff;
+            --muted: #8f8fa8;
+            --muted-2: #a8a8c0;
+            --border: #3a3a5c;
+            --primary: #5a8cff;
+            --primary-hover: #6f9bff;
+            --shadow: rgba(0,0,0,0.4);
+            --input-bg: #2c2c4a;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 30px 20px;
+            transition: background .3s, color .3s;
+        }
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: var(--card-bg);
+            color: var(--text);
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px var(--shadow);
+            transition: all .3s;
+            z-index: 10;
+        }
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            background: var(--card-bg);
+            color: var(--text);
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px var(--shadow);
+            text-decoration: none;
+            transition: all .3s;
+            z-index: 10;
+        }
+        .back-btn:hover, .theme-toggle:hover { border-color: var(--primary); }
+        .container { max-width: 760px; margin: 0 auto; }
+        h1 { text-align: center; color: var(--text-heading); font-size: 28px; margin-bottom: 24px; }
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px var(--shadow);
+            padding: 24px;
+            margin-bottom: 20px;
+            transition: background .3s;
+        }
+        .card h2 { font-size: 17px; color: var(--text-heading); margin-bottom: 14px; }
+        textarea {
+            width: 100%;
+            min-height: 110px;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            background: var(--input-bg);
+            color: var(--text);
+            resize: vertical;
+            transition: border-color .2s, background .3s, color .3s;
+        }
+        textarea:focus { outline: none; border-color: var(--primary); }
+        .tip { color: var(--muted); font-size: 12px; margin-top: 6px; }
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 24px;
+            font-size: 15px;
+            cursor: pointer;
+            color: #fff;
+            background: var(--primary);
+            transition: all .2s;
+            margin-top: 12px;
+        }
+        .btn:hover { background: var(--primary-hover); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        /* 转盘区域 */
+        .wheel-area { text-align: center; }
+        .wheel-wrap {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 10px auto;
+        }
+        canvas { display: block; margin: 0 auto; }
+        .arrow {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 34px;
+            z-index: 2;
+            line-height: 1;
+        }
+        .center-btn {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 62px;
+            height: 62px;
+            border-radius: 50%;
+            border: none;
+            background: var(--primary);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 3px 10px var(--shadow);
+            z-index: 3;
+            transition: all .2s;
+        }
+        .center-btn:hover { background: var(--primary-hover); }
+        .center-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .result-box {
+            margin-top: 18px;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: var(--text-heading);
+            font-weight: 600;
+        }
+        .result-box .empty { color: var(--muted); font-size: 14px; font-weight: 400; }
+        .odds {
+            margin-top: 12px;
+            text-align: left;
+            font-size: 13px;
+            color: var(--muted-2);
+            display: none;
+        }
+        .odds.show { display: block; }
+        .odds .row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border); }
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity .3s;
+            z-index: 20;
+        }
+        .toast.show { opacity: 1; }
+        .palette {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        .palette .c {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all .2s;
+        }
+        .palette .c.active { border-color: var(--primary); transform: scale(1.15); }
+    </style>
+</head>
+<body>
+    <a class="back-btn" href="/index.html">← 返回</a>
+    <button class="theme-toggle" id="themeToggle" title="切换主题" onclick="toggleTheme()">🌙</button>
+    <div class="container">
+        <h1>🎡 决策转盘</h1>
+
+        <div class="card">
+            <h2>📝 输入选项（每行一个）</h2>
+            <textarea id="options" placeholder="例如：&#10;火锅&#10;烧烤&#10;日料&#10;家常菜"></textarea>
+            <div class="tip">💡 支持 1~20 个选项，重复选项会自动去重</div>
+        </div>
+
+        <div class="card wheel-area">
+            <h2>🎯 转一转</h2>
+            <div class="wheel-wrap">
+                <div class="arrow">▼</div>
+                <canvas id="wheel" width="300" height="300"></canvas>
+                <button class="center-btn" id="spinBtn" onclick="spin()">开始</button>
+            </div>
+            <div class="result-box" id="resultBox"><span class="empty">点击「开始」转一下试试～</span></div>
+            <div class="odds" id="odds"></div>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const COLORS = ['#4a7cff', '#ff6b6b', '#feca57', '#48dbfb', '#1dd1a1', '#ff9ff3', '#f368e0', '#54a0ff', '#5f27cd', '#01a3a4', '#ff9f43', '#10ac84', '#8395a7', '#ee5253', '#00d2d3', '#c8d6e5'];
+        const canvas = document.getElementById('wheel');
+        const ctx = canvas.getContext('2d');
+        let currentOptions = [];
+        let currentRotation = 0;
+        let spinning = false;
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        function getOptions() {
+            const text = document.getElementById('options').value;
+            const seen = new Set();
+            const opts = [];
+            text.split('\n').forEach(line => {
+                const t = line.trim();
+                if (t && !seen.has(t)) { seen.add(t); opts.push(t); }
+            });
+            return opts;
+        }
+
+        function drawWheel(options, rotation) {
+            ctx.clearRect(0, 0, 300, 300);
+            const cx = 150, cy = 150, r = 145;
+            if (options.length === 0) {
+                ctx.beginPath();
+                ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                ctx.fillStyle = '#e0e0e0';
+                ctx.fill();
+                ctx.strokeStyle = '#ccc';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.fillStyle = '#999';
+                ctx.font = '14px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('请输入选项', cx, cy);
+                return;
+            }
+            const slice = (Math.PI * 2) / options.length;
+            for (let i = 0; i < options.length; i++) {
+                const start = rotation + i * slice;
+                const end = start + slice;
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, r, start, end);
+                ctx.closePath();
+                ctx.fillStyle = COLORS[i % COLORS.length];
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                // 文字
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(start + slice / 2);
+                ctx.textAlign = 'right';
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 13px sans-serif';
+                const label = options[i].length > 6 ? options[i].slice(0, 6) + '…' : options[i];
+                ctx.fillText(label, r - 18, 4);
+                ctx.restore();
+            }
+            // 中心圆
+            ctx.beginPath();
+            ctx.arc(cx, cy, 30, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+        }
+
+        function updateWheel() {
+            currentOptions = getOptions();
+            drawWheel(currentOptions, currentRotation);
+        }
+
+        async function spin() {
+            if (spinning) return;
+            const options = getOptions();
+            if (options.length === 0) {
+                showToast('❌ 请先输入选项');
+                return;
+            }
+            spinning = true;
+            document.getElementById('spinBtn').disabled = true;
+            document.getElementById('resultBox').innerHTML = '<span class="empty">转盘中...</span>';
+            document.getElementById('odds').classList.remove('show');
+
+            // 请求后端决策
+            let result;
+            try {
+                const res = await fetch('/api/decide', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ options })
+                });
+                const data = await res.json();
+                if (!res.ok || data.code !== 0) {
+                    throw new Error(data.message || '请求失败');
+                }
+                result = data.data;
+            } catch (e) {
+                showToast('❌ ' + e.message);
+                spinning = false;
+                document.getElementById('spinBtn').disabled = false;
+                document.getElementById('resultBox').innerHTML = '<span class="empty">出错了，请重试</span>';
+                return;
+            }
+
+            // 结算转盘动画：转到结果所在扇区
+            const idx = result.result ? options.indexOf(result.result) : 0;
+            const slice = (Math.PI * 2) / options.length;
+            const target = -idx * slice - slice / 2 + Math.PI / 2;
+            // 增加多圈旋转
+            const extra = Math.PI * 2 * (6 + Math.floor(Math.random() * 3));
+            const finalRotation = target + extra;
+
+            const startRotation = currentRotation;
+            const startTime = performance.now();
+            const duration = 3500;
+
+            function animate(now) {
+                const elapsed = now - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                // easeOutCubic
+                const eased = 1 - Math.pow(1 - progress, 3);
+                currentRotation = startRotation + (finalRotation - startRotation) * eased;
+                drawWheel(options, currentRotation);
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    spinning = false;
+                    document.getElementById('spinBtn').disabled = false;
+                    showResult(result);
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        function showResult(result) {
+            const box = document.getElementById('resultBox');
+            box.innerHTML = '🎉 就选它：<span style="color:var(--primary)">' + result.result + '</span>！';
+            const odds = document.getElementById('odds');
+            odds.innerHTML = '';
+            result.odds.forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'row';
+                row.innerHTML = '<span>' + item.option + '</span><span>' + item.chance + '%</span>';
+                odds.appendChild(row);
+            });
+            odds.classList.add('show');
+        }
+
+        // 输入变化时实时重绘
+        document.getElementById('options').addEventListener('input', updateWheel);
+
+        // 初始绘制
+        updateWheel();
+
+        // ---------- 主题切换 ----------
+        function updateToggleIcon() {
+            const theme = document.documentElement.getAttribute('data-theme');
+            document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            updateToggleIcon();
+        }
+        updateToggleIcon();
+    </script>
+</body>
+</html>
