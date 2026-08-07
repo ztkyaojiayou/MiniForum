@@ -1,8 +1,12 @@
 package com.example.usermanagement.service;
 
+import com.example.usermanagement.dto.UserCreateDTO;
+import com.example.usermanagement.dto.UserUpdateDTO;
 import com.example.usermanagement.entity.User;
+import com.example.usermanagement.exception.DuplicateUsernameException;
 import com.example.usermanagement.exception.ResourceNotFoundException;
 import com.example.usermanagement.repository.UserRepository;
+import com.example.usermanagement.util.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -19,10 +23,15 @@ public class UserService {
         this.userRepository = userRepository;
     }
 
-    public User createUser(User user) {
-        if (userRepository.findByUsername(user.getUsername()).isPresent()) {
-            throw new IllegalArgumentException("用户名已存在: " + user.getUsername());
+    public User createUser(UserCreateDTO dto) {
+        if (userRepository.findByUsername(dto.getUsername()).isPresent()) {
+            throw new DuplicateUsernameException("用户名已存在: " + dto.getUsername());
         }
+        User user = new User();
+        user.setUsername(dto.getUsername());
+        user.setEmail(dto.getEmail());
+        user.setPassword(PasswordEncoder.encode(dto.getPassword()));
+        user.setAge(dto.getAge());
         return userRepository.save(user);
     }
 
@@ -35,17 +44,17 @@ public class UserService {
         return userRepository.findAll();
     }
 
-    public User updateUser(Long id, User user) {
+    public User updateUser(Long id, UserUpdateDTO dto) {
         User existing = getUserById(id);
         // 用户名不允许修改，若修改了用户名则校验唯一性
-        if (!existing.getUsername().equals(user.getUsername())
-                && userRepository.findByUsername(user.getUsername()).isPresent()) {
-            throw new IllegalArgumentException("用户名已存在: " + user.getUsername());
+        if (!existing.getUsername().equals(dto.getUsername())
+                && userRepository.findByUsername(dto.getUsername()).isPresent()) {
+            throw new DuplicateUsernameException("用户名已存在: " + dto.getUsername());
         }
-        existing.setUsername(user.getUsername());
-        existing.setEmail(user.getEmail());
-        existing.setPassword(user.getPassword());
-        existing.setAge(user.getAge());
+        existing.setUsername(dto.getUsername());
+        existing.setEmail(dto.getEmail());
+        existing.setPassword(PasswordEncoder.encode(dto.getPassword()));
+        existing.setAge(dto.getAge());
         return userRepository.save(existing);
     }
 

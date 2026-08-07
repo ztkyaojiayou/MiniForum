@@ -20,7 +20,7 @@ public class UserRepository {
 
     public User save(User user) {
         if (user.getId() == null) {
-            user.setId(User.ID_GENERATOR.getAndIncrement());
+            user.setId(User.nextId());
         }
         storage.put(user.getId(), user);
         return user;

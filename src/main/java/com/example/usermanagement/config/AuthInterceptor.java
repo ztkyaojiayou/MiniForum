@@ -1,5 +1,6 @@
 package com.example.usermanagement.config;
 
+import com.example.usermanagement.exception.UnauthorizedException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -9,7 +10,8 @@ import javax.servlet.http.HttpSession;
 
 /**
  * 登录认证拦截器
- * 拦截 /api/users/** 接口，未登录时返回 401
+ * 拦截 /api/users/** 接口，未登录时抛出 {@link UnauthorizedException}，
+ * 由全局异常处理器统一返回 401 响应，避免在拦截器中手动拼接 JSON。
  */
 @Component
 public class AuthInterceptor implements HandlerInterceptor {
@@ -17,18 +19,14 @@ public class AuthInterceptor implements HandlerInterceptor {
     private static final String SESSION_USER = "userId";
 
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
-            throws Exception {
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         // 放行预检请求（CORS）
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
         HttpSession session = request.getSession(false);
         if (session == null || session.getAttribute(SESSION_USER) == null) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json;charset=UTF-8");
-            response.getWriter().write("{\"message\":\"未登录或登录已过期\"}");
-            return false;
+            throw new UnauthorizedException("未登录或登录已过期");
         }
         return true;
     }

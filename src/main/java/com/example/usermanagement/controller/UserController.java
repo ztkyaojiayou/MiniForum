@@ -1,5 +1,8 @@
 package com.example.usermanagement.controller;
 
+import com.example.usermanagement.common.Result;
+import com.example.usermanagement.dto.UserCreateDTO;
+import com.example.usermanagement.dto.UserUpdateDTO;
 import com.example.usermanagement.entity.User;
 import com.example.usermanagement.service.UserService;
 import org.springframework.http.HttpStatus;
@@ -31,33 +34,33 @@ public class UserController {
 
     /** 新增用户 */
     @PostMapping
-    public ResponseEntity<User> createUser(@Valid @RequestBody User user) {
-        User created = userService.createUser(user);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    public ResponseEntity<Result<User>> createUser(@Valid @RequestBody UserCreateDTO dto) {
+        User created = userService.createUser(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(Result.success(created));
     }
 
     /** 查询单个用户 */
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable Long id) {
-        return ResponseEntity.ok(userService.getUserById(id));
+    public ResponseEntity<Result<User>> getUserById(@PathVariable Long id) {
+        return ResponseEntity.ok(Result.success(userService.getUserById(id)));
     }
 
     /** 查询所有用户 */
     @GetMapping
-    public ResponseEntity<List<User>> getAllUsers() {
-        return ResponseEntity.ok(userService.getAllUsers());
+    public ResponseEntity<Result<List<User>>> getAllUsers() {
+        return ResponseEntity.ok(Result.success(userService.getAllUsers()));
     }
 
     /** 修改用户 */
     @PutMapping("/{id}")
-    public ResponseEntity<User> updateUser(@PathVariable Long id, @Valid @RequestBody User user) {
-        return ResponseEntity.ok(userService.updateUser(id, user));
+    public ResponseEntity<Result<User>> updateUser(@PathVariable Long id, @Valid @RequestBody UserUpdateDTO dto) {
+        return ResponseEntity.ok(Result.success(userService.updateUser(id, dto)));
     }
 
     /** 删除用户 */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<Result<Void>> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(Result.success("删除成功", null));
     }
 }

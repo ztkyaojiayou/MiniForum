@@ -1,5 +1,6 @@
 package com.example.usermanagement.controller;
 
+import com.example.usermanagement.common.Result;
 import com.example.usermanagement.entity.User;
 import com.example.usermanagement.service.AuthService;
 import org.springframework.http.ResponseEntity;
@@ -12,7 +13,6 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.servlet.http.HttpSession;
 import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
-import java.util.Map;
 
 /**
  * 登录认证接口
@@ -43,33 +43,42 @@ public class AuthController {
 
     /** 登录 */
     @PostMapping("/login")
-    public ResponseEntity<Map<String, Object>> login(@Valid @RequestBody LoginRequest request,
-                                                     HttpSession session) {
+    public ResponseEntity<Result<LoginResponse>> login(@Valid @RequestBody LoginRequest request,
+                                                       HttpSession session) {
         User user = authService.login(request.getUsername(), request.getPassword());
         session.setAttribute("userId", user.getId());
         session.setAttribute("username", user.getUsername());
-        return ResponseEntity.ok(Map.of(
-                "message", "登录成功",
-                "username", user.getUsername()
-        ));
+        LoginResponse data = new LoginResponse(user.getUsername());
+        return ResponseEntity.ok(Result.success("登录成功", data));
     }
 
     /** 登出 */
     @PostMapping("/logout")
-    public ResponseEntity<Map<String, Object>> logout(HttpSession session) {
+    public ResponseEntity<Result<Void>> logout(HttpSession session) {
         session.invalidate();
-        return ResponseEntity.ok(Map.of("message", "已退出登录"));
+        return ResponseEntity.ok(Result.success("已退出登录", null));
     }
 
     /** 当前登录用户 */
     @GetMapping("/me")
-    public ResponseEntity<Map<String, Object>> me(HttpSession session) {
+    public ResponseEntity<Result<LoginResponse>> me(HttpSession session) {
         Object username = session.getAttribute("username");
         if (username == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "未登录"));
+            return ResponseEntity.status(401).body(Result.error(401, "未登录"));
         }
-        return ResponseEntity.ok(Map.of(
-                "username", username
-        ));
+        return ResponseEntity.ok(Result.success(new LoginResponse((String) username)));
+    }
+
+    /** 登录成功响应体 */
+    public static class LoginResponse {
+        private final String username;
+
+        public LoginResponse(String username) {
+            this.username = username;
+        }
+
+        public String getUsername() {
+            return username;
+        }
     }
 }

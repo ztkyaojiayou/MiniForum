@@ -4,51 +4,117 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>用户管理系统 - 登录</title>
+    <script>
+        // 防闪烁：在渲染前根据 localStorage 或系统偏好设置主题
+        (function () {
+            var saved = localStorage.getItem('theme');
+            var theme = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
     <style>
+        :root, [data-theme="light"] {
+            --bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --text: #333333;
+            --text-heading: #1a1a2e;
+            --muted: #999999;
+            --muted-2: #666666;
+            --border: #d9d9d9;
+            --primary: #4a7cff;
+            --primary-hover: #3a66e0;
+            --primary-ring: rgba(74,124,255,0.15);
+            --shadow: rgba(0,0,0,0.1);
+            --hint-bg: #f6ffed;
+            --hint-border: #b7eb8f;
+            --hint-text: #389e0d;
+            --hint-code-bg: #e6fffb;
+        }
+        [data-theme="dark"] {
+            --bg: #1a1a2e;
+            --card-bg: #24243e;
+            --text: #e4e4e4;
+            --text-heading: #ffffff;
+            --muted: #8f8fa8;
+            --muted-2: #a8a8c0;
+            --border: #3a3a5c;
+            --primary: #5a8cff;
+            --primary-hover: #6f9bff;
+            --primary-ring: rgba(90,140,255,0.25);
+            --shadow: rgba(0,0,0,0.4);
+            --hint-bg: #1d3a2d;
+            --hint-border: #2e5a44;
+            --hint-text: #7ecb5f;
+            --hint-code-bg: #2a3a52;
+        }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
-            background: #f0f2f5;
-            color: #333;
+            background: var(--bg);
+            color: var(--text);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: background .3s, color .3s;
         }
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: var(--card-bg);
+            color: var(--text);
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px var(--shadow);
+            transition: background .3s, color .3s, border-color .3s;
+            z-index: 10;
+        }
+        .theme-toggle:hover { border-color: var(--primary); }
         .login-card {
-            background: #fff;
+            background: var(--card-bg);
             border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 20px var(--shadow);
             padding: 40px;
             width: 380px;
             max-width: 90%;
+            transition: background .3s;
         }
         .login-card h1 {
             text-align: center;
             font-size: 24px;
-            color: #1a1a2e;
+            color: var(--text-heading);
             margin-bottom: 8px;
         }
         .login-card .subtitle {
             text-align: center;
-            color: #999;
+            color: var(--muted);
             font-size: 13px;
             margin-bottom: 28px;
         }
         .form-group { margin-bottom: 18px; }
-        .form-group label { display: block; font-size: 13px; color: #666; margin-bottom: 6px; }
+        .form-group label { display: block; font-size: 13px; color: var(--muted-2); margin-bottom: 6px; }
         .form-group input {
             width: 100%;
             padding: 10px 12px;
-            border: 1px solid #d9d9d9;
+            border: 1px solid var(--border);
             border-radius: 6px;
             font-size: 14px;
-            transition: border-color .2s;
+            background: var(--card-bg);
+            color: var(--text);
+            transition: border-color .2s, background .3s, color .3s;
         }
         .form-group input:focus {
             outline: none;
-            border-color: #4a7cff;
-            box-shadow: 0 0 0 2px rgba(74,124,255,0.15);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px var(--primary-ring);
         }
         .btn {
             width: 100%;
@@ -59,9 +125,9 @@
             cursor: pointer;
             transition: all .2s;
             color: #fff;
-            background: #4a7cff;
+            background: var(--primary);
         }
-        .btn:hover { background: #3a66e0; }
+        .btn:hover { background: var(--primary-hover); }
         .btn:disabled { opacity: 0.6; cursor: not-allowed; }
         .error-msg {
             color: #ff4d4f;
@@ -73,16 +139,17 @@
         .hint {
             margin-top: 20px;
             padding: 10px 14px;
-            background: #f6ffed;
-            border: 1px solid #b7eb8f;
+            background: var(--hint-bg);
+            border: 1px solid var(--hint-border);
             border-radius: 6px;
             font-size: 12px;
-            color: #389e0d;
+            color: var(--hint-text);
         }
-        .hint code { background: #e6fffb; padding: 1px 4px; border-radius: 3px; }
+        .hint code { background: var(--hint-code-bg); padding: 1px 4px; border-radius: 3px; }
     </style>
 </head>
 <body>
+    <button class="theme-toggle" id="themeToggle" title="切换主题" onclick="toggleTheme()">🌙</button>
     <div class="login-card">
         <h1>🔐 用户管理系统</h1>
         <div class="subtitle">请登录后继续操作</div>
@@ -130,6 +197,20 @@
             e.preventDefault();
             login();
         });
+
+        // ---------- 主题切换 ----------
+        function updateToggleIcon() {
+            const theme = document.documentElement.getAttribute('data-theme');
+            document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            updateToggleIcon();
+        }
+        updateToggleIcon();
     </script>
 </body>
 </html>

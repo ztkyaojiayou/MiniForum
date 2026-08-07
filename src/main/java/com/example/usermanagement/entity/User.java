@@ -1,34 +1,25 @@
 package com.example.usermanagement.entity;
 
-import javax.validation.constraints.Email;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 用户实体
+ * 仅承载数据，校验逻辑应放在对应的 DTO 中。
  */
 public class User {
 
     /** 自增 ID 生成器（内存存储用） */
-    public static final AtomicLong ID_GENERATOR = new AtomicLong(1);
+    private static final AtomicLong ID_GENERATOR = new AtomicLong(1);
 
     private Long id;
 
-    @NotBlank(message = "用户名不能为空")
-    @Size(max = 50, message = "用户名长度不能超过 50")
     private String username;
 
-    @NotBlank(message = "邮箱不能为空")
-    @Email(message = "邮箱格式不正确")
     private String email;
 
-    @Size(min = 6, max = 20, message = "密码长度必须在 6-20 之间")
     private String password;
 
-    @NotNull(message = "年龄不能为空")
     private Integer age;
 
     public User() {
@@ -82,6 +73,11 @@ public class User {
         this.age = age;
     }
 
+    /** 生成下一个自增 ID */
+    public static Long nextId() {
+        return ID_GENERATOR.getAndIncrement();
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -101,7 +97,6 @@ public class User {
                 "id=" + id +
                 ", username='" + username + '\'' +
                 ", email='" + email + '\'' +
-                ", password='" + password + '\'' +
                 ", age=" + age +
                 '}';
     }
