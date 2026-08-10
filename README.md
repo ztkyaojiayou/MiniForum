@@ -1,14 +1,17 @@
-# User Management（用户管理系统）
+# MiniForum（迷你微博论坛系统）
 
-一个基于 **Spring Boot 2.7 + Java 17** 的简单用户管理系统，提供完整的 RESTful API 和简单的 Web 前端页面。数据存储在内存中（`ConcurrentHashMap`），无需数据库即可运行。
+一个基于 **Spring Boot 2.7 + Java 17** 的轻量级微博/论坛系统，支持用户注册登录、发布帖子、浏览动态，还附带随机灵感便签、随机决策转盘等趣味小工具。数据存储在内存中（`ConcurrentHashMap`），无需数据库即可运行。
 
 > 🚀 **本项目由自研的 [nanobot-java-cli](https://github.com/ztkyaojiayou/my-first-nanobot-build-server) 编程 Agent 开发完成** —— 通过自然语言对话驱动代码生成、重构与调试，展示了 AI 辅助编程在实际项目中的落地应用。
 
 ## 功能特性
 
-- ✅ 用户的增删改查（CRUD）RESTful API
-- ✅ 参数校验（用户名、邮箱、密码、年龄）
-- ✅ 用户名唯一性校验
+- ✅ 用户注册、登录、退出（基于 Session 认证）
+- ✅ 发布帖子 / 浏览动态（类似微博的时间线）
+- ✅ 帖子支持标题与正文内容（内容最长 5000 字）
+- ✅ 随机灵感便签（内置名言库，一键获取金句）
+- ✅ 随机决策转盘（纠结时帮你做选择）
+- ✅ 用户信息管理（增删改查）
 - ✅ 全局异常处理（统一错误响应格式）
 - ✅ 内置简单 Web 前端页面
 - ✅ 内存存储，开箱即用，无需配置数据库
@@ -27,28 +30,45 @@
 
 ```
 my-first-nanobot-server/
-├── src/main/java/com/example/usermanagement/
+├── src/main/java/com/example/miniforum/
 │   ├── controller/          # REST 控制器
-│   │   ├── UserController.java
-│   │   └── AuthController.java   # 登录认证接口
+│   │   ├── AuthController.java      # 登录认证接口
+│   │   ├── PostController.java      # 发帖 / 浏览动态接口
+│   │   ├── UserController.java      # 用户管理接口
+│   │   ├── QuoteController.java     # 随机灵感便签接口
+│   │   ├── DecisionController.java  # 随机决策转盘接口
+│   │   ├── HealthController.java    # 健康检测接口
+│   │   └── HomeController.java      # 根路径跳转
 │   ├── entity/              # 实体类
-│   │   └── User.java
+│   │   ├── Post.java                # 帖子
+│   │   └── User.java                # 用户
+│   ├── dto/                 # 请求/响应 DTO
+│   │   ├── PostCreateDTO.java
+│   │   ├── UserCreateDTO.java
+│   │   └── UserUpdateDTO.java
 │   ├── service/             # 业务逻辑层
-│   │   ├── UserService.java
-│   │   └── AuthService.java      # 登录认证服务
+│   │   ├── AuthService.java
+│   │   ├── PostService.java
+│   │   └── UserService.java
 │   ├── repository/          # 数据访问层（内存存储）
+│   │   ├── PostRepository.java
 │   │   └── UserRepository.java
 │   ├── config/              # 配置
 │   │   ├── AuthInterceptor.java  # 登录拦截器
 │   │   └── WebConfig.java        # Web 配置
 │   ├── exception/           # 异常处理
 │   │   ├── GlobalExceptionHandler.java
-│   │   └── ResourceNotFoundException.java
-│   └── UserManagementApplication.java  # 启动类
+│   │   └── ...
+│   ├── util/                # 工具类
+│   │   └── PasswordEncoder.java
+│   └── MiniForumApplication.java  # 启动类
 ├── src/main/resources/
 │   ├── static/
-│   │   ├── index.html       # Web 主页面（需登录）
-│   │   └── login.html       # 登录页面
+│   │   ├── index.html       # Web 主页面（动态时间线，需登录）
+│   │   ├── login.html       # 登录页面
+│   │   ├── post.html        # 发帖页面
+│   │   ├── quote.html       # 随机灵感便签页面
+│   │   └── wheel.html       # 随机决策转盘页面
 │   └── application.yml      # 配置文件
 ├── pom.xml                  # Maven 配置
 └── README.md
@@ -76,21 +96,21 @@ mvn spring-boot:run
 mvn clean package
 
 # 运行
-java -jar target/user-management-1.0.0.jar
+java -jar target/mini-forum-1.0.0.jar
 ```
 
 启动后访问：
-- 登录页面：<http://localhost:8080/login.html>（默认账号 `admin / admin123`）
-- Web 主页面：<http://localhost:8080/index.html>（需登录后访问）
-- API 接口：<http://localhost:8080/api/users>（需登录，携带 Session Cookie）
+- 登录页面：<http://localhost:8090/login.html>（默认账号 `admin / admin123`）
+- 动态时间线：<http://localhost:8090/index.html>（需登录后访问）
+- 发帖页面：<http://localhost:8090/post.html>（需登录后访问）
 
 ## 登录认证
 
-系统提供了基于 **Session** 的简单登录认证功能。
+系统提供了基于 **Session** 的登录认证功能。
 
 - 默认管理员账号：`admin` / `admin123`（首次启动自动创建）
-- 所有 `/api/users/**` 接口均需登录后访问，未登录返回 `401`
-- 前端 `index.html` 会自动校验登录状态，未登录跳转到 `login.html`
+- 发布帖子、管理用户等接口均需登录后访问，未登录返回 `401`
+- 前端页面会自动校验登录状态，未登录跳转到 `login.html`
 
 ### 登录认证接口
 
@@ -106,79 +126,85 @@ java -jar target/user-management-1.0.0.jar
 
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
-| `server.port` | `8080` | 服务端口 |
-| `spring.application.name` | `user-management` | 应用名称 |
+| `server.port` | `8090` | 服务端口 |
+| `spring.application.name` | `mini-forum` | 应用名称 |
 
 ## API 文档
 
-所有接口统一以 `/api/users` 为前缀，返回 JSON 格式数据。
+所有接口统一返回 JSON 格式数据（`code / message / data` 结构）。
 
-### 1. 新增用户
-
-```
-POST /api/users
-```
-
-**请求体：**
-
-```json
-{
-  "username": "zhangsan",
-  "email": "zhangsan@example.com",
-  "password": "123456",
-  "age": 25
-}
-```
-
-**响应：** `201 Created`，返回创建的用户对象。
-
-### 2. 查询所有用户
+### 1. 发布帖子
 
 ```
-GET /api/users
-```
-
-**响应：** `200 OK`，返回用户列表。
-
-### 3. 查询单个用户
-
-```
-GET /api/users/{id}
-```
-
-**响应：** `200 OK`，返回对应 id 的用户；不存在则返回 `404`。
-
-### 4. 修改用户
-
-```
-PUT /api/users/{id}
+POST /api/posts
 ```
 
 **请求体：**
 
 ```json
 {
-  "username": "zhangsan",
-  "email": "new@example.com",
-  "password": "654321",
-  "age": 26
+  "title": "我的第一条动态",
+  "content": "今天天气真好，分享给大家！"
 }
 ```
 
-**响应：** `200 OK`，返回更新后的用户对象。
+**响应：** `201 Created`，返回创建的帖子对象。
 
-### 5. 删除用户
+### 2. 浏览所有动态
 
 ```
-DELETE /api/users/{id}
+GET /api/posts
 ```
 
-**响应：** `204 No Content`；不存在则返回 `404`。
+**响应：** `200 OK`，返回帖子列表（最新在前）。
+
+### 3. 随机灵感便签
+
+```
+GET /api/quotes/random
+```
+
+**响应：** `200 OK`，随机返回一条名言。
+
+### 4. 随机决策转盘
+
+```
+POST /api/decide
+```
+
+**请求体：**
+
+```json
+{
+  "options": ["火锅", "烧烤", "日料"]
+}
+```
+
+**响应：** `200 OK`，返回随机选择的结果及每个选项的概率。
+
+### 5. 用户管理
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/api/users` | 新增用户 |
+| `GET` | `/api/users` | 查询所有用户 |
+| `GET` | `/api/users/{id}` | 查询单个用户 |
+| `PUT` | `/api/users/{id}` | 修改用户 |
+| `DELETE` | `/api/users/{id}` | 删除用户 |
+
+### 6. 健康检测
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/api/health/ping` | 简单健康检查（无需登录） |
+| `GET` | `/api/health` | 详细健康检查：JVM 内存、运行时长等（无需登录） |
 
 ### 字段校验规则
 
 | 字段 | 规则 |
 |------|------|
+| `title` | 发帖必填，长度不超过 100 字符 |
+| `content` | 发帖必填，长度不超过 5000 字符 |
 | `username` | 必填，长度不超过 50，且唯一 |
 | `email` | 必填，需为合法邮箱格式 |
 | `password` | 长度 6-20 |
@@ -200,7 +226,8 @@ DELETE /api/users/{id}
 | HTTP 状态码 | 说明 |
 |-------------|------|
 | `400` | 参数校验失败 / 用户名重复等业务错误 |
-| `404` | 用户不存在 |
+| `401` | 未登录或登录失效 |
+| `404` | 资源不存在 |
 | `500` | 服务器内部错误 |
 
 ## 数据存储说明

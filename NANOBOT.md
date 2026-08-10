@@ -40,12 +40,12 @@ mvn spring-boot:run
 mvn test
 
 # 生成可执行 jar 并运行
-java -jar target/user-management-1.0.0.jar
+java -jar target/mini-forum-1.0.0.jar
 ```
 
 ## 编码约定
 
-- 包名基础：`com.example.usermanagement`
+- 包名基础：`com.example.miniforum`
 - 使用标准的 Spring Boot 分层架构（Controller → Service → Repository）
 - 使用 JSR-303 注解进行参数校验
 - 启动类使用 `@SpringBootApplication` 注解，保持精简

@@ -3,8 +3,8 @@ server:
 
 spring:
   application:
-    name: user-management
+    name: mini-forum
 
 logging:
   level:
-    com.example.usermanagement: info
+    com.example.miniforum: info

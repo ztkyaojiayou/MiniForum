@@ -36,7 +36,7 @@ scripts\restart.bat    # 重启服务
 
 ## 架构概览
 
-标准 Spring Boot 分层架构，包路径 `com.example.usermanagement`：
+标准 Spring Boot 分层架构，包路径 `com.example.miniforum`：
 
 ```
 controller/     # REST 控制器 + 根路径路由

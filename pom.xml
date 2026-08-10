@@ -12,10 +12,10 @@
     </parent>
 
     <groupId>com.example</groupId>
-    <artifactId>user-management</artifactId>
+    <artifactId>mini-forum</artifactId>
     <version>1.0.0</version>
-    <name>user-management</name>
-    <description>简单的用户管理系统（内存存储）</description>
+    <name>mini-forum</name>
+    <description>轻量级微博/论坛系统（内存存储）</description>
 
     <properties>
         <java.version>17</java.version>
