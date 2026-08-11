@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>博文详情</title>
+    <script>
+        (function () {
+            var saved = localStorage.getItem('theme');
+            var theme = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <style>
+        :root, [data-theme="light"] {
+            --bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --text: #333333;
+            --text-heading: #1a1a2e;
+            --muted: #999999;
+            --muted-2: #666666;
+            --border: #d9d9d9;
+            --border-row: #f0f0f0;
+            --primary: #4a7cff;
+            --primary-hover: #3a66e0;
+            --shadow-card: rgba(0,0,0,0.08);
+            --composer-bg: #f7f8fa;
+        }
+        [data-theme="dark"] {
+            --bg: #1a1a2e;
+            --card-bg: #24243e;
+            --text: #e4e4e4;
+            --text-heading: #ffffff;
+            --muted: #8f8fa8;
+            --muted-2: #a8a8c0;
+            --border: #3a3a5c;
+            --border-row: #33334f;
+            --primary: #5a8cff;
+            --primary-hover: #6f9bff;
+            --shadow-card: rgba(0,0,0,0.4);
+            --composer-bg: #2a2a48;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            transition: background .3s, color .3s;
+        }
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-row);
+            padding: 0 20px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 1px 4px var(--shadow-card);
+        }
+        .navbar .brand { font-size: 20px; font-weight: 700; color: var(--primary); cursor: pointer; }
+        .navbar .nav-right { display: flex; align-items: center; gap: 12px; }
+        .nav-link {
+            text-decoration: none;
+            color: var(--muted-2);
+            font-size: 14px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            transition: all .2s;
+            border: 1px solid transparent;
+        }
+        .nav-link:hover { color: var(--primary); background: var(--composer-bg); }
+        .navbar .username-tag { font-size: 14px; color: var(--muted-2); }
+        .navbar .username-tag b { color: var(--primary); font-weight: 600; }
+        .navbar .logout-btn {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--muted-2);
+            font-size: 13px;
+            padding: 4px 12px;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all .2s;
+        }
+        .navbar .logout-btn:hover { border-color: #ff4d4f; color: #ff4d4f; }
+        .theme-toggle {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: var(--card-bg);
+            color: var(--text);
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all .3s;
+        }
+        .theme-toggle:hover { border-color: var(--primary); }
+        .container { max-width: 720px; margin: 0 auto; padding: 24px 20px 60px; }
+        .back-link {
+            display: inline-block;
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+        .back-link:hover { text-decoration: underline; }
+        .article {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 2px 12px var(--shadow-card);
+            padding: 32px 36px;
+            transition: background .3s;
+        }
+        .article .article-title { font-size: 26px; font-weight: 700; color: var(--text-heading); line-height: 1.4; margin-bottom: 16px; }
+        .article .meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-row);
+            margin-bottom: 24px;
+        }
+        .article .avatar {
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; font-weight: 600;
+            flex-shrink: 0;
+        }
+        .article .author-name { font-size: 15px; font-weight: 600; color: var(--text-heading); }
+        .article .time { font-size: 13px; color: var(--muted); margin-top: 2px; }
+        .article .article-content {
+            font-size: 16px;
+            line-height: 1.9;
+            color: var(--text);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .article .footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--border-row); font-size: 13px; color: var(--muted); }
+        .empty { text-align: center; color: var(--muted); padding: 40px 0; }
+        .loading { text-align: center; color: var(--muted); padding: 20px; }
+        .toast {
+            position: fixed;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: #333;
+            color: #fff;
+            padding: 10px 24px;
+            border-radius: 20px;
+            font-size: 14px;
+            opacity: 0;
+            transition: all .3s;
+            z-index: 999;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .toast.error { background: #ff4d4f; }
+        .fade-in { animation: fadeIn .4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="brand" onclick="window.location.href='/index.html'">📢 动态广场</div>
+        <div class="nav-right">
+            <a class="nav-link" href="/quote.html">💡 灵感</a>
+            <a class="nav-link" href="/wheel.html">🎡 转盘</a>
+            <span class="username-tag">👤 <b id="currentUser"></b></span>
+            <button class="theme-toggle" id="themeToggle" title="切换主题" onclick="toggleTheme()">🌙</button>
+            <button class="logout-btn" onclick="logout()">退出</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <a class="back-link" href="/index.html">← 返回动态列表</a>
+        <div id="loading" class="loading">加载中...</div>
+        <div id="article"></div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        function showToast(msg, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast show ' + (type || '');
+            setTimeout(() => { toast.className = 'toast'; }, 2500);
+        }
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+        function formatTime(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            const pad = n => (n < 10 ? '0' + n : '' + n);
+            return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+                + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+        }
+        function getPostId() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('id');
+        }
+        async function loadPost() {
+            const id = getPostId();
+            const loading = document.getElementById('loading');
+            const article = document.getElementById('article');
+            if (!id) {
+                loading.style.display = 'none';
+                article.innerHTML = '<div class="empty">缺少帖子 ID 参数</div>';
+                return;
+            }
+            try {
+                const res = await fetch('/api/posts/' + id);
+                const data = await res.json();
+                if (!res.ok || data.code !== 0) {
+                    loading.style.display = 'none';
+                    article.innerHTML = '<div class="empty">' + escapeHtml(data.message || '加载失败') + '</div>';
+                    return;
+                }
+                const p = data.data;
+                const avatarChar = (p.author || '?').charAt(0).toUpperCase();
+                loading.style.display = 'none';
+                article.innerHTML = `
+                    <div class="article fade-in">
+                        <div class="article-title">${p.title ? escapeHtml(p.title) : '（无标题）'}</div>
+                        <div class="meta">
+                            <div class="avatar">${escapeHtml(avatarChar)}</div>
+                            <div>
+                                <div class="author-name">${escapeHtml(p.author)}</div>
+                                <div class="time">🕐 ${formatTime(p.createdAt)}</div>
+                            </div>
+                        </div>
+                        <div class="article-content">${escapeHtml(p.content)}</div>
+                        <div class="footer">#${p.id}</div>
+                    </div>`;
+            } catch (e) {
+                loading.style.display = 'none';
+                article.innerHTML = '<div class="empty">加载失败：' + escapeHtml(e.message) + '</div>';
+            }
+        }
+        async function checkLogin() {
+            try {
+                const res = await fetch('/api/auth/me');
+                const data = await res.json();
+                if (!res.ok || data.code !== 0) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+                document.getElementById('currentUser').textContent = data.data.username;
+                loadPost();
+            } catch (e) {
+                window.location.href = '/login.html';
+            }
+        }
+        async function logout() {
+            try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (e) {}
+            window.location.href = '/login.html';
+        }
+        checkLogin();
+
+        function updateToggleIcon() {
+            const theme = document.documentElement.getAttribute('data-theme');
+            document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            updateToggleIcon();
+        }
+        updateToggleIcon();
+    </script>
+</body>
+</html>

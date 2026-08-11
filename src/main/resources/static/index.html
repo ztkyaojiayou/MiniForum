@@ -181,6 +181,10 @@
         .post .post-author { font-size: 15px; font-weight: 600; color: var(--text-heading); }
         .post .post-time { font-size: 12px; color: var(--muted); margin-top: 2px; }
         .post .post-title { font-size: 16px; font-weight: 600; color: var(--text-heading); margin-bottom: 8px; }
+        .post .post-title-link { color: var(--text-heading); text-decoration: none; }
+        .post .post-title-link:hover { color: var(--primary); text-decoration: underline; }
+        .post .post-detail-link { font-size: 13px; color: var(--primary); text-decoration: none; }
+        .post .post-detail-link:hover { text-decoration: underline; }
         .post .post-content {
             font-size: 14px;
             line-height: 1.7;
@@ -197,6 +201,21 @@
             padding-top: 10px;
         }
         .post .post-id { font-size: 12px; color: var(--muted); }
+        .pagination { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+        .pagination button {
+            padding: 6px 14px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--card-bg);
+            color: var(--text);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all .2s;
+        }
+        .pagination button:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+        .pagination button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .pagination .page-info { font-size: 13px; color: var(--muted); }
         .empty { text-align: center; color: var(--muted); padding: 40px 0; }
         .loading { text-align: center; color: var(--muted); padding: 20px; }
         /* 弹窗 */
@@ -297,6 +316,7 @@
         <div class="feed-title">📚 最新动态</div>
         <div id="loading" class="loading">加载中...</div>
         <div id="postList"></div>
+    <div id="pagination" class="pagination"></div>
     </div>
 
     <!-- 用户管理弹窗 -->
@@ -400,13 +420,17 @@
             }
         }
 
-        // ---------- 加载帖子信息流 ----------
-        async function loadPosts() {
+        // ---------- 加载帖子信息流（分页） ----------
+        let currentPage = 1;
+        const PAGE_SIZE = 10;
+        async function loadPosts(page) {
+            if (page) currentPage = page;
             const list = document.getElementById('postList');
             const loading = document.getElementById('loading');
             loading.style.display = 'block';
             try {
-                const posts = await request(POST_API);
+                const data = await request(POST_API + '?page=' + currentPage + '&size=' + PAGE_SIZE);
+                const posts = data.records || [];
                 list.innerHTML = '';
                 if (!posts || posts.length === 0) {
                     list.innerHTML = '<div class="empty">还没有动态，快来发布第一条吧～</div>';
@@ -424,20 +448,40 @@
                                     <div class="post-time">🕐 ${formatTime(p.createdAt)}</div>
                                 </div>
                             </div>
-                            ${p.title ? `<div class="post-title">${escapeHtml(p.title)}</div>` : ''}
+                            ${p.title ? `<div class="post-title"><a class="post-title-link" href="/detail.html?id=${p.id}">${escapeHtml(p.title)}</a></div>` : ''}
                             <div class="post-content">${escapeHtml(p.content)}</div>
                             <div class="post-footer">
                                 <span class="post-id">#${p.id}</span>
-                                <span>💬 0</span>
+                                <span><a class="post-detail-link" href="/detail.html?id=${p.id}">📖 查看全文</a></span>
                             </div>`;
                         list.appendChild(div);
                     });
                 }
+                renderPagination(data.total, data.totalPages);
             } catch (e) {
                 list.innerHTML = '<div class="empty">加载失败：' + escapeHtml(e.message) + '</div>';
+                document.getElementById('pagination').innerHTML = '';
             } finally {
                 loading.style.display = 'none';
             }
+        }
+        function renderPagination(total, totalPages) {
+            const box = document.getElementById('pagination');
+            if (!total || totalPages <= 1) { box.innerHTML = ''; return; }
+            let html = '<button class="page-btn" data-page="' + (currentPage - 1) + '" ' + (currentPage <= 1 ? 'disabled' : '') + '>‹ 上一页</button>';
+            for (let i = 1; i <= totalPages; i++) {
+                html += '<button class="page-btn' + (i === currentPage ? ' active' : '') + '" data-page="' + i + '">' + i + '</button>';
+            }
+            html += '<button class="page-btn" data-page="' + (currentPage + 1) + '" ' + (currentPage >= totalPages ? 'disabled' : '') + '>下一页 ›</button>';
+            html += '<span class="page-info">共 ' + total + ' 条</span>';
+            box.innerHTML = html;
+            box.querySelectorAll('.page-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    if (this.disabled) return;
+                    const target = parseInt(this.getAttribute('data-page'), 10);
+                    if (target >= 1 && target <= totalPages) loadPosts(target);
+                });
+            });
         }
 
         // ---------- 用户管理 ----------

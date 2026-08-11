@@ -1,15 +1,18 @@
 package com.example.miniforum.controller;
 
 import com.example.miniforum.common.Result;
+import com.example.miniforum.dto.PageResult;
 import com.example.miniforum.dto.PostCreateDTO;
 import com.example.miniforum.entity.Post;
 import com.example.miniforum.service.PostService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpSession;
@@ -41,9 +44,22 @@ public class PostController {
         return ResponseEntity.status(HttpStatus.CREATED).body(Result.success("发帖成功", created));
     }
 
-    /** 查看所有帖子 */
+    /** 查看所有帖子（兼容旧调用，一次性返回全部） */
     @GetMapping
-    public ResponseEntity<Result<List<Post>>> getAllPosts() {
-        return ResponseEntity.ok(Result.success(postService.getAllPosts()));
+    public ResponseEntity<Result<?>> getAllPosts(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        if (page == null && size == null) {
+            return ResponseEntity.ok(Result.success(postService.getAllPosts()));
+        }
+        int p = page == null ? 1 : page;
+        int s = size == null ? 10 : size;
+        return ResponseEntity.ok(Result.success(postService.getPosts(p, s)));
+    }
+
+    /** 查看帖子详情 */
+    @GetMapping("/{id}")
+    public ResponseEntity<Result<Post>> getPostById(@PathVariable Long id) {
+        return ResponseEntity.ok(Result.success(postService.getById(id)));
     }
 }
