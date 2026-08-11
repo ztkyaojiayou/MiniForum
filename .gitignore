@@ -30,3 +30,6 @@ logs/
 
 # 运行时数据（JSON 持久化）
 data/
+
+# 演示数据验证报告（脚本生成）
+scripts/verify_report.txt
