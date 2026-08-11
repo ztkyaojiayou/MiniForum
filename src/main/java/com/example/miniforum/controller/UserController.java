@@ -1,9 +1,12 @@
 package com.example.miniforum.controller;
 
 import com.example.miniforum.common.Result;
+import com.example.miniforum.dto.PageResult;
+import com.example.miniforum.dto.PostVO;
 import com.example.miniforum.dto.UserCreateDTO;
 import com.example.miniforum.dto.UserUpdateDTO;
 import com.example.miniforum.entity.User;
+import com.example.miniforum.service.PostService;
 import com.example.miniforum.service.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,8 +17,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.servlet.http.HttpSession;
 import javax.validation.Valid;
 import java.util.List;
 
@@ -27,9 +32,11 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final PostService postService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, PostService postService) {
         this.userService = userService;
+        this.postService = postService;
     }
 
     /** 新增用户 */
@@ -62,5 +69,18 @@ public class UserController {
     public ResponseEntity<Result<Void>> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
         return ResponseEntity.ok(Result.success("删除成功", null));
+    }
+
+    /** 个人主页：某用户的全部已发布帖子（分页，最新在前） */
+    @GetMapping("/{id}/posts")
+    public ResponseEntity<Result<PageResult<PostVO>>> getUserPosts(
+            @PathVariable Long id,
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "10") Integer size,
+            HttpSession session) {
+        // 用户不存在时抛出 404
+        userService.getUserById(id);
+        String username = (String) session.getAttribute("username");
+        return ResponseEntity.ok(Result.success(postService.getPostsByAuthor(id, page, size, username)));
     }
 }

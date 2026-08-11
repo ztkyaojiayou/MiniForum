@@ -20,6 +20,9 @@ public class PostCreateDTO {
     /** 可选标签，最多 5 个（每个不超过 20 字符，在 Service 层校验） */
     private List<String> tags;
 
+    /** 是否立即发布（true=发布，false=存为草稿），默认 true */
+    private Boolean publish = true;
+
     public String getTitle() {
         return title;
     }
@@ -42,5 +45,13 @@ public class PostCreateDTO {
 
     public void setTags(List<String> tags) {
         this.tags = tags;
+    }
+
+    public Boolean getPublish() {
+        return publish == null ? Boolean.TRUE : publish;
+    }
+
+    public void setPublish(Boolean publish) {
+        this.publish = publish;
     }
 }

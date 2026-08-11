@@ -50,6 +50,25 @@ public class UserRepository {
         return storage.containsKey(id);
     }
 
+    /** 导出全部用户（用于持久化，按 ID 升序） */
+    public List<User> exportAll() {
+        return storage.values().stream()
+                .sorted((a, b) -> Long.compare(a.getId(), b.getId()))
+                .collect(Collectors.toList());
+    }
+
+    /** 清空并批量导入（用于从持久化数据恢复） */
+    public void importAll(List<User> users) {
+        storage.clear();
+        if (users != null) {
+            for (User u : users) {
+                if (u != null && u.getId() != null) {
+                    storage.put(u.getId(), u);
+                }
+            }
+        }
+    }
+
     public long count() {
         return storage.size();
     }

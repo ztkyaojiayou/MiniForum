@@ -27,3 +27,6 @@ out.txt
 
 # 运行时日志目录
 logs/
+
+# 运行时数据（JSON 持久化）
+data/

@@ -42,9 +42,33 @@ public class LikeRepository {
         storage.remove(like.getId());
     }
 
+    /** 删除某帖子下的全部点赞（帖子被删除时级联清理） */
+    public void deleteByPostId(Long postId) {
+        storage.entrySet().removeIf(e -> e.getValue().getPostId().equals(postId));
+    }
+
     public List<Like> findAll() {
         return storage.values().stream()
                 .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
                 .collect(Collectors.toList());
+    }
+
+    /** 导出全部点赞记录（用于持久化，按 ID 升序） */
+    public List<Like> exportAll() {
+        return storage.values().stream()
+                .sorted((a, b) -> Long.compare(a.getId(), b.getId()))
+                .collect(Collectors.toList());
+    }
+
+    /** 清空并批量导入（用于从持久化数据恢复） */
+    public void importAll(List<Like> likes) {
+        storage.clear();
+        if (likes != null) {
+            for (Like l : likes) {
+                if (l != null && l.getId() != null) {
+                    storage.put(l.getId(), l);
+                }
+            }
+        }
     }
 }

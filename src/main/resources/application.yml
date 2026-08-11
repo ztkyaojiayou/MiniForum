@@ -5,6 +5,15 @@ spring:
   application:
     name: mini-forum
 
+app:
+  # 数据持久化目录（JSON 文件）
+  data-dir: ./data
+  persistence:
+    # 是否启用持久化
+    enabled: true
+    # 定时保存间隔（毫秒）
+    interval-ms: 30000
+
 logging:
   level:
     com.example.miniforum: info

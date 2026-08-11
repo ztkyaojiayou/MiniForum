@@ -204,6 +204,10 @@
             flex-shrink: 0;
         }
         .post .post-author { font-size: 15px; font-weight: 600; color: var(--text-heading); }
+          .post .avatar-link { text-decoration: none; display: inline-flex; }
+          .post .avatar-link:hover .avatar { opacity: 0.85; }
+          .post .author-link { text-decoration: none; }
+          .post .author-link:hover .post-author { color: var(--primary); }
         .post .post-time { font-size: 12px; color: var(--muted); margin-top: 2px; }
         .post .post-title { font-size: 16px; font-weight: 600; color: var(--text-heading); margin-bottom: 8px; }
         .post .post-title-link { color: var(--text-heading); text-decoration: none; }
@@ -319,6 +323,7 @@
         <div class="nav-right">
             <a class="nav-link" href="/quote.html">💡 灵感</a>
             <a class="nav-link" href="/wheel.html">🎡 转盘</a>
+            <a class="nav-link" href="/my.html">📝 我的文章</a>
             <a class="nav-link btn-user" href="javascript:void(0)" onclick="openUserModal()">👥 用户管理</a>
             <span class="username-tag">👤 <b id="currentUser"></b></span>
             <button class="theme-toggle" id="themeToggle" title="切换主题" onclick="toggleTheme()">🌙</button>
@@ -334,6 +339,7 @@
             <textarea id="postContent" maxlength="5000" placeholder="分享你的想法、动态..."></textarea>
               <input type="text" class="tag-input" id="postTags" maxlength="120" placeholder="标签（可选，用空格分隔，最多5个，如：生活 随笔）">
             <div class="composer-actions">
+                <button class="btn btn-cancel" id="draftBtn" onclick="saveDraft()" style="margin-right:10px;padding:10px 22px;">💾 存草稿</button>
                 <button class="btn" id="publishBtn" onclick="publishPost()">🚀 发布</button>
             </div>
         </div>
@@ -442,7 +448,7 @@
                 await request(POST_API, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title, content, tags })
+                    body: JSON.stringify({ title, content, tags, publish: true })
                 });
                 showToast('✅ 发布成功', 'success');
                 document.getElementById('postTitle').value = '';
@@ -451,6 +457,31 @@
                 loadPosts();
             } catch (e) {
                 showToast('❌ ' + e.message, 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // ---------- 存为草稿 ----------
+        async function saveDraft() {
+            const title = document.getElementById('postTitle').value.trim();
+            const content = document.getElementById('postContent').value.trim();
+            if (!title && !content) { showToast('\u2716 \u6807题或内容不能为空', 'error'); return; }
+            const tags = parseTags(document.getElementById('postTags').value);
+            const btn = document.getElementById('draftBtn');
+            btn.disabled = true;
+            try {
+                await request(POST_API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, content, tags, publish: false })
+                });
+                showToast('\u2705 已保存为草稿', 'success');
+                document.getElementById('postTitle').value = '';
+                document.getElementById('postContent').value = '';
+                document.getElementById('postTags').value = '';
+            } catch (e) {
+                showToast('\u2716 ' + e.message, 'error');
             } finally {
                 btn.disabled = false;
             }
@@ -495,9 +526,9 @@
                         const avatarChar = (p.author || '?').charAt(0).toUpperCase();
                         div.innerHTML = `
                             <div class="post-header">
-                                <div class="avatar">${escapeHtml(avatarChar)}</div>
+                                <a class="avatar-link" href="/user.html?id=${p.authorId}" title="${escapeHtml(p.author)}"><div class="avatar">${escapeHtml(avatarChar)}</div></a>
                                 <div>
-                                    <div class="post-author">${escapeHtml(p.author)}</div>
+                                    <a class="author-link" href="/user.html?id=${p.authorId}"><div class="post-author">${escapeHtml(p.author)}</div></a>
                                     <div class="post-time">🕐 ${formatTime(p.createdAt)}</div>
                                 </div>
                             </div>

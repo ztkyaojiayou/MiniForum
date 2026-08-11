@@ -78,6 +78,13 @@ public class User {
         return ID_GENERATOR.getAndIncrement();
     }
 
+    /**
+     * 将 ID 生成器推进到指定最小值之后（用于从持久化数据恢复，避免 ID 冲突）
+     */
+    public static synchronized void resetIdGenerator(long minId) {
+        ID_GENERATOR.set(Math.max(ID_GENERATOR.get(), minId + 1));
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

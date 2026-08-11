@@ -22,9 +22,15 @@ public class PostVO {
 
     private String author;
 
+    /** 作者用户 ID（用于个人主页跳转） */
+    private Long authorId;
+
     private LocalDateTime createdAt;
 
     private List<String> tags = new ArrayList<>();
+
+    /** 状态：DRAFT / PUBLISHED */
+    private String status;
 
     /** 点赞总数 */
     private long likeCount;
@@ -43,8 +49,10 @@ public class PostVO {
         this.title = post.getTitle();
         this.content = post.getContent();
         this.author = post.getAuthor();
+        this.authorId = post.getAuthorId();
         this.createdAt = post.getCreatedAt();
         this.tags = post.getTags() == null ? new ArrayList<>() : new ArrayList<>(post.getTags());
+        this.status = post.getStatus();
     }
 
     public Long getId() {
@@ -79,6 +87,14 @@ public class PostVO {
         this.author = author;
     }
 
+    public Long getAuthorId() {
+        return authorId;
+    }
+
+    public void setAuthorId(Long authorId) {
+        this.authorId = authorId;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -93,6 +109,14 @@ public class PostVO {
 
     public void setTags(List<String> tags) {
         this.tags = tags;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public long getLikeCount() {

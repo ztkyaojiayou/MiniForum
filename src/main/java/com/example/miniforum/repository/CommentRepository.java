@@ -47,4 +47,28 @@ public class CommentRepository {
     public void deleteById(Long id) {
         storage.remove(id);
     }
+
+    /** 删除某帖子下的全部评论（帖子被删除时级联清理） */
+    public void deleteByPostId(Long postId) {
+        storage.entrySet().removeIf(e -> e.getValue().getPostId().equals(postId));
+    }
+
+    /** 导出全部评论（用于持久化，按 ID 升序） */
+    public List<Comment> exportAll() {
+        return storage.values().stream()
+                .sorted((a, b) -> Long.compare(a.getId(), b.getId()))
+                .collect(Collectors.toList());
+    }
+
+    /** 清空并批量导入（用于从持久化数据恢复） */
+    public void importAll(List<Comment> comments) {
+        storage.clear();
+        if (comments != null) {
+            for (Comment c : comments) {
+                if (c != null && c.getId() != null) {
+                    storage.put(c.getId(), c);
+                }
+            }
+        }
+    }
 }

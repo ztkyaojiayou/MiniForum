@@ -140,6 +140,10 @@
             flex-shrink: 0;
         }
         .article .author-name { font-size: 15px; font-weight: 600; color: var(--text-heading); }
+          .article .avatar-link { text-decoration: none; display: inline-flex; }
+          .article .avatar-link:hover .avatar { opacity: 0.85; }
+          .article .author-link { text-decoration: none; }
+          .article .author-link:hover .author-name { color: var(--primary); }
         .article .time { font-size: 13px; color: var(--muted); margin-top: 2px; }
         .article .article-content {
             font-size: 16px;
@@ -288,9 +292,9 @@
                     <div class="article fade-in">
                         <div class="article-title">${p.title ? escapeHtml(p.title) : '（无标题）'}</div>
                         <div class="meta">
-                            <div class="avatar">${escapeHtml(avatarChar)}</div>
+                            <a class="avatar-link" href="/user.html?id=${p.authorId}" title="${escapeHtml(p.author)}"><div class="avatar">${escapeHtml(avatarChar)}</div></a>
                             <div>
-                                <div class="author-name">${escapeHtml(p.author)}</div>
+                                <a class="author-link" href="/user.html?id=${p.authorId}"><div class="author-name">${escapeHtml(p.author)}</div></a>
                                 <div class="time">🕐 ${formatTime(p.createdAt)}</div>
                             </div>
                         </div>

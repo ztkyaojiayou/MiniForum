@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的文章</title>
+    <script>
+        (function () {
+            var saved = localStorage.getItem('theme');
+            var theme = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <style>
+        :root, [data-theme="light"] {
+            --bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --text: #333333;
+            --text-heading: #1a1a2e;
+            --muted: #999999;
+            --muted-2: #666666;
+            --border: #d9d9d9;
+            --border-row: #f0f0f0;
+            --primary: #4a7cff;
+            --primary-hover: #3a66e0;
+            --shadow-card: rgba(0,0,0,0.08);
+            --input-bg: #ffffff;
+            --tag-bg: #eef2ff;
+            --tag-text: #4a7cff;
+            --composer-bg: #f7f8fa;
+            --warn-bg: #fff7e6;
+            --warn-text: #d46b08;
+        }
+        [data-theme="dark"] {
+            --bg: #1a1a2e;
+            --card-bg: #24243e;
+            --text: #e4e4e4;
+            --text-heading: #ffffff;
+            --muted: #8f8fa8;
+            --muted-2: #a8a8c0;
+            --border: #3a3a5c;
+            --border-row: #33334f;
+            --primary: #5a8cff;
+            --primary-hover: #6f9bff;
+            --shadow-card: rgba(0,0,0,0.4);
+            --input-bg: #2c2c4a;
+            --tag-bg: #2e3a5c;
+            --tag-text: #8fb0ff;
+            --composer-bg: #2a2a48;
+            --warn-bg: #3a3226;
+            --warn-text: #ffa940;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+            background: var(--bg); color: var(--text); min-height: 100vh;
+            transition: background .3s, color .3s;
+        }
+        .navbar {
+            position: sticky; top: 0; z-index: 100;
+            background: var(--card-bg); border-bottom: 1px solid var(--border-row);
+            padding: 0 20px; height: 56px; display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 1px 4px var(--shadow-card);
+        }
+        .navbar .brand { font-size: 20px; font-weight: 700; color: var(--primary); cursor: pointer; }
+        .navbar .nav-right { display: flex; align-items: center; gap: 12px; }
+        .nav-link { text-decoration: none; color: var(--muted-2); font-size: 14px; padding: 6px 10px; border-radius: 6px; transition: all .2s; }
+        .nav-link:hover { color: var(--primary); background: var(--composer-bg); }
+        .navbar .username-tag { font-size: 14px; color: var(--muted-2); }
+        .navbar .username-tag b { color: var(--primary); font-weight: 600; }
+        .navbar .logout-btn { background: none; border: 1px solid var(--border); color: var(--muted-2); font-size: 13px; padding: 4px 12px; border-radius: 16px; cursor: pointer; transition: all .2s; }
+        .navbar .logout-btn:hover { border-color: #ff4d4f; color: #ff4d4f; }
+        .theme-toggle { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .3s; }
+        .theme-toggle:hover { border-color: var(--primary); }
+        .container { max-width: 720px; margin: 0 auto; padding: 24px 20px 60px; }
+        .page-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; color: var(--text-heading); font-size: 22px; font-weight: 700; }
+        .composer {
+            background: var(--card-bg); border-radius: 12px; box-shadow: 0 2px 12px var(--shadow-card);
+            padding: 20px; margin-bottom: 24px; transition: background .3s;
+        }
+        .composer .composer-title { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+        .composer .composer-title span { font-size: 16px; font-weight: 600; color: var(--text-heading); }
+        .composer input[type="text"], .composer textarea {
+            width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px;
+            font-size: 14px; background: var(--composer-bg); color: var(--text);
+            transition: border-color .2s, background .3s, color .3s;
+        }
+        .composer input[type="text"] { margin-bottom: 10px; }
+        .composer textarea { min-height: 120px; resize: vertical; }
+        .composer input:focus, .composer textarea:focus { outline: none; border-color: var(--primary); background: var(--input-bg); }
+        .composer .composer-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
+        .btn {
+            padding: 10px 24px; border: none; border-radius: 24px; font-size: 14px; font-weight: 600;
+            cursor: pointer; color: #fff; background: var(--primary); transition: all .2s;
+        }
+        .btn:hover { background: var(--primary-hover); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-success { background: #52c41a; }
+        .btn-success:hover { background: #43a813; }
+        .btn-danger { background: #ff4d4f; }
+        .btn-danger:hover { background: #e03a3c; }
+        .btn-cancel { background: var(--composer-bg); color: var(--muted-2); border: 1px solid var(--border); }
+        .btn-cancel:hover { background: var(--border-row); }
+        .btn-sm { padding: 4px 12px; font-size: 13px; border-radius: 16px; }
+        .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+        .tab {
+            padding: 6px 18px; border-radius: 18px; font-size: 14px; cursor: pointer;
+            border: 1px solid var(--border); background: var(--card-bg); color: var(--muted-2); transition: all .2s;
+        }
+        .tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .post {
+            background: var(--card-bg); border-radius: 12px; box-shadow: 0 2px 12px var(--shadow-card);
+            padding: 18px 22px; margin-bottom: 14px; transition: background .3s;
+        }
+        .post .post-title { font-size: 16px; font-weight: 600; color: var(--text-heading); margin-bottom: 6px; }
+        .post .post-title-link { color: var(--text-heading); text-decoration: none; }
+        .post .post-title-link:hover { color: var(--primary); text-decoration: underline; }
+        .post .post-meta { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); margin-bottom: 10px; flex-wrap: wrap; }
+        .post .post-content {
+            font-size: 14px; line-height: 1.6; color: var(--text);
+            white-space: pre-wrap; word-break: break-word; margin-bottom: 12px;
+            display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .post .post-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .badge { font-size: 12px; padding: 1px 10px; border-radius: 12px; font-weight: 600; }
+        .badge.published { background: var(--tag-bg); color: var(--tag-text); }
+        .badge.draft { background: var(--warn-bg); color: var(--warn-text); }
+        .tag-chip { display: inline-block; padding: 1px 8px; background: var(--tag-bg); color: var(--tag-text); border-radius: 10px; font-size: 11px; }
+        .pagination { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+        .pagination button { padding: 6px 14px; border: 1px solid var(--border); border-radius: 6px; background: var(--card-bg); color: var(--text); font-size: 14px; cursor: pointer; }
+        .pagination button:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+        .pagination button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .pagination .page-info { font-size: 13px; color: var(--muted); }
+        .empty { text-align: center; color: var(--muted); padding: 40px 0; }
+        .loading { text-align: center; color: var(--muted); padding: 20px; }
+        .toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%) translateY(-100px); background: #333; color: #fff; padding: 10px 24px; border-radius: 20px; font-size: 14px; opacity: 0; transition: all .3s; z-index: 999; }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .toast.error { background: #ff4d4f; }
+        .fade-in { animation: fadeIn .4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="brand" onclick="window.location.href='/index.html'">📢 动态广场</div>
+        <div class="nav-right">
+            <a class="nav-link" href="/quote.html">💡 灵感</a>
+            <a class="nav-link" href="/wheel.html">🎡 转盘</a>
+            <a class="nav-link" href="/my.html">📝 我的文章</a>
+            <span class="username-tag">👤 <b id="currentUser"></b></span>
+            <button class="theme-toggle" id="themeToggle" title="切换主题" onclick="toggleTheme()">🌙</button>
+            <button class="logout-btn" onclick="logout()">退出</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="page-title">
+            <span>📝 我的文章</span>
+            <button class="btn btn-sm" onclick="startNew()">✍️ 写新文章</button>
+        </div>
+
+        <!-- 编辑 / 新增表单 -->
+        <div class="composer" id="composer" style="display:none;">
+            <div class="composer-title"><span id="composerTitle">✍️ 写新文章</span></div>
+            <input type="text" id="postTitle" maxlength="100" placeholder="标题">
+            <textarea id="postContent" maxlength="5000" placeholder="正文内容..."></textarea>
+            <input type="text" class="tag-input" id="postTags" maxlength="120" placeholder="标签（可选，空格分隔，最多5个）">
+            <div class="composer-actions">
+                <button class="btn btn-cancel" id="draftBtn" onclick="submitForm(false)" style="margin-right:10px;">💾 存草稿</button>
+                <button class="btn btn-success" id="publishBtn" onclick="submitForm(true)">🚀 发布</button>
+            </div>
+        </div>
+
+        <!-- 标签切换 -->
+        <div class="tabs">
+            <button class="tab active" id="tabPublished" onclick="switchTab('PUBLISHED')">已发布</button>
+            <button class="tab" id="tabDraft" onclick="switchTab('DRAFT')">草稿</button>
+        </div>
+
+        <div id="loading" class="loading">加载中...</div>
+        <div id="postList"></div>
+        <div id="pagination" class="pagination"></div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const POST_API = '/api/posts';
+        let currentTab = 'PUBLISHED';
+        let currentPage = 1;
+        const PAGE_SIZE = 10;
+        let editingId = null;          // 当前正在编辑的文章 ID（null=新增）
+        let pagePosts = {};            // 当前页文章缓存 { id: post }
+
+        function showToast(msg, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast show ' + (type || '');
+            setTimeout(() => { toast.className = 'toast'; }, 2500);
+        }
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+        function formatTime(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            const pad = n => (n < 10 ? '0' + n : '' + n);
+            return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+                + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+        }
+        async function request(url, options) {
+            const res = await fetch(url, options);
+            let data = null;
+            try { data = await res.json(); } catch (e) {}
+            if (!res.ok) {
+                let msg = '请求失败 (' + res.status + ')';
+                if (data && data.message) msg = data.message;
+                throw new Error(msg);
+            }
+            if (data && typeof data === 'object' && 'code' in data) {
+                if (data.code !== 0) throw new Error(data.message || '请求失败');
+                return data.data;
+            }
+            return data;
+        }
+        function parseTags(str) {
+            if (!str || !str.trim()) return [];
+            return str.trim().split(/\s+/).filter(Boolean).slice(0, 5);
+        }
+
+        // ---------- 新增 / 编辑 ----------
+        function startNew() {
+            editingId = null;
+            document.getElementById('postTitle').value = '';
+            document.getElementById('postContent').value = '';
+            document.getElementById('postTags').value = '';
+            document.getElementById('composerTitle').textContent = '✍️ 写新文章';
+            document.getElementById('composer').style.display = 'block';
+            document.getElementById('composer').scrollIntoView({ behavior: 'smooth' });
+        }
+        function editPost(id) {
+            const p = pagePosts[id];
+            if (!p) return;
+            editingId = id;
+            document.getElementById('postTitle').value = p.title || '';
+            document.getElementById('postContent').value = p.content || '';
+            document.getElementById('postTags').value = (p.tags || []).join(' ');
+            document.getElementById('composerTitle').textContent = '✏️ 编辑文章 #' + id;
+            document.getElementById('composer').style.display = 'block';
+            document.getElementById('composer').scrollIntoView({ behavior: 'smooth' });
+        }
+        async function submitForm(publish) {
+            const title = document.getElementById('postTitle').value.trim();
+            const content = document.getElementById('postContent').value.trim();
+            const tags = parseTags(document.getElementById('postTags').value);
+            if (!title && !content) { showToast('❌ 标题或内容不能为空', 'error'); return; }
+            const btn = publish ? document.getElementById('publishBtn') : document.getElementById('draftBtn');
+            btn.disabled = true;
+            try {
+                if (editingId !== null) {
+                    await request(POST_API + '/' + editingId, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ title, content, tags, publish: publish })
+                    });
+                } else {
+                    await request(POST_API, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ title, content, tags, publish: publish })
+                    });
+                }
+                showToast(publish ? '✅ 发布成功' : '✅ 已保存为草稿', 'success');
+                startNew();
+                loadList(1);
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // ---------- 列表 ----------
+        function switchTab(tab) {
+            currentTab = tab;
+            currentPage = 1;
+            document.getElementById('tabPublished').className = tab === 'PUBLISHED' ? 'tab active' : 'tab';
+            document.getElementById('tabDraft').className = tab === 'DRAFT' ? 'tab active' : 'tab';
+            loadList(1);
+        }
+        async function loadList(page) {
+            if (page) currentPage = page;
+            const list = document.getElementById('postList');
+            const loading = document.getElementById('loading');
+            loading.style.display = 'block';
+            try {
+                const data = await request(POST_API + '/my?status=' + currentTab + '&page=' + currentPage + '&size=' + PAGE_SIZE);
+                const posts = data.records || [];
+                pagePosts = {};
+                posts.forEach(p => { pagePosts[p.id] = p; });
+                list.innerHTML = '';
+                if (posts.length === 0) {
+                    list.innerHTML = '<div class="empty">' + (currentTab === 'DRAFT' ? '暂无草稿' : '还没有发布文章') + '</div>';
+                } else {
+                    posts.forEach((p, i) => {
+                        const div = document.createElement('div');
+                        div.className = 'post fade-in';
+                        const badge = currentTab === 'DRAFT'
+                            ? '<span class="badge draft">草稿</span>'
+                            : '<span class="badge published">已发布</span>';
+                        const actions = `
+                            <button class="btn btn-sm btn-cancel" onclick="editPost(${p.id})">✏️ 编辑</button>
+                            ${currentTab === 'DRAFT' ? `<button class="btn btn-sm btn-success" onclick="publishNow(${p.id})">🚀 发布</button>` : ''}
+                            <button class="btn btn-sm btn-danger" onclick="deletePost(${p.id})">🗑️ 删除</button>`;
+                        div.innerHTML = `
+                            <div class="post-title"><a class="post-title-link" href="/detail.html?id=${p.id}">${escapeHtml(p.title || '（无标题）')}</a> ${badge}</div>
+                            <div class="post-meta">
+                                <span>🕐 ${formatTime(p.createdAt)}</span>
+                                <span>❤️ ${p.likeCount || 0} 赞</span>
+                                <span>💬 ${p.commentCount || 0} 评</span>
+                                ${(p.tags || []).map(t => '<span class="tag-chip">#' + escapeHtml(t) + '</span>').join('')}
+                            </div>
+                            <div class="post-content">${escapeHtml(p.content || '')}</div>
+                            <div class="post-actions">${actions}</div>`;
+                        list.appendChild(div);
+                    });
+                }
+                renderPagination(data.total, data.totalPages);
+            } catch (e) {
+                list.innerHTML = '<div class="empty">加载失败：' + escapeHtml(e.message) + '</div>';
+                document.getElementById('pagination').innerHTML = '';
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+        function renderPagination(total, totalPages) {
+            const box = document.getElementById('pagination');
+            if (!total || totalPages <= 1) { box.innerHTML = ''; return; }
+            let html = '<button class="page-btn" data-page="' + (currentPage - 1) + '" ' + (currentPage <= 1 ? 'disabled' : '') + '>‹ 上一页</button>';
+            for (let i = 1; i <= totalPages; i++) {
+                html += '<button class="page-btn' + (i === currentPage ? ' active' : '') + '" data-page="' + i + '">' + i + '</button>';
+            }
+            html += '<button class="page-btn" data-page="' + (currentPage + 1) + '" ' + (currentPage >= totalPages ? 'disabled' : '') + '>下一页 ›</button>';
+            html += '<span class="page-info">共 ' + total + ' 条</span>';
+            box.innerHTML = html;
+            box.querySelectorAll('.page-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    if (this.disabled) return;
+                    const target = parseInt(this.getAttribute('data-page'), 10);
+                    if (target >= 1 && target <= totalPages) loadList(target);
+                });
+            });
+        }
+        async function publishNow(id) {
+            const p = pagePosts[id];
+            if (!p) return;
+            if (!confirm('确定发布这篇文章吗？发布后将公开可见。')) return;
+            try {
+                await request(POST_API + '/' + id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: p.title, content: p.content, tags: p.tags, publish: true })
+                });
+                showToast('✅ 已发布', 'success');
+                loadList(currentPage);
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
+            }
+        }
+        async function deletePost(id) {
+            if (!confirm('确定删除这篇文章吗？删除后不可恢复。')) return;
+            try {
+                await request(POST_API + '/' + id, { method: 'DELETE' });
+                showToast('🗑️ 已删除', 'success');
+                if (editingId === id) startNew();
+                loadList(currentPage);
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
+            }
+        }
+
+        // ---------- 登录 ----------
+        async function checkLogin() {
+            try {
+                const res = await fetch('/api/auth/me');
+                const data = await res.json();
+                if (!res.ok || data.code !== 0) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+                document.getElementById('currentUser').textContent = data.data.username;
+                loadList(1);
+            } catch (e) {
+                window.location.href = '/login.html';
+            }
+        }
+        async function logout() {
+            try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (e) {}
+            window.location.href = '/login.html';
+        }
+        checkLogin();
+
+        function updateToggleIcon() {
+            const theme = document.documentElement.getAttribute('data-theme');
+            document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            updateToggleIcon();
+        }
+        updateToggleIcon();
+    </script>
+</body>
+</html>
