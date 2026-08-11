@@ -1,0 +1,14 @@
+${AnsiColor.BRIGHT_CYAN}${AnsiStyle.BOLD}
+ __  __ _       _ _____
+|  \/  (_)_ __ (_)  ___|__  _ __ _   _ _ __ ___
+| |\/| | | '_ \| | |_ / _ \| '__| | | | '_ ` _ \
+| |  | | | | | | |  _| (_) | |  | |_| | | | | | |
+|_|  |_|_|_| |_|_|_|  \___/|_|   \__,_|_| |_| |_|
+${AnsiStyle.NORMAL}
+${AnsiColor.BRIGHT_GREEN}${AnsiStyle.BOLD}:: MiniForum 迷你微博论坛系统 :: v1.0.0${AnsiStyle.NORMAL}
+${AnsiColor.BRIGHT_WHITE}--------------------------------------------------------------
+${AnsiColor.BRIGHT_CYAN}  访问地址 : ${AnsiColor.BRIGHT_YELLOW}${AnsiStyle.BOLD}http://localhost:8090${AnsiStyle.NORMAL}${AnsiColor.BRIGHT_WHITE}
+${AnsiColor.BRIGHT_CYAN}  登录页面 : ${AnsiColor.BRIGHT_YELLOW}${AnsiStyle.BOLD}http://localhost:8090/login.html${AnsiStyle.NORMAL}${AnsiColor.BRIGHT_WHITE}
+${AnsiColor.BRIGHT_CYAN}  动态广场 : ${AnsiColor.BRIGHT_YELLOW}${AnsiStyle.BOLD}http://localhost:8090/index.html${AnsiStyle.NORMAL}${AnsiColor.BRIGHT_WHITE}
+${AnsiColor.BRIGHT_CYAN}  发帖页面 : ${AnsiColor.BRIGHT_YELLOW}${AnsiStyle.BOLD}http://localhost:8090/post.html${AnsiStyle.NORMAL}${AnsiColor.BRIGHT_WHITE}
+${AnsiColor.BRIGHT_GREEN}  默认账号 : admin / admin123${AnsiStyle.NORMAL}
