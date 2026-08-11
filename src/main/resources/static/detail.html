@@ -25,6 +25,8 @@
             --primary-hover: #3a66e0;
             --shadow-card: rgba(0,0,0,0.08);
             --composer-bg: #f7f8fa;
+            --tag-bg: #eef2ff;
+            --tag-text: #4a7cff;
         }
         [data-theme="dark"] {
             --bg: #1a1a2e;
@@ -39,6 +41,8 @@
             --primary-hover: #6f9bff;
             --shadow-card: rgba(0,0,0,0.4);
             --composer-bg: #2a2a48;
+            --tag-bg: #2e3a5c;
+            --tag-text: #8fb0ff;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -145,6 +149,44 @@
             word-break: break-word;
         }
         .article .footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--border-row); font-size: 13px; color: var(--muted); }
+        .post-tags { margin: 12px 0; }
+        .tag-chip {
+            display: inline-block; padding: 3px 12px; margin: 0 6px 6px 0;
+            background: var(--tag-bg); color: var(--tag-text); border-radius: 12px; font-size: 12px;
+        }
+        .article-stats { display: flex; align-items: center; gap: 16px; margin-top: 20px; }
+        .like-btn {
+            background: none; border: 1px solid var(--border); border-radius: 16px;
+            padding: 5px 16px; font-size: 14px; color: var(--muted-2); cursor: pointer; transition: all .2s;
+        }
+        .like-btn:hover { border-color: #ff4d4f; color: #ff4d4f; }
+        .like-btn.liked { border-color: #ff4d4f; color: #ff4d4f; background: rgba(255,77,79,0.08); }
+        .stat-text { font-size: 14px; color: var(--muted); }
+        .comments-section { margin-top: 24px; }
+        .comment-composer {
+            background: var(--card-bg); border-radius: 12px; box-shadow: 0 2px 12px var(--shadow-card);
+            padding: 16px; margin-bottom: 16px;
+        }
+        .comment-composer textarea {
+            width: 100%; min-height: 72px; resize: vertical; padding: 10px 12px;
+            border: 1px solid var(--border); border-radius: 8px; font-size: 14px;
+            background: var(--composer-bg); color: var(--text); outline: none;
+        }
+        .comment-composer textarea:focus { border-color: var(--primary); }
+        .comment-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
+        .comments-title { font-size: 16px; font-weight: 600; color: var(--text-heading); margin-bottom: 12px; }
+        .comment-list { background: var(--card-bg); border-radius: 12px; box-shadow: 0 2px 12px var(--shadow-card); padding: 8px 16px; }
+        .comment { padding: 14px 0; border-bottom: 1px solid var(--border-row); }
+        .comment:last-child { border-bottom: none; }
+        .comment-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .comment-avatar {
+            width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: #fff;
+            display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; flex-shrink: 0;
+        }
+        .comment-author { font-size: 13px; font-weight: 600; color: var(--text-heading); }
+        .comment-time { font-size: 12px; color: var(--muted); }
+        .comment-head .btn-sm { margin-left: auto; }
+        .comment-content { font-size: 14px; line-height: 1.7; color: var(--text); white-space: pre-wrap; word-break: break-word; }
         .empty { text-align: center; color: var(--muted); padding: 40px 0; }
         .loading { text-align: center; color: var(--muted); padding: 20px; }
         .toast {
@@ -183,6 +225,18 @@
         <a class="back-link" href="/index.html">← 返回动态列表</a>
         <div id="loading" class="loading">加载中...</div>
         <div id="article"></div>
+        <div class="comments-section" id="commentsSection" style="display:none;">
+            <div class="comment-composer">
+                <textarea id="commentContent" maxlength="500" placeholder="写下你的评论..."></textarea>
+                <div class="comment-actions">
+                    <button class="btn" style="padding:6px 20px; font-size:13px;" onclick="addComment()">💬 发表评论</button>
+                </div>
+            </div>
+            <div class="comments-title">💬 评论 <span id="commentCount">0</span></div>
+            <div class="comment-list" id="commentList">
+                <div class="empty">还没有评论，快来抢沙发～</div>
+            </div>
+        </div>
     </div>
 
     <div class="toast" id="toast"></div>
@@ -240,14 +294,100 @@
                                 <div class="time">🕐 ${formatTime(p.createdAt)}</div>
                             </div>
                         </div>
+                        ${renderTags(p.tags)}
                         <div class="article-content">${escapeHtml(p.content)}</div>
+                        <div class="article-stats">
+                            <button class="like-btn${p.likedByMe ? ' liked' : ''}" onclick="toggleLike(${p.id}, this)">❤️ <span class="like-num">${p.likeCount || 0}</span> 赞</button>
+                            <span class="stat-text">💬 ${p.commentCount || 0} 条评论</span>
+                        </div>
                         <div class="footer">#${p.id}</div>
                     </div>`;
+                    document.getElementById('commentsSection').style.display = 'block';
+                    loadComments(id);
             } catch (e) {
                 loading.style.display = 'none';
                 article.innerHTML = '<div class="empty">加载失败：' + escapeHtml(e.message) + '</div>';
             }
         }
+        function renderTags(tags) {
+            if (!tags || tags.length === 0) return '';
+            return '<div class="post-tags">' + tags.map(function (t) {
+                return '<span class="tag-chip">#' + escapeHtml(t) + '</span>';
+            }).join('') + '</div>';
+        }
+        async function toggleLike(id, btn) {
+            try {
+                const method = btn.classList.contains('liked') ? 'DELETE' : 'POST';
+                const res = await fetch('/api/posts/' + id + '/like', { method: method });
+                const data = await res.json();
+                if (!res.ok || data.code !== 0) { throw new Error(data.message || '操作失败'); }
+                btn.classList.toggle('liked');
+                btn.querySelector('.like-num').textContent = data.likeCount;
+                showToast(method === 'POST' ? '❤️ 点赞成功' : '已取消点赞', 'success');
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
+            }
+        }
+        async function loadComments(postId) {
+            const box = document.getElementById('commentList');
+            try {
+                const res = await fetch('/api/posts/' + postId + '/comments');
+                const data = await res.json();
+                if (!res.ok || data.code !== 0) { throw new Error(data.message || '加载评论失败'); }
+                const comments = data.data || [];
+                document.getElementById('commentCount').textContent = comments.length;
+                if (comments.length === 0) {
+                    box.innerHTML = '<div class="empty">还没有评论，快来抢沙发～</div>';
+                } else {
+                    box.innerHTML = comments.map(function (c) {
+                        return `
+                            <div class="comment">
+                                <div class="comment-head">
+                                    <span class="comment-avatar">${escapeHtml((c.author || '?').charAt(0).toUpperCase())}</span>
+                                    <span class="comment-author">${escapeHtml(c.author)}</span>
+                                    <span class="comment-time">${formatTime(c.createdAt)}</span>
+                                    ${c.mine ? '<button class="btn btn-danger btn-sm" onclick="deleteComment(' + c.id + ')">删除</button>' : ''}
+                                </div>
+                                <div class="comment-content">${escapeHtml(c.content)}</div>
+                            </div>`;
+                    }).join('');
+                }
+            } catch (e) {
+                box.innerHTML = '<div class="empty">加载评论失败</div>';
+            }
+        }
+        async function addComment() {
+            const postId = getPostId();
+            const content = document.getElementById('commentContent').value.trim();
+            if (!content) { showToast('评论内容不能为空', 'error'); return; }
+            try {
+                const res = await fetch('/api/posts/' + postId + '/comments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: content })
+                });
+                const data = await res.json();
+                if (!res.ok || data.code !== 0) { throw new Error(data.message || '评论失败'); }
+                showToast('✅ 评论成功', 'success');
+                document.getElementById('commentContent').value = '';
+                loadComments(postId);
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
+            }
+        }
+        async function deleteComment(commentId) {
+            if (!confirm('确定要删除这条评论吗？')) return;
+            try {
+                const res = await fetch('/api/comments/' + commentId, { method: 'DELETE' });
+                const data = await res.json();
+                if (!res.ok || data.code !== 0) { throw new Error(data.message || '删除失败'); }
+                showToast('🗑️ 已删除', 'success');
+                loadComments(getPostId());
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
+            }
+        }
+
         async function checkLogin() {
             try {
                 const res = await fetch('/api/auth/me');

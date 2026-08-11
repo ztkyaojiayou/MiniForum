@@ -2,6 +2,7 @@ package com.example.miniforum.dto;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
+import java.util.List;
 
 /**
  * 发帖请求 DTO
@@ -15,6 +16,9 @@ public class PostCreateDTO {
     @NotBlank(message = "内容不能为空")
     @Size(max = 5000, message = "内容不能超过 5000 个字符")
     private String content;
+
+    /** 可选标签，最多 5 个（每个不超过 20 字符，在 Service 层校验） */
+    private List<String> tags;
 
     public String getTitle() {
         return title;
@@ -30,5 +34,13 @@ public class PostCreateDTO {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public List<String> getTags() {
+        return tags;
+    }
+
+    public void setTags(List<String> tags) {
+        this.tags = tags;
     }
 }

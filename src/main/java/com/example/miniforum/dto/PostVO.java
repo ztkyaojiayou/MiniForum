@@ -1,54 +1,50 @@
-package com.example.miniforum.entity;
+package com.example.miniforum.dto;
+
+import com.example.miniforum.entity.Post;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * 帖子实体
+ * 帖子视图对象（返回给前端）
  * <p>
- * 仅承载数据，纯内存存储，不依赖任何第三方中间件。
+ * 在 {@link Post} 基础上追加点赞数、当前用户是否已点赞、评论数等展示字段，
+ * 避免将请求相关的状态写入实体。
  */
-public class Post {
-
-    /** 自增 ID 生成器（内存存储用） */
-    private static final AtomicLong ID_GENERATOR = new AtomicLong(1);
+public class PostVO {
 
     private Long id;
 
-    /** 标题 */
     private String title;
 
-    /** 内容 */
     private String content;
 
-    /** 作者用户名 */
     private String author;
 
-    /** 创建时间 */
     private LocalDateTime createdAt;
 
-    /** 标签列表（可为空） */
     private List<String> tags = new ArrayList<>();
 
     /** 点赞总数 */
     private long likeCount;
 
-    public Post() {
+    /** 当前登录用户是否已点赞 */
+    private boolean likedByMe;
+
+    /** 评论总数 */
+    private long commentCount;
+
+    public PostVO() {
     }
 
-    public Post(Long id, String title, String content, String author, LocalDateTime createdAt) {
-        this.id = id;
-        this.title = title;
-        this.content = content;
-        this.author = author;
-        this.createdAt = createdAt;
-    }
-
-    /** 生成下一个自增 ID */
-    public static Long nextId() {
-        return ID_GENERATOR.getAndIncrement();
+    public PostVO(Post post) {
+        this.id = post.getId();
+        this.title = post.getTitle();
+        this.content = post.getContent();
+        this.author = post.getAuthor();
+        this.createdAt = post.getCreatedAt();
+        this.tags = post.getTags() == null ? new ArrayList<>() : new ArrayList<>(post.getTags());
     }
 
     public Long getId() {
@@ -105,5 +101,21 @@ public class Post {
 
     public void setLikeCount(long likeCount) {
         this.likeCount = likeCount;
+    }
+
+    public boolean isLikedByMe() {
+        return likedByMe;
+    }
+
+    public void setLikedByMe(boolean likedByMe) {
+        this.likedByMe = likedByMe;
+    }
+
+    public long getCommentCount() {
+        return commentCount;
+    }
+
+    public void setCommentCount(long commentCount) {
+        this.commentCount = commentCount;
     }
 }

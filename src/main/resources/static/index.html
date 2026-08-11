@@ -143,6 +143,31 @@
         }
         .composer input[type="text"] { margin-bottom: 10px; }
         .composer textarea { min-height: 100px; resize: vertical; }
+        .composer input[type="text"].tag-input { margin-top: 10px; margin-bottom: 0; font-size: 13px; }
+        .search-box { display: flex; align-items: center; gap: 6px; }
+        .search-box input {
+            padding: 6px 12px; border: 1px solid var(--border); border-radius: 16px;
+            font-size: 13px; background: var(--input-bg); color: var(--text); width: 220px; outline: none;
+            transition: border-color .2s;
+        }
+        .search-box input:focus { border-color: var(--primary); }
+        .btn-search { padding: 4px 12px; font-size: 13px; border-radius: 16px; }
+        .tag-chip {
+            display: inline-block; padding: 2px 10px; margin: 0 6px 6px 0;
+            background: var(--tag-bg); color: var(--tag-text); border-radius: 12px;
+            font-size: 12px; cursor: pointer; transition: all .2s;
+        }
+        .tag-chip:hover { filter: brightness(1.15); }
+        .post .post-tags { margin-bottom: 8px; }
+        .post-actions { display: flex; align-items: center; gap: 12px; }
+        .like-btn {
+            background: none; border: 1px solid var(--border); border-radius: 14px;
+            padding: 3px 12px; font-size: 13px; color: var(--muted-2); cursor: pointer; transition: all .2s;
+        }
+        .like-btn:hover { border-color: #ff4d4f; color: #ff4d4f; }
+        .like-btn.liked { border-color: #ff4d4f; color: #ff4d4f; background: rgba(255,77,79,0.08); }
+        .stat-link { font-size: 13px; color: var(--muted-2); text-decoration: none; }
+        .stat-link:hover { color: var(--primary); }
         .composer input:focus, .composer textarea:focus { outline: none; border-color: var(--primary); background: var(--input-bg); }
         .composer .composer-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
         .btn {
@@ -307,13 +332,22 @@
             <div class="composer-title"><span>✍️ 有什么新鲜事想分享？</span></div>
             <input type="text" id="postTitle" maxlength="100" placeholder="标题（选填）">
             <textarea id="postContent" maxlength="5000" placeholder="分享你的想法、动态..."></textarea>
+              <input type="text" class="tag-input" id="postTags" maxlength="120" placeholder="标签（可选，用空格分隔，最多5个，如：生活 随笔）">
             <div class="composer-actions">
                 <button class="btn" id="publishBtn" onclick="publishPost()">🚀 发布</button>
             </div>
         </div>
 
         <!-- 帖子信息流 -->
-        <div class="feed-title">📚 最新动态</div>
+        <div class="feed-title" style="justify-content:space-between;">
+          <span>📚 最新动态</span>
+          <div class="search-box">
+              <input type="text" id="searchInput" placeholder="搜索标题/内容..."
+                     onkeydown="if(event.key==='Enter')doSearch()">
+              <button class="btn btn-sm btn-search" onclick="doSearch()">🔍 搜索</button>
+              <button class="btn btn-sm btn-cancel" id="clearSearchBtn" style="display:none;" onclick="clearSearch()">清除</button>
+          </div>
+      </div>
         <div id="loading" class="loading">加载中...</div>
         <div id="postList"></div>
     <div id="pagination" class="pagination"></div>
@@ -401,17 +435,19 @@
             const title = document.getElementById('postTitle').value.trim();
             const content = document.getElementById('postContent').value.trim();
             if (!content) { showToast('❌ 内容不能为空', 'error'); return; }
+            const tags = parseTags(document.getElementById('postTags').value);
             const btn = document.getElementById('publishBtn');
             btn.disabled = true;
             try {
                 await request(POST_API, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title, content })
+                    body: JSON.stringify({ title, content, tags })
                 });
                 showToast('✅ 发布成功', 'success');
                 document.getElementById('postTitle').value = '';
                 document.getElementById('postContent').value = '';
+                document.getElementById('postTags').value = '';
                 loadPosts();
             } catch (e) {
                 showToast('❌ ' + e.message, 'error');
@@ -420,20 +456,37 @@
             }
         }
 
-        // ---------- 加载帖子信息流（分页） ----------
+        // ---------- 加载帖子信息流（分页 / 搜索 / 标签筛选） ----------
         let currentPage = 1;
         const PAGE_SIZE = 10;
+        let searchKeyword = '';
+        let activeTag = '';
         async function loadPosts(page) {
             if (page) currentPage = page;
             const list = document.getElementById('postList');
             const loading = document.getElementById('loading');
             loading.style.display = 'block';
             try {
-                const data = await request(POST_API + '?page=' + currentPage + '&size=' + PAGE_SIZE);
-                const posts = data.records || [];
+                let posts = [], total = 0, totalPages = 0;
+                if (searchKeyword) {
+                    const searchRes = await request(POST_API + '/search?keyword=' + encodeURIComponent(searchKeyword));
+                    posts = searchRes || [];
+                    total = posts.length;
+                    totalPages = 1;
+                } else {
+                    let url = POST_API + '?page=' + currentPage + '&size=' + PAGE_SIZE;
+                    if (activeTag) url += '&tag=' + encodeURIComponent(activeTag);
+                    const data = await request(url);
+                    posts = data.records || [];
+                    total = data.total;
+                    totalPages = data.totalPages;
+                }
                 list.innerHTML = '';
                 if (!posts || posts.length === 0) {
-                    list.innerHTML = '<div class="empty">还没有动态，快来发布第一条吧～</div>';
+                    let emptyMsg = '还没有动态，快来发布第一条吧～';
+                    if (searchKeyword) emptyMsg = '没有找到相关动态';
+                    else if (activeTag) emptyMsg = '该标签下暂无动态';
+                    list.innerHTML = '<div class="empty">' + emptyMsg + '</div>';
                 } else {
                     posts.forEach((p, i) => {
                         const div = document.createElement('div');
@@ -449,15 +502,20 @@
                                 </div>
                             </div>
                             ${p.title ? `<div class="post-title"><a class="post-title-link" href="/detail.html?id=${p.id}">${escapeHtml(p.title)}</a></div>` : ''}
+                            ${renderTags(p.tags)}
                             <div class="post-content">${escapeHtml(p.content)}</div>
                             <div class="post-footer">
                                 <span class="post-id">#${p.id}</span>
-                                <span><a class="post-detail-link" href="/detail.html?id=${p.id}">📖 查看全文</a></span>
+                                <div class="post-actions">
+                                    <button class="like-btn${p.likedByMe ? ' liked' : ''}" onclick="toggleLike(${p.id}, this)">❤️ <span class="like-num">${p.likeCount || 0}</span></button>
+                                    <a class="stat-link" href="/detail.html?id=${p.id}">💬 ${p.commentCount || 0}</a>
+                                    <a class="post-detail-link" href="/detail.html?id=${p.id}">📖 查看全文</a>
+                                </div>
                             </div>`;
                         list.appendChild(div);
                     });
                 }
-                renderPagination(data.total, data.totalPages);
+                renderPagination(total, totalPages);
             } catch (e) {
                 list.innerHTML = '<div class="empty">加载失败：' + escapeHtml(e.message) + '</div>';
                 document.getElementById('pagination').innerHTML = '';
@@ -482,6 +540,52 @@
                     if (target >= 1 && target <= totalPages) loadPosts(target);
                 });
             });
+        }
+
+        // ---------- 标签 / 搜索 / 点赞 ----------
+        function parseTags(str) {
+            if (!str || !str.trim()) return [];
+            return str.trim().split(/\s+/).filter(Boolean).slice(0, 5);
+        }
+        function renderTags(tags) {
+            if (!tags || tags.length === 0) return '';
+            return '<div class="post-tags">' + tags.map(function (t) {
+                return '<span class="tag-chip" onclick="filterByTag(\'' + escapeHtml(t) + '\')">#' + escapeHtml(t) + '</span>';
+            }).join('') + '</div>';
+        }
+        function filterByTag(tag) {
+            activeTag = tag;
+            searchKeyword = '';
+            document.getElementById('searchInput').value = '';
+            document.getElementById('clearSearchBtn').style.display = 'none';
+            currentPage = 1;
+            loadPosts(1);
+        }
+        function doSearch() {
+            const kw = document.getElementById('searchInput').value.trim();
+            searchKeyword = kw;
+            activeTag = '';
+            document.getElementById('clearSearchBtn').style.display = kw ? 'inline-block' : 'none';
+            currentPage = 1;
+            loadPosts(1);
+        }
+        function clearSearch() {
+            searchKeyword = '';
+            document.getElementById('searchInput').value = '';
+            document.getElementById('clearSearchBtn').style.display = 'none';
+            currentPage = 1;
+            loadPosts(1);
+        }
+        async function toggleLike(id, btn) {
+            try {
+                const method = btn.classList.contains('liked') ? 'DELETE' : 'POST';
+                const data = await request(POST_API + '/' + id + '/like', { method: method });
+                btn.classList.toggle('liked');
+                btn.querySelector('.like-num').textContent = data.likeCount;
+                showToast(method === 'POST' ? '❤️ 点赞成功' : '已取消点赞', 'success');
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
+            }
         }
 
         // ---------- 用户管理 ----------
