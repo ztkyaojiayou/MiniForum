@@ -10,8 +10,12 @@ import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.exception.BusinessException;
 import com.tkzou.miniforum.exception.ResourceNotFoundException;
 import com.tkzou.miniforum.repository.CommentRepository;
+import com.tkzou.miniforum.repository.FavoriteRepository;
 import com.tkzou.miniforum.repository.LikeRepository;
 import com.tkzou.miniforum.repository.PostRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -29,23 +33,30 @@ import java.util.stream.Collectors;
 @Service
 public class PostService {
 
+    private static final Logger log = LoggerFactory.getLogger(PostService.class);
+
     private static final int MAX_TAGS = 5;
     private static final int MAX_TAG_LENGTH = 20;
+    /** 回收站保留天数：删除超过该天数的帖子将被定时任务彻底清理 */
+    private static final long RECYCLE_RETENTION_DAYS = 30;
     /** 管理员用户名（可编辑/删除任意帖子） */
     private static final String ADMIN_USERNAME = "admin";
 
     private final PostRepository postRepository;
     private final LikeRepository likeRepository;
     private final CommentRepository commentRepository;
+    private final FavoriteRepository favoriteRepository;
     private final NotificationService notificationService;
 
     public PostService(PostRepository postRepository,
                        LikeRepository likeRepository,
                        CommentRepository commentRepository,
+                       FavoriteRepository favoriteRepository,
                        NotificationService notificationService) {
         this.postRepository = postRepository;
         this.likeRepository = likeRepository;
         this.commentRepository = commentRepository;
+        this.favoriteRepository = favoriteRepository;
         this.notificationService = notificationService;
     }
 
@@ -92,17 +103,20 @@ public class PostService {
         return result;
     }
 
-    /** 查看所有已发布帖子（最新在前，草稿不出现在公开列表） */
+    /** 查看所有已发布帖子（最新在前，草稿与回收站中的帖子不出现） */
     public List<PostVO> getAllPosts(String username) {
         return postRepository.findAll().stream()
-                .filter(this::isPublished)
+                .filter(this::isVisible)
                 .map(p -> toVO(p, username))
                 .collect(Collectors.toList());
     }
 
-    /** 根据 ID 查询帖子，不存在时抛出异常；草稿仅作者本人/管理员可见；查看已发布帖子时阅读量 +1 */
+    /** 根据 ID 查询帖子，不存在/已删除时抛出异常；草稿仅作者本人/管理员可见；查看已发布帖子时阅读量 +1 */
     public PostVO getById(Long id, String username) {
         Post post = getPostOrThrow(id);
+        if (post.isDeleted()) {
+            throw new ResourceNotFoundException("帖子不存在：id=" + id);
+        }
         if (isDraft(post) && !isOwnerOrAdmin(post, username)) {
             throw new ResourceNotFoundException("帖子不存在：id=" + id);
         }
@@ -117,7 +131,7 @@ public class PostService {
     public List<PostVO> getHotPosts(int limit, String username) {
         int safeLimit = Math.min(Math.max(limit, 1), 100);
         return postRepository.findAll().stream()
-                .filter(this::isPublished)
+                .filter(this::isVisible)
                 .sorted((a, b) -> {
                     int cmp = Long.compare(b.getViewCount(), a.getViewCount());
                     return cmp != 0 ? cmp : b.getCreatedAt().compareTo(a.getCreatedAt());
@@ -132,7 +146,7 @@ public class PostService {
         int safePage = Math.max(page, 1);
         int safeSize = Math.min(Math.max(size, 1), 100);
         List<Post> all = postRepository.findAll().stream()
-                .filter(this::isPublished)
+                .filter(this::isVisible)
                 .collect(Collectors.toList());
         if (tag != null && !tag.isBlank()) {
             String t = tag.trim();
@@ -148,7 +162,7 @@ public class PostService {
         int safePage = Math.max(page, 1);
         int safeSize = Math.min(Math.max(size, 1), 100);
         List<Post> all = postRepository.findByAuthorId(authorId).stream()
-                .filter(this::isPublished)
+                .filter(this::isVisible)
                 .collect(Collectors.toList());
         return paginate(all, safePage, safeSize, username);
     }
@@ -159,6 +173,7 @@ public class PostService {
         int safeSize = Math.min(Math.max(size, 1), 100);
         List<Post> all = postRepository.findAll().stream()
                 .filter(p -> p.getAuthor().equals(username))
+                .filter(p -> !p.isDeleted())
                 .filter(p -> status == null || status.isBlank() || status.equals(p.getStatus()))
                 .collect(Collectors.toList());
         return paginate(all, safePage, safeSize, username);
@@ -177,26 +192,86 @@ public class PostService {
         return toVO(postRepository.save(post), username);
     }
 
-    /** 删除帖子（仅作者本人/管理员，级联清理评论、点赞与通知） */
+    /**
+     * 删除帖子（软删除，移入回收站；仅作者本人/管理员可操作）
+     * <p>
+     * 帖子进入回收站后不再出现在任何公开列表，可在回收站中恢复，
+     * 超过 {@link #RECYCLE_RETENTION_DAYS} 天由定时任务彻底清理。
+     */
     public void deletePost(Long id, String username) {
         Post post = getPostOrThrow(id);
         if (!isOwnerOrAdmin(post, username)) {
             throw new BusinessException("只能删除自己发布的帖子");
         }
-        postRepository.deleteById(id);
-        commentRepository.deleteByPostId(id);
-        likeRepository.deleteByPostId(id);
-        notificationService.deleteByPostId(id);
+        if (post.isDeleted()) {
+            throw new BusinessException("帖子已在回收站中");
+        }
+        post.setDeleted(true);
+        post.setDeletedAt(LocalDateTime.now());
+        postRepository.save(post);
     }
 
-    /** 关键字搜索（忽略大小写，标题命中优先于内容命中，最新在前，不含草稿） */
+    /** 恢复回收站中的帖子（仅作者本人/管理员可操作） */
+    public PostVO restorePost(Long id, String username) {
+        Post post = getPostOrThrow(id);
+        if (!isOwnerOrAdmin(post, username)) {
+            throw new BusinessException("只能恢复自己发布的帖子");
+        }
+        if (!post.isDeleted()) {
+            throw new BusinessException("帖子不在回收站中");
+        }
+        post.setDeleted(false);
+        post.setDeletedAt(null);
+        return toVO(postRepository.save(post), username);
+    }
+
+    /** 我的回收站：当前用户已删除的帖子（分页，按删除时间倒序） */
+    public PageResult<PostVO> getRecycleBin(String username, int page, int size) {
+        int safePage = Math.max(page, 1);
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        List<Post> all = postRepository.findAll().stream()
+                .filter(p -> p.getAuthor().equals(username) || ADMIN_USERNAME.equals(username))
+                .filter(Post::isDeleted)
+                .sorted((a, b) -> {
+                    if (a.getDeletedAt() == null) return 1;
+                    if (b.getDeletedAt() == null) return -1;
+                    return b.getDeletedAt().compareTo(a.getDeletedAt());
+                })
+                .collect(Collectors.toList());
+        return paginate(all, safePage, safeSize, username);
+    }
+
+    /**
+     * 定时清理回收站：彻底删除删除时间超过 {@link #RECYCLE_RETENTION_DAYS} 天的帖子，
+     * 并级联清理其评论、点赞、通知与收藏。默认每天凌晨 3 点执行一次。
+     */
+    @Scheduled(cron = "${app.recycle.clean-cron:0 0 3 * * ?}")
+    public void purgeExpiredPosts() {
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(RECYCLE_RETENTION_DAYS);
+        List<Post> expired = postRepository.findAll().stream()
+                .filter(Post::isDeleted)
+                .filter(p -> p.getDeletedAt() != null && p.getDeletedAt().isBefore(cutoff))
+                .collect(Collectors.toList());
+        for (Post post : expired) {
+            postRepository.deleteById(post.getId());
+            commentRepository.deleteByPostId(post.getId());
+            likeRepository.deleteByPostId(post.getId());
+            favoriteRepository.deleteByPostId(post.getId());
+            notificationService.deleteByPostId(post.getId());
+        }
+        if (!expired.isEmpty()) {
+            log.info("回收站清理完成：已彻底删除 {} 篇过期帖子", expired.size());
+        }
+    }
+
+    /** 关键字搜索（忽略大小写，标题命中优先于内容命中，最新在前，不含草稿与回收站） */
     public List<PostVO> search(String keyword, String username) {
         if (keyword == null || keyword.isBlank()) {
             return new ArrayList<>();
         }
         String kw = keyword.trim().toLowerCase();
         return postRepository.findAll().stream()
-                .filter(this::isPublished)
+                .filter(this::isVisible)
                 .filter(p -> (p.getTitle() != null && p.getTitle().toLowerCase().contains(kw))
                         || (p.getContent() != null && p.getContent().toLowerCase().contains(kw)))
                 .sorted((a, b) -> {
@@ -215,7 +290,7 @@ public class PostService {
     public List<TagInfo> getAllTags() {
         Map<String, Long> counter = new HashMap<>();
         for (Post p : postRepository.findAll()) {
-            if (!isPublished(p) || p.getTags() == null) {
+            if (!isVisible(p) || p.getTags() == null) {
                 continue;
             }
             for (String tag : p.getTags()) {
@@ -228,10 +303,10 @@ public class PostService {
                 .collect(Collectors.toList());
     }
 
-    /** 点赞（同一用户对同一帖子只能点赞一次，草稿不可点赞；点赞后通知作者） */
+    /** 点赞（同一用户对同一帖子只能点赞一次，草稿/回收站帖子不可点赞；点赞后通知作者） */
     public PostVO like(Long postId, String username, Long actorId) {
         Post post = getPostOrThrow(postId);
-        if (isDraft(post)) {
+        if (isDraft(post) || post.isDeleted()) {
             throw new BusinessException("草稿不能点赞");
         }
         if (likeRepository.findByPostIdAndUsername(postId, username).isPresent()) {
@@ -252,7 +327,7 @@ public class PostService {
     /** 取消点赞 */
     public PostVO unlike(Long postId, String username) {
         Post post = getPostOrThrow(postId);
-        if (isDraft(post)) {
+        if (isDraft(post) || post.isDeleted()) {
             throw new BusinessException("草稿不能点赞");
         }
         Like like = likeRepository.findByPostIdAndUsername(postId, username)
@@ -284,6 +359,11 @@ public class PostService {
         return Post.STATUS_PUBLISHED.equals(p.getStatus());
     }
 
+    /** 公开可见：已发布且未删除（不在回收站） */
+    private boolean isVisible(Post p) {
+        return Post.STATUS_PUBLISHED.equals(p.getStatus()) && !p.isDeleted();
+    }
+
     private boolean isDraft(Post p) {
         return Post.STATUS_DRAFT.equals(p.getStatus());
     }
@@ -292,13 +372,15 @@ public class PostService {
         return p.getAuthor().equals(username) || ADMIN_USERNAME.equals(username);
     }
 
-    /** 转换为视图对象，附带点赞数、当前用户点赞状态与评论数 */
+    /** 转换为视图对象，附带点赞数、收藏状态、当前用户点赞状态与评论数 */
     public PostVO toVO(Post post, String username) {
         PostVO vo = new PostVO(post);
         vo.setLikeCount(post.getLikeCount());
         vo.setViewCount(post.getViewCount());
         vo.setLikedByMe(username != null
                 && likeRepository.findByPostIdAndUsername(post.getId(), username).isPresent());
+        vo.setFavoritedByMe(username != null
+                && favoriteRepository.findByPostIdAndUsername(post.getId(), username).isPresent());
         vo.setCommentCount(commentRepository.countByPostId(post.getId()));
         return vo;
     }

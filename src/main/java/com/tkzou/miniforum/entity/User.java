@@ -22,6 +22,15 @@ public class User {
 
     private Integer age;
 
+    /** 昵称（显示名，默认与用户名一致） */
+    private String nickname;
+
+    /** 个人简介 */
+    private String bio;
+
+    /** 头像（emoji 或头像字符，默认取用户名首字符） */
+    private String avatar;
+
     public User() {
     }
 
@@ -71,6 +80,30 @@ public class User {
 
     public void setAge(Integer age) {
         this.age = age;
+    }
+
+    public String getNickname() {
+        return nickname;
+    }
+
+    public void setNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
+    public String getBio() {
+        return bio;
+    }
+
+    public void setBio(String bio) {
+        this.bio = bio;
+    }
+
+    public String getAvatar() {
+        return avatar;
+    }
+
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
     }
 
     /** 生成下一个自增 ID */

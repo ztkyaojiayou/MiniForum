@@ -248,15 +248,15 @@
             }
             try {
                 const u = await request('/api/users/' + USER_ID);
-                document.getElementById('avatarChar').textContent = (u.username || '?').charAt(0).toUpperCase();
-                document.getElementById('authorName').textContent = u.username;
-                document.getElementById('listTitle').textContent = u.username + ' 的全部文章';
-                try {
-                    const profile = await request('/api/users/' + USER_ID + '/profile');
-                    document.getElementById('statPostCount').textContent = profile.postCount || 0;
-                    document.getElementById('statFollowerCount').textContent = profile.followerCount || 0;
-                    document.getElementById('statFollowingCount').textContent = profile.followingCount || 0;
-                } catch (e) {}
+                const profile = await request('/api/users/' + USER_ID + '/profile');
+                const avatar = profile.avatar || (u.username || '?').charAt(0).toUpperCase();
+                document.getElementById('avatarChar').textContent = avatar;
+                document.getElementById('authorName').textContent = profile.nickname || u.username;
+                document.getElementById('authorDesc').textContent = profile.bio || ('@' + u.username + ' 的文章');
+                document.getElementById('listTitle').textContent = (profile.nickname || u.username) + ' 的全部文章';
+                document.getElementById('statPostCount').textContent = profile.postCount || 0;
+                document.getElementById('statFollowerCount').textContent = profile.followerCount || 0;
+                document.getElementById('statFollowingCount').textContent = profile.followingCount || 0;
                 // 关注状态：自己或不登录不显示关注按钮
                 if (ME_ID && Number(ME_ID) !== Number(USER_ID)) {
                     const btn = document.getElementById('followBtn');

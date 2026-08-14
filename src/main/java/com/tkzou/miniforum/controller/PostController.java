@@ -116,13 +116,31 @@ public class PostController {
         return ResponseEntity.ok(Result.success(dto.getPublish() ? "已更新并发布" : "已保存为草稿", updated));
     }
 
-    /** 删除帖子（仅作者本人/管理员） */
+    /** 删除帖子（软删除，移入回收站；仅作者本人/管理员） */
     @DeleteMapping("/{id}")
     public ResponseEntity<Result<Void>> deletePost(@PathVariable Long id,
                                                    HttpSession session) {
         String username = (String) session.getAttribute("username");
         postService.deletePost(id, username);
-        return ResponseEntity.ok(Result.success("帖子已删除", null));
+        return ResponseEntity.ok(Result.success("帖子已移入回收站", null));
+    }
+
+    /** 恢复回收站中的帖子（仅作者本人/管理员） */
+    @PostMapping("/{id}/restore")
+    public ResponseEntity<Result<PostVO>> restorePost(@PathVariable Long id,
+                                                      HttpSession session) {
+        String username = (String) session.getAttribute("username");
+        return ResponseEntity.ok(Result.success("已恢复", postService.restorePost(id, username)));
+    }
+
+    /** 我的回收站（当前用户已删除的帖子，分页） */
+    @GetMapping("/recycle")
+    public ResponseEntity<Result<PageResult<PostVO>>> getRecycleBin(
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "10") Integer size,
+            HttpSession session) {
+        String username = (String) session.getAttribute("username");
+        return ResponseEntity.ok(Result.success(postService.getRecycleBin(username, page, size)));
     }
 
     /** 点赞 */

@@ -48,7 +48,7 @@ public class AuthController {
         User user = authService.login(request.getUsername(), request.getPassword());
         session.setAttribute("userId", user.getId());
         session.setAttribute("username", user.getUsername());
-        LoginResponse data = new LoginResponse(user.getUsername());
+        LoginResponse data = new LoginResponse(user);
         return ResponseEntity.ok(Result.success("登录成功", data));
     }
 
@@ -66,19 +66,45 @@ public class AuthController {
         if (username == null) {
             return ResponseEntity.status(401).body(Result.error(401, "未登录"));
         }
-        return ResponseEntity.ok(Result.success(new LoginResponse((String) username)));
+        Long userId = (Long) session.getAttribute("userId");
+        return ResponseEntity.ok(Result.success(new LoginResponse((String) username, userId)));
     }
 
     /** 登录成功响应体 */
     public static class LoginResponse {
         private final String username;
+        private final Long id;
+        private final String nickname;
+        private final String avatar;
 
-        public LoginResponse(String username) {
+        public LoginResponse(User user) {
+            this.username = user.getUsername();
+            this.id = user.getId();
+            this.nickname = user.getNickname();
+            this.avatar = user.getAvatar();
+        }
+
+        public LoginResponse(String username, Long id) {
             this.username = username;
+            this.id = id;
+            this.nickname = null;
+            this.avatar = null;
         }
 
         public String getUsername() {
             return username;
+        }
+
+        public Long getId() {
+            return id;
+        }
+
+        public String getNickname() {
+            return nickname;
+        }
+
+        public String getAvatar() {
+            return avatar;
         }
     }
 }

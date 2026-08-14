@@ -152,6 +152,40 @@
             white-space: pre-wrap;
             word-break: break-word;
         }
+        /* Markdown 渲染样式 */
+        .article .article-content.markdown { white-space: normal; }
+        .article .article-content.markdown h1, .article .article-content.markdown h2,
+        .article .article-content.markdown h3, .article .article-content.markdown h4 {
+            margin: 18px 0 10px; color: var(--text-heading); line-height: 1.4;
+        }
+        .article .article-content.markdown h1 { font-size: 24px; border-bottom: 1px solid var(--border-row); padding-bottom: 8px; }
+        .article .article-content.markdown h2 { font-size: 20px; }
+        .article .article-content.markdown h3 { font-size: 17px; }
+        .article .article-content.markdown p { margin: 10px 0; }
+        .article .article-content.markdown ul, .article .article-content.markdown ol { margin: 10px 0 10px 24px; }
+        .article .article-content.markdown li { margin: 4px 0; }
+        .article .article-content.markdown blockquote {
+            margin: 12px 0; padding: 8px 16px; border-left: 4px solid var(--primary);
+            background: var(--composer-bg); color: var(--muted-2); border-radius: 0 8px 8px 0;
+        }
+        .article .article-content.markdown code {
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            background: var(--composer-bg); color: var(--primary);
+            padding: 2px 6px; border-radius: 4px; font-size: 13px;
+        }
+        .article .article-content.markdown pre {
+            background: var(--composer-bg); border: 1px solid var(--border-row);
+            padding: 12px 14px; border-radius: 8px; overflow-x: auto; margin: 12px 0;
+        }
+        .article .article-content.markdown pre code { background: none; padding: 0; color: var(--text); }
+        .article .article-content.markdown a { color: var(--primary); }
+        .article .article-content.markdown img { max-width: 100%; border-radius: 8px; }
+        .article .article-content.markdown hr { border: none; border-top: 1px solid var(--border-row); margin: 18px 0; }
+        .article .article-content.markdown table { border-collapse: collapse; margin: 12px 0; }
+        .article .article-content.markdown th, .article .article-content.markdown td {
+            border: 1px solid var(--border); padding: 6px 12px; font-size: 14px;
+        }
+        .article .article-content.markdown th { background: var(--composer-bg); }
         .article .footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--border-row); font-size: 13px; color: var(--muted); }
         .post-tags { margin: 12px 0; }
         .tag-chip {
@@ -165,6 +199,12 @@
         }
         .like-btn:hover { border-color: #ff4d4f; color: #ff4d4f; }
         .like-btn.liked { border-color: #ff4d4f; color: #ff4d4f; background: rgba(255,77,79,0.08); }
+        .fav-btn {
+            background: none; border: 1px solid var(--border); border-radius: 16px;
+            padding: 5px 16px; font-size: 14px; color: var(--muted-2); cursor: pointer; transition: all .2s;
+        }
+        .fav-btn:hover { border-color: #faad14; color: #faad14; }
+        .fav-btn.favorited { border-color: #faad14; color: #faad14; background: rgba(250,173,20,0.1); }
         .stat-text { font-size: 14px; color: var(--muted); }
         .comments-section { margin-top: 24px; }
         .comment-composer {
@@ -300,9 +340,10 @@
                             </div>
                         </div>
                         ${renderTags(p.tags)}
-                        <div class="article-content">${escapeHtml(p.content)}</div>
+                        <div class="article-content markdown">${renderMarkdown(p.content)}</div>
                         <div class="article-stats">
                             <button class="like-btn${p.likedByMe ? ' liked' : ''}" onclick="toggleLike(${p.id}, this)">❤️ <span class="like-num">${p.likeCount || 0}</span> 赞</button>
+                            <button class="fav-btn${p.favoritedByMe ? ' favorited' : ''}" onclick="toggleFavorite(${p.id}, this)">⭐ <span class="fav-text">${p.favoritedByMe ? '已收藏' : '收藏'}</span></button>
                             <span class="stat-text">👁 ${p.viewCount || 0} 次阅读</span>
                             <span class="stat-text">💬 ${p.commentCount || 0} 条评论</span>
                         </div>
@@ -313,6 +354,63 @@
             } catch (e) {
                 loading.style.display = 'none';
                 article.innerHTML = '<div class="empty">加载失败：' + escapeHtml(e.message) + '</div>';
+            }
+        }
+        /** 轻量 Markdown 渲染：支持标题/粗体/斜体/行内代码/代码块/列表/引用/链接/分割线 */
+        function renderMarkdown(src) {
+            if (!src) return '';
+            let text = String(src);
+            // 转义 HTML，防止 XSS
+            const esc = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            // 代码块（先保护，避免被后续规则破坏）
+            const codeBlocks = [];
+            let processed = esc.replace(/```([\s\S]*?)```/g, function (m, code) {
+                codeBlocks.push('<pre><code>' + code.replace(/\n$/, '') + '</code></pre>');
+                return '\u0000CODE' + (codeBlocks.length - 1) + '\u0000';
+            });
+            // 行内代码
+            processed = processed.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+            // 标题
+            processed = processed.replace(/^(#{1,4})\s+(.+)$/gm, function (m, hashes, txt) {
+                const level = hashes.length;
+                return '<h' + level + '>' + txt + '</h' + level + '>';
+            });
+            // 分割线
+            processed = processed.replace(/^\s*(---+|\*\*\*)\s*$/gm, '<hr>');
+            // 引用
+            processed = processed.replace(/^&gt;\s?(.+)$/gm, '<blockquote>$1</blockquote>');
+            // 无序列表
+            processed = processed.replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>');
+            // 有序列表
+            processed = processed.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+            // 粗体
+            processed = processed.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+            // 斜体
+            processed = processed.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+            // 链接
+            processed = processed.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+            // 段落（非块级元素的行）
+            processed = processed.replace(/^([^<][^\n]*)$/gm, function (m, line) {
+                if (/^<(h\d|li|blockquote|hr|pre|ul|ol)/.test(line)) return line;
+                return '<p>' + line + '</p>';
+            });
+            // 恢复代码块
+            processed = processed.replace(/\u0000CODE(\d+)\u0000/g, function (m, i) {
+                return codeBlocks[parseInt(i, 10)];
+            });
+            return processed;
+        }
+        async function toggleFavorite(id, btn) {
+            try {
+                const isFav = btn.classList.contains('favorited');
+                const res = await fetch('/api/favorites/' + id, { method: isFav ? 'DELETE' : 'POST' });
+                const data = await res.json();
+                if (!res.ok || data.code !== 0) { throw new Error(data.message || '操作失败'); }
+                btn.classList.toggle('favorited');
+                btn.querySelector('.fav-text').textContent = isFav ? '收藏' : '已收藏';
+                showToast(isFav ? '已取消收藏' : '⭐ 收藏成功', 'success');
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
             }
         }
         function renderTags(tags) {

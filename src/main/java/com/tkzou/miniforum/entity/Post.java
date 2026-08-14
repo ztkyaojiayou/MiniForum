@@ -49,6 +49,12 @@ public class Post {
     /** 阅读量（进入详情页时自增） */
     private long viewCount;
 
+    /** 是否已删除（回收站软删除标记） */
+    private boolean deleted;
+
+    /** 删除时间（软删除时记录，用于 30 天自动清理） */
+    private LocalDateTime deletedAt;
+
     public Post() {
     }
 
@@ -150,5 +156,21 @@ public class Post {
 
     public void setViewCount(long viewCount) {
         this.viewCount = viewCount;
+    }
+
+    public boolean isDeleted() {
+        return deleted;
+    }
+
+    public void setDeleted(boolean deleted) {
+        this.deleted = deleted;
+    }
+
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 }

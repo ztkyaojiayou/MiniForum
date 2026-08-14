@@ -17,6 +17,15 @@ public class ProfileVO {
 
     private Integer age;
 
+    /** 昵称（显示名） */
+    private String nickname;
+
+    /** 个人简介 */
+    private String bio;
+
+    /** 头像 */
+    private String avatar;
+
     /** 粉丝数 */
     private long followerCount;
 
@@ -34,6 +43,9 @@ public class ProfileVO {
         this.username = user.getUsername();
         this.email = user.getEmail();
         this.age = user.getAge();
+        this.nickname = user.getNickname();
+        this.bio = user.getBio();
+        this.avatar = user.getAvatar();
     }
 
     public Long getId() {

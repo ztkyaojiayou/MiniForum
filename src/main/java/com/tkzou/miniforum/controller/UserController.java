@@ -1,12 +1,15 @@
 package com.tkzou.miniforum.controller;
 
 import com.tkzou.miniforum.common.Result;
+import com.tkzou.miniforum.dto.ChangePasswordDTO;
 import com.tkzou.miniforum.dto.PageResult;
 import com.tkzou.miniforum.dto.PostVO;
+import com.tkzou.miniforum.dto.ProfileUpdateDTO;
 import com.tkzou.miniforum.dto.ProfileVO;
 import com.tkzou.miniforum.dto.UserCreateDTO;
 import com.tkzou.miniforum.dto.UserUpdateDTO;
 import com.tkzou.miniforum.entity.User;
+import com.tkzou.miniforum.exception.BusinessException;
 import com.tkzou.miniforum.service.PostService;
 import com.tkzou.miniforum.service.UserService;
 import org.springframework.http.HttpStatus;
@@ -69,6 +72,34 @@ public class UserController {
     @PutMapping("/{id}")
     public ResponseEntity<Result<User>> updateUser(@PathVariable Long id, @Valid @RequestBody UserUpdateDTO dto) {
         return ResponseEntity.ok(Result.success(userService.updateUser(id, dto)));
+    }
+
+    /** 修改个人资料（昵称 / 简介 / 头像 / 邮箱 / 年龄，仅本人或管理员可操作） */
+    @PutMapping("/{id}/profile")
+    public ResponseEntity<Result<User>> updateProfile(@PathVariable Long id,
+                                                      @Valid @RequestBody ProfileUpdateDTO dto,
+                                                      HttpSession session) {
+        ensureSelfOrAdmin(id, session);
+        return ResponseEntity.ok(Result.success("资料已更新", userService.updateProfile(id, dto)));
+    }
+
+    /** 修改密码（需校验旧密码，仅本人可操作） */
+    @PutMapping("/{id}/password")
+    public ResponseEntity<Result<Void>> changePassword(@PathVariable Long id,
+                                                       @Valid @RequestBody ChangePasswordDTO dto,
+                                                       HttpSession session) {
+        ensureSelfOrAdmin(id, session);
+        userService.changePassword(id, dto);
+        return ResponseEntity.ok(Result.success("密码已修改", null));
+    }
+
+    /** 仅本人或管理员可操作 */
+    private void ensureSelfOrAdmin(Long id, HttpSession session) {
+        Long currentId = (Long) session.getAttribute("userId");
+        String username = (String) session.getAttribute("username");
+        if (currentId == null || (!currentId.equals(id) && !"admin".equals(username))) {
+            throw new com.tkzou.miniforum.exception.BusinessException("无权操作其他用户的资料");
+        }
     }
 
     /** 删除用户 */

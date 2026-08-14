@@ -1,12 +1,14 @@
 package com.tkzou.miniforum.persistence;
 
 import com.tkzou.miniforum.entity.Comment;
+import com.tkzou.miniforum.entity.Favorite;
 import com.tkzou.miniforum.entity.Follow;
 import com.tkzou.miniforum.entity.Like;
 import com.tkzou.miniforum.entity.Notification;
 import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.repository.CommentRepository;
+import com.tkzou.miniforum.repository.FavoriteRepository;
 import com.tkzou.miniforum.repository.FollowRepository;
 import com.tkzou.miniforum.repository.LikeRepository;
 import com.tkzou.miniforum.repository.NotificationRepository;
@@ -51,6 +53,7 @@ public class DataStore implements ApplicationRunner {
     private final LikeRepository likeRepository;
     private final FollowRepository followRepository;
     private final NotificationRepository notificationRepository;
+    private final FavoriteRepository favoriteRepository;
 
     /** 数据文件目录 */
     @Value("${app.data-dir:./data}")
@@ -66,7 +69,8 @@ public class DataStore implements ApplicationRunner {
                      CommentRepository commentRepository,
                      LikeRepository likeRepository,
                      FollowRepository followRepository,
-                     NotificationRepository notificationRepository) {
+                     NotificationRepository notificationRepository,
+                     FavoriteRepository favoriteRepository) {
         this.objectMapper = objectMapper;
         this.userRepository = userRepository;
         this.postRepository = postRepository;
@@ -74,6 +78,7 @@ public class DataStore implements ApplicationRunner {
         this.likeRepository = likeRepository;
         this.followRepository = followRepository;
         this.notificationRepository = notificationRepository;
+        this.favoriteRepository = favoriteRepository;
     }
 
     @Override
@@ -113,6 +118,7 @@ public class DataStore implements ApplicationRunner {
             objectMapper.writeValue(Paths.get(dataDir, "likes.json").toFile(), likeRepository.exportAll());
             objectMapper.writeValue(Paths.get(dataDir, "follows.json").toFile(), followRepository.exportAll());
             objectMapper.writeValue(Paths.get(dataDir, "notifications.json").toFile(), notificationRepository.exportAll());
+            objectMapper.writeValue(Paths.get(dataDir, "favorites.json").toFile(), favoriteRepository.exportAll());
         } catch (Exception e) {
             log.warn("数据持久化保存失败: {}", e.getMessage());
         }

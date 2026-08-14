@@ -10,6 +10,7 @@ import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.exception.BusinessException;
 import com.tkzou.miniforum.exception.ResourceNotFoundException;
 import com.tkzou.miniforum.repository.FollowRepository;
+import com.tkzou.miniforum.repository.FavoriteRepository;
 import com.tkzou.miniforum.repository.LikeRepository;
 import com.tkzou.miniforum.repository.PostRepository;
 import com.tkzou.miniforum.repository.CommentRepository;
@@ -35,6 +36,7 @@ public class FollowService {
     private final PostRepository postRepository;
     private final LikeRepository likeRepository;
     private final CommentRepository commentRepository;
+    private final FavoriteRepository favoriteRepository;
     private final NotificationService notificationService;
 
     public FollowService(FollowRepository followRepository,
@@ -42,12 +44,14 @@ public class FollowService {
                          PostRepository postRepository,
                          LikeRepository likeRepository,
                          CommentRepository commentRepository,
+                         FavoriteRepository favoriteRepository,
                          NotificationService notificationService) {
         this.followRepository = followRepository;
         this.userRepository = userRepository;
         this.postRepository = postRepository;
         this.likeRepository = likeRepository;
         this.commentRepository = commentRepository;
+        this.favoriteRepository = favoriteRepository;
         this.notificationService = notificationService;
     }
 
@@ -128,6 +132,7 @@ public class FollowService {
         Set<Long> followingIds = getFollowingIds(userId);
         List<Post> all = postRepository.findAll().stream()
                 .filter(p -> Post.STATUS_PUBLISHED.equals(p.getStatus()))
+                .filter(p -> !p.isDeleted())
                 .filter(p -> p.getAuthorId() != null && followingIds.contains(p.getAuthorId()))
                 .collect(Collectors.toList());
 

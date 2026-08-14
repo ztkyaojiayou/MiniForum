@@ -6,6 +6,7 @@ import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.exception.DuplicateUsernameException;
 import com.tkzou.miniforum.exception.ResourceNotFoundException;
 import com.tkzou.miniforum.repository.CommentRepository;
+import com.tkzou.miniforum.repository.FavoriteRepository;
 import com.tkzou.miniforum.repository.FollowRepository;
 import com.tkzou.miniforum.repository.LikeRepository;
 import com.tkzou.miniforum.repository.NotificationRepository;
@@ -36,9 +37,10 @@ class UserServiceTest {
         LikeRepository likeRepository = new LikeRepository();
         CommentRepository commentRepository = new CommentRepository();
         NotificationRepository notificationRepository = new NotificationRepository();
+        FavoriteRepository favoriteRepository = new FavoriteRepository();
         NotificationService notificationService = new NotificationService(notificationRepository);
         FollowService followService = new FollowService(followRepository, userRepository, postRepository,
-                likeRepository, commentRepository, notificationService);
+                likeRepository, commentRepository, favoriteRepository, notificationService);
         userService = new UserService(userRepository, postRepository, followService);
     }
 

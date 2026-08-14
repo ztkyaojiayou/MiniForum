@@ -38,6 +38,9 @@ public class PostVO {
     /** 当前登录用户是否已点赞 */
     private boolean likedByMe;
 
+    /** 当前登录用户是否已收藏 */
+    private boolean favoritedByMe;
+
     /** 评论总数 */
     private long commentCount;
 
@@ -136,6 +139,14 @@ public class PostVO {
 
     public void setLikedByMe(boolean likedByMe) {
         this.likedByMe = likedByMe;
+    }
+
+    public boolean isFavoritedByMe() {
+        return favoritedByMe;
+    }
+
+    public void setFavoritedByMe(boolean favoritedByMe) {
+        this.favoritedByMe = favoritedByMe;
     }
 
     public long getCommentCount() {

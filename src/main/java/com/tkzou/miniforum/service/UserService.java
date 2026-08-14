@@ -1,10 +1,13 @@
 package com.tkzou.miniforum.service;
 
+import com.tkzou.miniforum.dto.ChangePasswordDTO;
+import com.tkzou.miniforum.dto.ProfileUpdateDTO;
 import com.tkzou.miniforum.dto.ProfileVO;
 import com.tkzou.miniforum.dto.UserCreateDTO;
 import com.tkzou.miniforum.dto.UserUpdateDTO;
 import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.entity.User;
+import com.tkzou.miniforum.exception.BusinessException;
 import com.tkzou.miniforum.exception.DuplicateUsernameException;
 import com.tkzou.miniforum.exception.ResourceNotFoundException;
 import com.tkzou.miniforum.repository.PostRepository;
@@ -77,6 +80,35 @@ public class UserService {
         existing.setPassword(PasswordEncoder.encode(dto.getPassword()));
         existing.setAge(dto.getAge());
         return userRepository.save(existing);
+    }
+
+    /**
+     * 修改个人资料（昵称 / 简介 / 头像 / 邮箱 / 年龄，传 null 的字段保持不变；用户名不可修改）
+     */
+    public User updateProfile(Long id, ProfileUpdateDTO dto) {
+        User existing = getUserById(id);
+        if (dto.getNickname() != null && !dto.getNickname().isBlank()) {
+            existing.setNickname(dto.getNickname().trim());
+        }
+        existing.setBio(dto.getBio());
+        existing.setAvatar(dto.getAvatar());
+        if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
+            existing.setEmail(dto.getEmail().trim());
+        }
+        if (dto.getAge() != null) {
+            existing.setAge(dto.getAge());
+        }
+        return userRepository.save(existing);
+    }
+
+    /** 修改密码：校验旧密码正确后设置新密码 */
+    public void changePassword(Long id, ChangePasswordDTO dto) {
+        User user = getUserById(id);
+        if (!PasswordEncoder.matches(dto.getOldPassword(), user.getPassword())) {
+            throw new BusinessException("旧密码不正确");
+        }
+        user.setPassword(PasswordEncoder.encode(dto.getNewPassword()));
+        userRepository.save(user);
     }
 
     public void deleteUser(Long id) {
