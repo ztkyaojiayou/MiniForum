@@ -202,7 +202,8 @@
 
     <script>
         const params = new URLSearchParams(window.location.search);
-        const USER_ID = params.get('id');
+        let USER_ID = params.get('id');
+        const USERNAME = params.get('username');
 
         function showToast(msg, type) {
             const toast = document.getElementById('toast');
@@ -243,6 +244,16 @@
 
         let ME_ID = null;
         async function loadUser() {
+            // 支持 ?username=xxx 参数（@提及跳转）：先解析出用户 ID
+            if (!USER_ID && USERNAME) {
+                try {
+                    const u0 = await request('/api/users/by-username/' + encodeURIComponent(USERNAME));
+                    USER_ID = String(u0.id);
+                } catch (e) {
+                    document.getElementById('authorName').textContent = '用户不存在：@' + USERNAME;
+                    return;
+                }
+            }
             if (!USER_ID) {
                 document.getElementById('authorName').textContent = '缺少用户 ID';
                 return;

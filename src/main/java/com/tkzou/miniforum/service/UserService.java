@@ -52,6 +52,12 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("用户不存在: id=" + id));
     }
 
+    /** 按用户名查询用户（@提及 跳转用） */
+    public User getUserByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("用户不存在: " + username));
+    }
+
     /** 个人主页聚合信息：用户资料 + 粉丝数 + 关注数 + 已发布帖子数 */
     public ProfileVO getProfile(Long id) {
         User user = getUserById(id);

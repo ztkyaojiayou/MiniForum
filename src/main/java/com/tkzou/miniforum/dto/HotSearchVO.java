@@ -17,6 +17,9 @@ public class HotSearchVO {
     /** 排名（从 1 开始） */
     private int rank;
 
+    /** 趋势：1=上升，0=持平，-1=下降，2=新上榜 */
+    private int trend;
+
     public HotSearchVO() {
     }
 
@@ -25,6 +28,7 @@ public class HotSearchVO {
         this.heat = heat;
         this.postCount = postCount;
         this.rank = rank;
+        this.trend = 0;
     }
 
     public String getKeyword() {
@@ -57,5 +61,13 @@ public class HotSearchVO {
 
     public void setRank(int rank) {
         this.rank = rank;
+    }
+
+    public int getTrend() {
+        return trend;
+    }
+
+    public void setTrend(int trend) {
+        this.trend = trend;
     }
 }

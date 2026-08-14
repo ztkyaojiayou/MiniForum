@@ -6,6 +6,7 @@ import com.tkzou.miniforum.dto.PageResult;
 import com.tkzou.miniforum.dto.PostVO;
 import com.tkzou.miniforum.dto.ProfileUpdateDTO;
 import com.tkzou.miniforum.dto.ProfileVO;
+import com.tkzou.miniforum.dto.UserBriefVO;
 import com.tkzou.miniforum.dto.UserCreateDTO;
 import com.tkzou.miniforum.dto.UserUpdateDTO;
 import com.tkzou.miniforum.entity.User;
@@ -54,6 +55,12 @@ public class UserController {
     @GetMapping("/{id}")
     public ResponseEntity<Result<User>> getUserById(@PathVariable Long id) {
         return ResponseEntity.ok(Result.success(userService.getUserById(id)));
+    }
+
+    /** 按用户名查询用户（@提及 跳转用） */
+    @GetMapping("/by-username/{username}")
+    public ResponseEntity<Result<UserBriefVO>> getUserByUsername(@PathVariable String username) {
+        return ResponseEntity.ok(Result.success(new UserBriefVO(userService.getUserByUsername(username))));
     }
 
     /** 个人主页聚合信息：用户资料 + 粉丝数 + 关注数 + 帖子数 */

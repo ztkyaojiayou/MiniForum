@@ -1,0 +1,10 @@
+target/
+data/
+.idea/
+*.iml
+.git/
+.gitignore
+*.md
+docs/
+scripts/
+.nanobot/

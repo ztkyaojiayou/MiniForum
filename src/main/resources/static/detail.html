@@ -399,7 +399,19 @@
             processed = processed.replace(/\u0000CODE(\d+)\u0000/g, function (m, i) {
                 return codeBlocks[parseInt(i, 10)];
             });
+            // @提及 转可点击链接（跳转个人主页）
+            processed = processed.replace(/@([\w\u4e00-\u9fa5]{1,20})/g, function (m, u) {
+                return '<a class="mention-link" href="/user.html?username=' + encodeURIComponent(u) + '">@' + u + '</a>';
+            });
             return processed;
+        }
+        /** 评论内容渲染：转义 HTML 后把 @用户名 转为可点击链接 */
+        function renderMention(text) {
+            if (!text) return '';
+            const escaped = escapeHtml(text);
+            return escaped.replace(/@([\w\u4e00-\u9fa5]{1,20})/g, function (m, u) {
+                return '<a class="mention-link" href="/user.html?username=' + encodeURIComponent(u) + '">@' + u + '</a>';
+            });
         }
         async function toggleFavorite(id, btn) {
             try {
@@ -470,7 +482,7 @@
                                     <span class="comment-time">${formatTime(c.createdAt)}</span>
                                     ${c.mine ? '<button class="btn btn-danger btn-sm" onclick="deleteComment(' + c.id + ')">删除</button>' : ''}
                                 </div>
-                                <div class="comment-content">${escapeHtml(c.content)}</div>
+                                <div class="comment-content">${renderMention(c.content)}</div>
                             </div>`;
                     }).join('');
                 }

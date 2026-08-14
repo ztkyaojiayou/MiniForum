@@ -28,6 +28,10 @@ out.txt
 # 接口验证临时响应（脚本生成）
 resp_*.json
 
+# 接口验证临时文件（curl 输出）
+_*.json
+_*.txt
+
 # 运行时日志目录
 logs/
 

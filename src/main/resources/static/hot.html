@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>热搜榜 - MiniForum</title>
+    <script>
+        // 防闪烁：在渲染前根据 localStorage 或系统偏好设置主题
+        (function () {
+            var saved = localStorage.getItem('theme');
+            var theme = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <style>
+        :root, [data-theme="light"] {
+            --bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --text: #333333;
+            --text-heading: #1a1a2e;
+            --muted: #999999;
+            --muted-2: #666666;
+            --border: #d9d9d9;
+            --border-row: #f0f0f0;
+            --primary: #4a7cff;
+            --primary-hover: #3a66e0;
+            --shadow-card: rgba(0,0,0,0.08);
+            --input-bg: #ffffff;
+            --tag-bg: #eef2ff;
+            --tag-text: #4a7cff;
+            --composer-bg: #f7f8fa;
+        }
+        [data-theme="dark"] {
+            --bg: #1a1a2e;
+            --card-bg: #24243e;
+            --text: #e4e4e4;
+            --text-heading: #ffffff;
+            --muted: #8f8fa8;
+            --muted-2: #a8a8c0;
+            --border: #3a3a5c;
+            --border-row: #33334f;
+            --primary: #5a8cff;
+            --primary-hover: #6f9bff;
+            --shadow-card: rgba(0,0,0,0.4);
+            --input-bg: #2c2c4a;
+            --tag-bg: #2e3a5c;
+            --tag-text: #8fb0ff;
+            --composer-bg: #2a2a48;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            transition: background .3s, color .3s;
+        }
+        .navbar {
+            position: sticky; top: 0; z-index: 100;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-row);
+            padding: 0 20px; height: 56px;
+            display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 1px 4px var(--shadow-card);
+            transition: background .3s;
+        }
+        .navbar .brand { font-size: 20px; font-weight: 700; color: var(--primary); text-decoration: none; }
+        .navbar .nav-right { display: flex; align-items: center; gap: 12px; }
+        .nav-link {
+            text-decoration: none; color: var(--muted-2); font-size: 14px;
+            padding: 6px 10px; border-radius: 6px; transition: all .2s; position: relative;
+        }
+        .nav-link:hover { color: var(--primary); background: var(--composer-bg); }
+        .nav-badge {
+            position: absolute; top: -4px; right: -6px;
+            background: #ff4d4f; color: #fff; font-size: 11px;
+            min-width: 16px; height: 16px; line-height: 16px;
+            border-radius: 8px; padding: 0 4px; text-align: center;
+        }
+        .username-tag { font-size: 14px; color: var(--muted-2); }
+        .username-tag b { color: var(--primary); font-weight: 600; }
+        .theme-toggle {
+            background: none; border: 1px solid var(--border); border-radius: 50%;
+            width: 34px; height: 34px; cursor: pointer; font-size: 16px;
+            color: var(--text); transition: all .2s;
+        }
+        .theme-toggle:hover { border-color: var(--primary); }
+        .logout-btn {
+            background: none; border: 1px solid var(--border); color: var(--muted-2);
+            padding: 6px 14px; border-radius: 16px; cursor: pointer; font-size: 13px; transition: all .2s;
+        }
+        .logout-btn:hover { color: #ff4d4f; border-color: #ff4d4f; }
+
+        .container { max-width: 720px; margin: 24px auto; padding: 0 16px; }
+        .hot-card {
+            background: var(--card-bg); border-radius: 12px;
+            box-shadow: 0 2px 8px var(--shadow-card); padding: 20px 24px;
+            transition: background .3s;
+        }
+        .hot-card h1 { font-size: 20px; color: var(--text-heading); margin-bottom: 4px; }
+        .hot-card .sub { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+        .hot-list { list-style: none; }
+        .hot-list li {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 8px; border-bottom: 1px solid var(--border-row);
+            cursor: pointer; border-radius: 8px; transition: background .2s;
+        }
+        .hot-list li:hover { background: var(--composer-bg); }
+        .hot-rank {
+            width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 14px; color: #fff;
+            background: #999; text-align: center;
+        }
+        .hot-list li:nth-child(1) .hot-rank { background: #ff4d4f; }
+        .hot-list li:nth-child(2) .hot-rank { background: #ff7a45; }
+        .hot-list li:nth-child(3) .hot-rank { background: #ffa940; }
+        .hot-main { flex: 1; min-width: 0; }
+        .hot-word { font-size: 15px; font-weight: 600; color: var(--text-heading); word-break: break-all; }
+        .hot-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+        .hot-trend { font-size: 13px; font-weight: 700; flex-shrink: 0; width: 24px; text-align: center; }
+        .trend-up { color: #ff4d4f; }
+        .trend-down { color: #52c41a; }
+        .trend-flat { color: var(--muted); }
+        .trend-new { color: var(--primary); }
+        .loading { text-align: center; color: var(--muted); padding: 40px 0; }
+        .empty { text-align: center; color: var(--muted); padding: 40px 0; }
+        .back-link {
+            display: inline-block; margin-bottom: 16px; color: var(--primary);
+            text-decoration: none; font-size: 14px;
+        }
+        .back-link:hover { text-decoration: underline; }
+        .toast {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px);
+            background: var(--text-heading); color: #fff; padding: 10px 24px; border-radius: 20px;
+            font-size: 14px; opacity: 0; transition: all .3s; z-index: 999;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .toast.error { background: #ff4d4f; }
+        .toast.success { background: #52c41a; }
+        @media (max-width: 600px) {
+            .nav-link { display: none; }
+            .hot-card { padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航 -->
+    <div class="navbar">
+        <a class="brand" href="/index.html">📢 动态广场</a>
+        <div class="nav-right">
+            <a class="nav-link" href="/index.html">🏠 首页</a>
+            <a class="nav-link" href="/message.html">💬 私信<span class="nav-badge" id="msgBadge" style="display:none;">0</span></a>
+            <a class="nav-link" href="/notification.html">🔔 通知<span class="nav-badge" id="navBadge" style="display:none;">0</span></a>
+            <span class="username-tag">👤 <b id="currentUser"></b></span>
+            <button class="theme-toggle" id="themeToggle" title="切换主题" onclick="toggleTheme()">🌙</button>
+            <button class="logout-btn" onclick="logout()">退出</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <a class="back-link" href="/index.html">← 返回首页</a>
+        <div class="hot-card">
+            <h1>🔥 热搜榜</h1>
+            <div class="sub">热度 = 阅读量×1 + 点赞×2 + 评论×3（近 30 天时间衰减）· 点击词条查看相关帖子</div>
+            <ul class="hot-list" id="hotList">
+                <li class="loading">加载中...</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        function showToast(msg, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast show ' + (type || '');
+            setTimeout(() => { toast.className = 'toast'; }, 2500);
+        }
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+        async function request(url, options) {
+            const res = await fetch(url, options);
+            let data = null;
+            try { data = await res.json(); } catch (e) {}
+            if (!res.ok) {
+                let msg = '请求失败 (' + res.status + ')';
+                if (data && data.message) msg = data.message;
+                throw new Error(msg);
+            }
+            if (data && typeof data === 'object' && 'code' in data) {
+                if (data.code !== 0) throw new Error(data.message || '请求失败');
+                return data.data;
+            }
+            return data;
+        }
+        function trendHtml(trend) {
+            if (trend === 1) return '<span class="hot-trend trend-up">↑</span>';
+            if (trend === -1) return '<span class="hot-trend trend-down">↓</span>';
+            if (trend === 2) return '<span class="hot-trend trend-new">新</span>';
+            return '<span class="hot-trend trend-flat">—</span>';
+        }
+        async function loadHotList() {
+            const list = document.getElementById('hotList');
+            try {
+                const hot = await request('/api/hot/search?limit=50');
+                if (!hot || hot.length === 0) {
+                    list.innerHTML = '<li class="empty">暂无热搜词</li>';
+                    return;
+                }
+                list.innerHTML = hot.map(function (h) {
+                    return '<li onclick="goSearch(\'' + encodeURIComponent(h.keyword) + '\')">' +
+                        '<span class="hot-rank">' + h.rank + '</span>' +
+                        '<span class="hot-main"><span class="hot-word">' + escapeHtml(h.keyword) + '</span>' +
+                        '<div class="hot-meta">热度 ' + (h.heat || 0) + ' · ' + (h.postCount || 0) + ' 帖</div></span>' +
+                        trendHtml(h.trend) + '</li>';
+                }).join('');
+            } catch (e) {
+                list.innerHTML = '<li class="empty">加载失败：' + escapeHtml(e.message) + '</li>';
+            }
+        }
+        function goSearch(keyword) {
+            window.location.href = '/index.html?tag=' + keyword;
+        }
+        async function checkLogin() {
+            try {
+                const res = await fetch('/api/auth/me');
+                const data = await res.json();
+                if (!res.ok || data.code !== 0) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+                document.getElementById('currentUser').textContent = data.data.username;
+                loadBadges();
+            } catch (e) {
+                window.location.href = '/login.html';
+            }
+        }
+        async function loadBadges() {
+            try {
+                const unread = await request('/api/notifications/unread-count');
+                const badge = document.getElementById('navBadge');
+                if (unread > 0) {
+                    badge.textContent = unread > 99 ? '99+' : unread;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            } catch (e) {}
+            try {
+                const m = await request('/api/messages/unread-count');
+                const badge = document.getElementById('msgBadge');
+                if (m > 0) {
+                    badge.textContent = m > 99 ? '99+' : m;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            } catch (e) {}
+        }
+        async function logout() {
+            try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (e) {}
+            window.location.href = '/login.html';
+        }
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            updateToggleIcon();
+        }
+        function updateToggleIcon() {
+            const theme = document.documentElement.getAttribute('data-theme');
+            document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+        updateToggleIcon();
+        checkLogin();
+        loadHotList();
+    </script>
+</body>
+</html>

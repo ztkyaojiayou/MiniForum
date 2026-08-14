@@ -9,10 +9,15 @@ import com.tkzou.miniforum.exception.BusinessException;
 import com.tkzou.miniforum.exception.ResourceNotFoundException;
 import com.tkzou.miniforum.repository.CommentRepository;
 import com.tkzou.miniforum.repository.PostRepository;
+import com.tkzou.miniforum.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -27,13 +32,16 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
     private final NotificationService notificationService;
+    private final UserRepository userRepository;
 
     public CommentService(CommentRepository commentRepository,
                           PostRepository postRepository,
-                          NotificationService notificationService) {
+                          NotificationService notificationService,
+                          UserRepository userRepository) {
         this.commentRepository = commentRepository;
         this.postRepository = postRepository;
         this.notificationService = notificationService;
+        this.userRepository = userRepository;
     }
 
     /** 查看某帖子的评论列表（时间正序，附带当前用户是否为作者） */
@@ -57,7 +65,30 @@ public class CommentService {
         // 通知帖子作者（评论自己的帖子不通知）
         notificationService.notify(post.getAuthorId(), actorId, username,
                 Notification.TYPE_COMMENT, postId, "评论了你的帖子《" + post.getTitle() + "》");
+        // @提及通知：评论中被 @ 的用户
+        notifyMentionsInComment(post, saved, username, actorId);
         return new CommentVO(saved, true);
+    }
+
+    /** @提及 识别正则：匹配 @用户名（中英文、数字、下划线，1~20 字符） */
+    private static final Pattern MENTION_PATTERN = Pattern.compile("@([\\w\\u4e00-\\u9fa5]{1,20})");
+
+    /** 评论中被 @ 的用户触发 MENTION 通知（用户不存在时静默忽略；@ 自己由 NotificationService 去重） */
+    private void notifyMentionsInComment(Post post, Comment comment, String actorUsername, Long actorId) {
+        if (comment.getContent() == null || comment.getContent().isBlank()) {
+            return;
+        }
+        Set<String> mentions = new LinkedHashSet<>();
+        Matcher m = MENTION_PATTERN.matcher(comment.getContent());
+        while (m.find()) {
+            mentions.add(m.group(1));
+        }
+        String title = post.getTitle() == null ? "帖子" : post.getTitle();
+        for (String mentionName : mentions) {
+            userRepository.findByUsername(mentionName).ifPresent(u ->
+                    notificationService.notify(u.getId(), actorId, actorUsername,
+                            Notification.TYPE_MENTION, post.getId(), "在《" + title + "》的评论中提到了你"));
+        }
     }
 
     /** 删除评论：作者本人或管理员可删除 */

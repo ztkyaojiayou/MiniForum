@@ -495,7 +495,9 @@
         <!-- 右栏：热搜榜 -->
         <aside class="side-right">
             <div class="side-card">
-                <h3>🔥 热搜榜</h3>
+                <h3 style="display:flex;justify-content:space-between;align-items:center;">🔥 热搜榜
+                    <a href="/hot.html" style="font-size:12px;color:var(--primary);text-decoration:none;font-weight:400;">完整榜单 ›</a>
+                </h3>
                 <ul class="hot-list" id="hotList"><li>加载中...</li></ul>
             </div>
             <div class="side-card">
@@ -799,8 +801,11 @@
         function renderContent(text) {
             if (!text) return '';
             const escaped = escapeHtml(text);
-            return escaped.replace(/#([^#\s]{1,30})#/g, function (m, t) {
+            const withTopics = escaped.replace(/#([^#\s]{1,30})#/g, function (m, t) {
                 return '<span class="topic-chip" onclick="filterByTopic(\'' + t + '\')">#' + t + '#</span>';
+            });
+            return withTopics.replace(/@([\w\u4e00-\u9fa5]{1,20})/g, function (m, u) {
+                return '<a class="mention-link" href="/user.html?username=' + encodeURIComponent(u) + '">@' + u + '</a>';
             });
         }
         function filterByTopic(topic) {
@@ -882,6 +887,17 @@
                 box.innerHTML = cats.map(function (c) {
                     return '<li data-cat="' + escapeHtml(c.name) + '" onclick="filterByCategory(this)"><span>' + (c.icon || '') + '</span> ' + escapeHtml(c.name) + '<span class="cat-count">' + (c.count || 0) + '</span></li>';
                 }).join('');
+                // 分类页独立路由：/category/{key} 自动激活对应分类（可分享/收藏，刷新不丢状态）
+                const CATEGORY_KEY_MAP = { tech: '科技', digital: '数码', game: '游戏', entertainment: '娱乐', sports: '体育', finance: '财经', auto: '汽车', news: '时事', edu: '教育', life: '生活', food: '美食', other: '其他' };
+                const pathMatch = window.location.pathname.match(/^\/category\/([^/]+)/);
+                if (pathMatch && CATEGORY_KEY_MAP[pathMatch[1]]) {
+                    const name = CATEGORY_KEY_MAP[pathMatch[1]];
+                    activeCategory = name;
+                    document.querySelectorAll('#catList li').forEach(function (li) {
+                        li.classList.toggle('active', li.getAttribute('data-cat') === name);
+                    });
+                    document.title = name + '分类 - MiniForum';
+                }
             } catch (e) {}
         }
         function filterByCategory(el) {

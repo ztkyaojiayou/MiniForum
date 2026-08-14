@@ -8,12 +8,14 @@ import com.tkzou.miniforum.dto.TagInfo;
 import com.tkzou.miniforum.entity.Like;
 import com.tkzou.miniforum.entity.Notification;
 import com.tkzou.miniforum.entity.Post;
+import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.exception.BusinessException;
 import com.tkzou.miniforum.exception.ResourceNotFoundException;
 import com.tkzou.miniforum.repository.CommentRepository;
 import com.tkzou.miniforum.repository.FavoriteRepository;
 import com.tkzou.miniforum.repository.LikeRepository;
 import com.tkzou.miniforum.repository.PostRepository;
+import com.tkzou.miniforum.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -74,17 +76,20 @@ public class PostService {
     private final CommentRepository commentRepository;
     private final FavoriteRepository favoriteRepository;
     private final NotificationService notificationService;
+    private final UserRepository userRepository;
 
     public PostService(PostRepository postRepository,
                        LikeRepository likeRepository,
                        CommentRepository commentRepository,
                        FavoriteRepository favoriteRepository,
-                       NotificationService notificationService) {
+                       NotificationService notificationService,
+                       UserRepository userRepository) {
         this.postRepository = postRepository;
         this.likeRepository = likeRepository;
         this.commentRepository = commentRepository;
         this.favoriteRepository = favoriteRepository;
         this.notificationService = notificationService;
+        this.userRepository = userRepository;
     }
 
     /** 发帖（publish=false 时存为草稿） */
@@ -100,6 +105,9 @@ public class PostService {
         post.setTopics(extractTopics(post.getContent()));
         post.setStatus(dto.getPublish() ? Post.STATUS_PUBLISHED : Post.STATUS_DRAFT);
         Post saved = postRepository.save(post);
+        if (Post.STATUS_PUBLISHED.equals(saved.getStatus())) {
+            notifyMentions(saved, author, authorId);
+        }
         return toVO(saved, author);
     }
 
@@ -158,6 +166,32 @@ public class PostService {
             }
         }
         return topics;
+    }
+
+    /** @提及 识别正则：匹配 @用户名（中英文、数字、下划线，1~20 字符） */
+    private static final Pattern MENTION_PATTERN = Pattern.compile("@([\\w\\u4e00-\\u9fa5]{1,20})");
+
+    /** 从内容中提取被 @ 的用户名（去重） */
+    private java.util.Set<String> extractMentions(String content) {
+        java.util.Set<String> mentions = new java.util.LinkedHashSet<>();
+        if (content == null || content.isBlank()) {
+            return mentions;
+        }
+        Matcher m = MENTION_PATTERN.matcher(content);
+        while (m.find()) {
+            mentions.add(m.group(1));
+        }
+        return mentions;
+    }
+
+    /** 为被 @ 的用户生成 MENTION 通知（用户不存在时静默忽略；@ 自己由 NotificationService 去重） */
+    private void notifyMentions(Post post, String actorUsername, Long actorId) {
+        String title = post.getTitle() == null ? "帖子" : post.getTitle();
+        for (String mentionName : extractMentions(post.getContent())) {
+            userRepository.findByUsername(mentionName).ifPresent(u ->
+                    notificationService.notify(u.getId(), actorId, actorUsername,
+                            Notification.TYPE_MENTION, post.getId(), "在帖子《" + title + "》中提到了你"));
+        }
     }
 
     /** 查看所有已发布帖子（最新在前，草稿与回收站中的帖子不出现） */
@@ -278,6 +312,12 @@ public class PostService {
         post.setCategory(normalizeCategory(dto.getCategory()));
         post.setTopics(extractTopics(post.getContent()));
         post.setStatus(publish ? Post.STATUS_PUBLISHED : Post.STATUS_DRAFT);
+        if (Post.STATUS_PUBLISHED.equals(post.getStatus())) {
+            Long actorId = userRepository.findByUsername(username)
+                    .map(User::getId)
+                    .orElse(post.getAuthorId());
+            notifyMentions(post, username, actorId);
+        }
         return toVO(postRepository.save(post), username);
     }
 
