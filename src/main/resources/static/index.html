@@ -498,16 +498,10 @@
         <div id="pagination" class="pagination"></div>
         </main>
 
-        <!-- 右栏：热搜榜 -->
+        <!-- 右栏：热门帖子榜 -->
         <aside class="side-right">
             <div class="side-card">
-                <h3 style="display:flex;justify-content:space-between;align-items:center;">🔥 热搜榜
-                    <a href="/hot.html" style="font-size:12px;color:var(--primary);text-decoration:none;font-weight:400;">完整榜单 ›</a>
-                </h3>
-                <ul class="hot-list" id="hotList"><li>加载中...</li></ul>
-            </div>
-            <div class="side-card">
-                <h3>🏆 热门帖子 TOP5</h3>
+                <h3>🔥 热门帖子</h3>
                 <ul class="hot-list" id="hotPostList"><li>加载中...</li></ul>
             </div>
         </aside>
@@ -894,25 +888,14 @@
             currentPage = 1;
             loadPosts(1);
         }
-        // ---------- 热搜榜 ----------
-        async function loadHotSearches() {
-            try {
-                const list = await request('/api/hot/search?limit=10');
-                const box = document.getElementById('hotList');
-                if (!list || list.length === 0) { box.innerHTML = '<li>暂无热搜</li>'; return; }
-                box.innerHTML = list.map(function (h) {
-                    return '<li onclick="location.href=\'/index.html?tag=' + encodeURIComponent(h.keyword) + '\'"><span class="hot-rank">' + h.rank + '</span><span><span class="hot-word">' + escapeHtml(h.keyword) + '</span><br><span class="hot-heat">热度 ' + (h.heat || 0) + ' · ' + (h.postCount || 0) + ' 帖</span></span></li>';
-                }).join('');
-            } catch (e) {}
-        }
-        // ---------- 热门帖子 TOP5 ----------
+        // ---------- 热门帖子榜 ----------
         async function loadHotPosts() {
             try {
-                const list = await request(POST_API + '/hot?limit=5');
+                const list = await request(POST_API + '/hot?limit=10');
                 const box = document.getElementById('hotPostList');
                 if (!list || list.length === 0) { box.innerHTML = '<li>暂无热门</li>'; return; }
                 box.innerHTML = list.map(function (p, idx) {
-                    return '<li onclick="location.href=\'/detail.html?id=' + p.id + '\'"><span class="hot-rank">' + (idx + 1) + '</span><span><span class="hot-word">' + escapeHtml(p.title || (p.content || '').slice(0, 20)) + '</span><br><span class="hot-heat">👁 ' + (p.viewCount || 0) + ' · ❤️ ' + (p.likeCount || 0) + '</span></span></li>';
+                    return '<li onclick="location.href=\'/detail.html?id=' + p.id + '\'"><span class="hot-rank">' + (idx + 1) + '</span><span><span class="hot-word">' + escapeHtml(p.title || (p.content || '').slice(0, 20)) + '</span><br><span class="hot-heat">👁 ' + (p.viewCount || 0) + ' · ❤️ ' + (p.likeCount || 0) + ' · 💬 ' + (p.commentCount || 0) + '</span></span></li>';
                 }).join('');
             } catch (e) {}
         }
@@ -1039,7 +1022,6 @@
                 loadUnreadCount();
                 loadMsgUnread();
                 loadCategories();
-                loadHotSearches();
                 loadHotPosts();
                 loadPosts();
             } catch (e) {
