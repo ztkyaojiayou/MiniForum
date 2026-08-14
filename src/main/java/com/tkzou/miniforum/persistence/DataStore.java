@@ -29,6 +29,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * JSON 文件持久化
@@ -63,6 +64,14 @@ public class DataStore implements ApplicationRunner {
     @Value("${app.persistence.enabled:true}")
     private boolean enabled;
 
+    /**
+     * 是否已完成启动加载。
+     * <p>
+     * 防止 {@link Scheduled} 定时保存早于 {@link #loadAll()} 执行：
+     * 若保存先于加载运行，会用内存中的空数据覆盖磁盘上已有数据文件。
+     */
+    private final AtomicBoolean loaded = new AtomicBoolean(false);
+
     public DataStore(ObjectMapper objectMapper,
                      UserRepository userRepository,
                      PostRepository postRepository,
@@ -89,6 +98,7 @@ public class DataStore implements ApplicationRunner {
     /** 从 data/*.json 恢复数据（幂等：文件不存在则跳过） */
     public synchronized void loadAll() {
         if (!enabled) {
+            loaded.set(true);
             return;
         }
         try {
@@ -98,15 +108,19 @@ public class DataStore implements ApplicationRunner {
             loadLikes();
             loadFollows();
             loadNotifications();
+            loadFavorites();
             log.info("数据持久化加载完成，目录: {}", dataDir);
         } catch (Exception e) {
             log.warn("数据持久化加载失败，将使用空数据启动: {}", e.getMessage());
+        } finally {
+            // 无论成败，加载阶段结束，后续定时保存才允许落盘
+            loaded.set(true);
         }
     }
 
     /** 将全部数据写入 data/*.json */
     public synchronized void saveAll() {
-        if (!enabled) {
+        if (!enabled || !loaded.get()) {
             return;
         }
         try {
@@ -195,5 +209,15 @@ public class DataStore implements ApplicationRunner {
         List<Notification> notifications = objectMapper.readValue(file.toFile(), new TypeReference<List<Notification>>() {});
         notificationRepository.importAll(notifications);
         notifications.stream().map(Notification::getId).max(Long::compareTo).ifPresent(Notification::resetIdGenerator);
+    }
+
+    private void loadFavorites() throws Exception {
+        Path file = Paths.get(dataDir, "favorites.json");
+        if (!Files.exists(file)) {
+            return;
+        }
+        List<Favorite> favorites = objectMapper.readValue(file.toFile(), new TypeReference<List<Favorite>>() {});
+        favoriteRepository.importAll(favorites);
+        favorites.stream().map(Favorite::getId).max(Long::compareTo).ifPresent(Favorite::resetIdGenerator);
     }
 }
