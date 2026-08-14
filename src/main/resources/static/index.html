@@ -72,6 +72,11 @@
         }
         .navbar .brand { font-size: 20px; font-weight: 700; color: var(--primary); }
         .navbar .nav-right { display: flex; align-items: center; gap: 12px; }
+        /* 顶部导航搜索框（居中显眼） */
+        .navbar .navbar-search { flex: 1; display: flex; justify-content: center; padding: 0 16px; }
+        .navbar .navbar-search .search-box input { width: 340px; padding: 7px 16px; border-radius: 18px; font-size: 14px; }
+        .navbar .navbar-search .search-box input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px var(--tag-bg); }
+        .navbar .navbar-search .btn-search { padding: 5px 16px; font-size: 13px; border-radius: 16px; }
         .nav-link {
             text-decoration: none;
             color: var(--muted-2);
@@ -414,6 +419,14 @@
     <!-- 顶部导航 -->
     <div class="navbar">
         <div class="brand">📢 动态广场</div>
+        <div class="navbar-search">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="搜索帖子/用户/话题..."
+                       onkeydown="if(event.key==='Enter')doSearch()">
+                <button class="btn btn-sm btn-search" onclick="doSearch()">🔍 搜索</button>
+                <button class="btn btn-sm btn-cancel" id="clearSearchBtn" style="display:none;" onclick="clearSearch()">清除</button>
+            </div>
+        </div>
         <div class="nav-right">
             <a class="nav-link" href="/quote.html">💡 灵感</a>
             <a class="nav-link" href="/wheel.html">🎡 转盘</a>
@@ -473,17 +486,11 @@
         </div>
 
         <!-- 帖子信息流 -->
-        <div class="feed-title" style="justify-content:space-between;">
+        <div class="feed-title">
             <div class="feed-tabs">
                 <button class="feed-tab active" id="tabLatest" onclick="switchFeed('latest')">📚 最新</button>
                 <button class="feed-tab" id="tabFollow" onclick="switchFeed('follow')">🔥 关注</button>
                 <button class="feed-tab" id="tabHot" onclick="switchFeed('hot')">🏆 热门</button>
-            </div>
-            <div class="search-box">
-                <input type="text" id="searchInput" placeholder="搜索帖子/用户/话题..."
-                       onkeydown="if(event.key==='Enter')doSearch()">
-                <button class="btn btn-sm btn-search" onclick="doSearch()">🔍 搜索</button>
-                <button class="btn btn-sm btn-cancel" id="clearSearchBtn" style="display:none;" onclick="clearSearch()">清除</button>
             </div>
         </div>
         <div id="userResult"></div>
