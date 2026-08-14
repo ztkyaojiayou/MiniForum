@@ -2,7 +2,7 @@
 
 一个基于 **Spring Boot 2.7 + Java 17** 的**微博风格轻量博客系统**，无需任何数据库与第三方中间件，开箱即用。支持发帖、分类、标签、话题、关注流、点赞、评论、收藏、转发、@提及、消息通知、站内私信、热搜榜、全文搜索、数据看板、深色模式等 **40+ 项功能**，全部前后端闭环，内置 11 个原生静态页面。
 
-> 🚀 **本项目由自研的 [nanobot-java-cli](https://github.com/ztkyaojiayou/my-first-nanobot-build-server) 编程 Agent 开发完成** —— 通过自然语言对话驱动需求规划、代码生成、重构、调试与迭代，展示了 AI 辅助编程在实际项目中的完整落地。
+> 🚀 **本项目由自研的 [nanocode](https://github.com/ztkyaojiayou/my-first-nanobot-build-server) 编程 Agent 开发完成** —— 通过自然语言对话驱动需求规划、代码生成、重构、调试与迭代，展示了 AI 辅助编程在实际项目中的完整落地。
 
 ## 功能特性
 
@@ -270,6 +270,6 @@ mvn test
 
 ## 关于
 
-本项目由自研的 **nanobot-java-cli** 编程 Agent 开发完成。nanobot-java-cli 是一款基于 Java 的 AI 编程助手命令行工具，能够理解自然语言指令，自动完成需求规划、代码编写、重构、调试与测试等开发任务，让开发者通过对话即可快速构建完整项目。本项目的全部功能（40+ 项）均由 AI 辅助完成开发与迭代。
+本项目由自研的 **nanocode** 编程 Agent 开发完成。nanocode 是一款基于 Java 的 AI 编程助手命令行工具，能够理解自然语言指令，自动完成需求规划、代码编写、重构、调试与测试等开发任务，让开发者通过对话即可快速构建完整项目。本项目的全部功能（40+ 项）均由 AI 辅助完成开发与迭代。
 
-如果你对 AI 辅助编程或 nanobot-java-cli 感兴趣，欢迎访问 [项目主页](https://github.com/ztkyaojiayou/my-first-nanobot-build-server) 了解更多。
+如果你对 AI 辅助编程或 nanocode 感兴趣，欢迎访问 [项目主页](https://github.com/ztkyaojiayou/my-first-nanobot-build-server) 了解更多。
