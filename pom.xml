@@ -11,7 +11,7 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
-    <groupId>com.example</groupId>
+    <groupId>com.tkzou</groupId>
     <artifactId>mini-forum</artifactId>
     <version>1.0.0</version>
     <name>mini-forum</name>

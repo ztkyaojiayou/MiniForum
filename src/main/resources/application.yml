@@ -16,4 +16,4 @@ app:
 
 logging:
   level:
-    com.example.miniforum: info
+    com.tkzou.miniforum: info

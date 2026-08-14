@@ -30,7 +30,7 @@
 
 ```
 my-first-nanobot-server/
-├── src/main/java/com/example/miniforum/
+├── src/main/java/com/tkzou/miniforum/
 │   ├── controller/          # REST 控制器
 │   │   ├── AuthController.java      # 登录认证接口
 │   │   ├── PostController.java      # 发帖 / 浏览动态接口
