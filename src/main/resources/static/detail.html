@@ -219,6 +219,7 @@
         <div class="nav-right">
             <a class="nav-link" href="/quote.html">💡 灵感</a>
             <a class="nav-link" href="/wheel.html">🎡 转盘</a>
+            <a class="nav-link" href="/notification.html">🔔 通知</a>
             <span class="username-tag">👤 <b id="currentUser"></b></span>
             <button class="theme-toggle" id="themeToggle" title="切换主题" onclick="toggleTheme()">🌙</button>
             <button class="logout-btn" onclick="logout()">退出</button>
@@ -302,6 +303,7 @@
                         <div class="article-content">${escapeHtml(p.content)}</div>
                         <div class="article-stats">
                             <button class="like-btn${p.likedByMe ? ' liked' : ''}" onclick="toggleLike(${p.id}, this)">❤️ <span class="like-num">${p.likeCount || 0}</span> 赞</button>
+                            <span class="stat-text">👁 ${p.viewCount || 0} 次阅读</span>
                             <span class="stat-text">💬 ${p.commentCount || 0} 条评论</span>
                         </div>
                         <div class="footer">#${p.id}</div>

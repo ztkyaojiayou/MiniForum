@@ -53,6 +53,18 @@ public class CommentRepository {
         storage.entrySet().removeIf(e -> e.getValue().getPostId().equals(postId));
     }
 
+    /** 按时间倒序返回全部评论（最新在前） */
+    public List<Comment> findAll() {
+        return storage.values().stream()
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .collect(Collectors.toList());
+    }
+
+    /** 评论总数 */
+    public long count() {
+        return storage.size();
+    }
+
     /** 导出全部评论（用于持久化，按 ID 升序） */
     public List<Comment> exportAll() {
         return storage.values().stream()

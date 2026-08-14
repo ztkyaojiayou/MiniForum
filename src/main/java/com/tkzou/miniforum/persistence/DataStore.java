@@ -1,11 +1,15 @@
 package com.tkzou.miniforum.persistence;
 
 import com.tkzou.miniforum.entity.Comment;
+import com.tkzou.miniforum.entity.Follow;
 import com.tkzou.miniforum.entity.Like;
+import com.tkzou.miniforum.entity.Notification;
 import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.repository.CommentRepository;
+import com.tkzou.miniforum.repository.FollowRepository;
 import com.tkzou.miniforum.repository.LikeRepository;
+import com.tkzou.miniforum.repository.NotificationRepository;
 import com.tkzou.miniforum.repository.PostRepository;
 import com.tkzou.miniforum.repository.UserRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -25,9 +29,9 @@ import java.nio.file.Paths;
 import java.util.List;
 
 /**
- * JSON 文件持久化（R9）
+ * JSON 文件持久化
  * <p>
- * 将内存中的用户、帖子、评论、点赞数据定时写入 <code>data/*.json</code> 文件，
+ * 将内存中的用户、帖子、评论、点赞、关注关系、通知数据定时写入 <code>data/*.json</code> 文件，
  * 应用启动完成后从文件恢复，从而解决「重启后数据丢失」的问题。
  * <ul>
  *   <li>启动：{@link #loadAll()}（ApplicationRunner，在所有 Bean 初始化后执行）</li>
@@ -45,6 +49,8 @@ public class DataStore implements ApplicationRunner {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final LikeRepository likeRepository;
+    private final FollowRepository followRepository;
+    private final NotificationRepository notificationRepository;
 
     /** 数据文件目录 */
     @Value("${app.data-dir:./data}")
@@ -58,12 +64,16 @@ public class DataStore implements ApplicationRunner {
                      UserRepository userRepository,
                      PostRepository postRepository,
                      CommentRepository commentRepository,
-                     LikeRepository likeRepository) {
+                     LikeRepository likeRepository,
+                     FollowRepository followRepository,
+                     NotificationRepository notificationRepository) {
         this.objectMapper = objectMapper;
         this.userRepository = userRepository;
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
         this.likeRepository = likeRepository;
+        this.followRepository = followRepository;
+        this.notificationRepository = notificationRepository;
     }
 
     @Override
@@ -81,6 +91,8 @@ public class DataStore implements ApplicationRunner {
             loadPosts();
             loadComments();
             loadLikes();
+            loadFollows();
+            loadNotifications();
             log.info("数据持久化加载完成，目录: {}", dataDir);
         } catch (Exception e) {
             log.warn("数据持久化加载失败，将使用空数据启动: {}", e.getMessage());
@@ -99,6 +111,8 @@ public class DataStore implements ApplicationRunner {
             objectMapper.writeValue(Paths.get(dataDir, "posts.json").toFile(), postRepository.exportAll());
             objectMapper.writeValue(Paths.get(dataDir, "comments.json").toFile(), commentRepository.exportAll());
             objectMapper.writeValue(Paths.get(dataDir, "likes.json").toFile(), likeRepository.exportAll());
+            objectMapper.writeValue(Paths.get(dataDir, "follows.json").toFile(), followRepository.exportAll());
+            objectMapper.writeValue(Paths.get(dataDir, "notifications.json").toFile(), notificationRepository.exportAll());
         } catch (Exception e) {
             log.warn("数据持久化保存失败: {}", e.getMessage());
         }
@@ -155,5 +169,25 @@ public class DataStore implements ApplicationRunner {
         List<Like> likes = objectMapper.readValue(file.toFile(), new TypeReference<List<Like>>() {});
         likeRepository.importAll(likes);
         likes.stream().map(Like::getId).max(Long::compareTo).ifPresent(Like::resetIdGenerator);
+    }
+
+    private void loadFollows() throws Exception {
+        Path file = Paths.get(dataDir, "follows.json");
+        if (!Files.exists(file)) {
+            return;
+        }
+        List<Follow> follows = objectMapper.readValue(file.toFile(), new TypeReference<List<Follow>>() {});
+        followRepository.importAll(follows);
+        follows.stream().map(Follow::getId).max(Long::compareTo).ifPresent(Follow::resetIdGenerator);
+    }
+
+    private void loadNotifications() throws Exception {
+        Path file = Paths.get(dataDir, "notifications.json");
+        if (!Files.exists(file)) {
+            return;
+        }
+        List<Notification> notifications = objectMapper.readValue(file.toFile(), new TypeReference<List<Notification>>() {});
+        notificationRepository.importAll(notifications);
+        notifications.stream().map(Notification::getId).max(Long::compareTo).ifPresent(Notification::resetIdGenerator);
     }
 }

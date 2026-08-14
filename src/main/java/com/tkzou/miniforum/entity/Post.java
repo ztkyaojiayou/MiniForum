@@ -46,6 +46,9 @@ public class Post {
     /** 点赞总数 */
     private long likeCount;
 
+    /** 阅读量（进入详情页时自增） */
+    private long viewCount;
+
     public Post() {
     }
 
@@ -139,5 +142,13 @@ public class Post {
 
     public void setLikeCount(long likeCount) {
         this.likeCount = likeCount;
+    }
+
+    public long getViewCount() {
+        return viewCount;
+    }
+
+    public void setViewCount(long viewCount) {
+        this.viewCount = viewCount;
     }
 }

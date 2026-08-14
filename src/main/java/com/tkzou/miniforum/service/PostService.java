@@ -5,6 +5,7 @@ import com.tkzou.miniforum.dto.PostCreateDTO;
 import com.tkzou.miniforum.dto.PostVO;
 import com.tkzou.miniforum.dto.TagInfo;
 import com.tkzou.miniforum.entity.Like;
+import com.tkzou.miniforum.entity.Notification;
 import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.exception.BusinessException;
 import com.tkzou.miniforum.exception.ResourceNotFoundException;
@@ -36,13 +37,16 @@ public class PostService {
     private final PostRepository postRepository;
     private final LikeRepository likeRepository;
     private final CommentRepository commentRepository;
+    private final NotificationService notificationService;
 
     public PostService(PostRepository postRepository,
                        LikeRepository likeRepository,
-                       CommentRepository commentRepository) {
+                       CommentRepository commentRepository,
+                       NotificationService notificationService) {
         this.postRepository = postRepository;
         this.likeRepository = likeRepository;
         this.commentRepository = commentRepository;
+        this.notificationService = notificationService;
     }
 
     /** 发帖（publish=false 时存为草稿） */
@@ -96,13 +100,31 @@ public class PostService {
                 .collect(Collectors.toList());
     }
 
-    /** 根据 ID 查询帖子，不存在时抛出异常；草稿仅作者本人/管理员可见 */
+    /** 根据 ID 查询帖子，不存在时抛出异常；草稿仅作者本人/管理员可见；查看已发布帖子时阅读量 +1 */
     public PostVO getById(Long id, String username) {
         Post post = getPostOrThrow(id);
         if (isDraft(post) && !isOwnerOrAdmin(post, username)) {
             throw new ResourceNotFoundException("帖子不存在：id=" + id);
         }
+        if (isPublished(post)) {
+            post.setViewCount(post.getViewCount() + 1);
+            postRepository.save(post);
+        }
         return toVO(post, username);
+    }
+
+    /** 热门排行：按阅读量降序（同阅读量按最新），默认取前 10 */
+    public List<PostVO> getHotPosts(int limit, String username) {
+        int safeLimit = Math.min(Math.max(limit, 1), 100);
+        return postRepository.findAll().stream()
+                .filter(this::isPublished)
+                .sorted((a, b) -> {
+                    int cmp = Long.compare(b.getViewCount(), a.getViewCount());
+                    return cmp != 0 ? cmp : b.getCreatedAt().compareTo(a.getCreatedAt());
+                })
+                .limit(safeLimit)
+                .map(p -> toVO(p, username))
+                .collect(Collectors.toList());
     }
 
     /** 分页查询已发布帖子（最新在前），支持按标签筛选 */
@@ -155,7 +177,7 @@ public class PostService {
         return toVO(postRepository.save(post), username);
     }
 
-    /** 删除帖子（仅作者本人/管理员，级联清理评论与点赞） */
+    /** 删除帖子（仅作者本人/管理员，级联清理评论、点赞与通知） */
     public void deletePost(Long id, String username) {
         Post post = getPostOrThrow(id);
         if (!isOwnerOrAdmin(post, username)) {
@@ -164,6 +186,7 @@ public class PostService {
         postRepository.deleteById(id);
         commentRepository.deleteByPostId(id);
         likeRepository.deleteByPostId(id);
+        notificationService.deleteByPostId(id);
     }
 
     /** 关键字搜索（忽略大小写，标题命中优先于内容命中，最新在前，不含草稿） */
@@ -205,8 +228,8 @@ public class PostService {
                 .collect(Collectors.toList());
     }
 
-    /** 点赞（同一用户对同一帖子只能点赞一次，草稿不可点赞） */
-    public PostVO like(Long postId, String username) {
+    /** 点赞（同一用户对同一帖子只能点赞一次，草稿不可点赞；点赞后通知作者） */
+    public PostVO like(Long postId, String username, Long actorId) {
         Post post = getPostOrThrow(postId);
         if (isDraft(post)) {
             throw new BusinessException("草稿不能点赞");
@@ -220,6 +243,9 @@ public class PostService {
         like.setCreatedAt(LocalDateTime.now());
         likeRepository.save(like);
         post.setLikeCount(post.getLikeCount() + 1);
+        // 通知帖子作者（给自己点赞不通知）
+        notificationService.notify(post.getAuthorId(), actorId, username,
+                Notification.TYPE_LIKE, postId, "赞了你的帖子《" + post.getTitle() + "》");
         return toVO(post, username);
     }
 
@@ -270,6 +296,7 @@ public class PostService {
     public PostVO toVO(Post post, String username) {
         PostVO vo = new PostVO(post);
         vo.setLikeCount(post.getLikeCount());
+        vo.setViewCount(post.getViewCount());
         vo.setLikedByMe(username != null
                 && likeRepository.findByPostIdAndUsername(post.getId(), username).isPresent());
         vo.setCommentCount(commentRepository.countByPostId(post.getId()));

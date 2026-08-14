@@ -98,6 +98,16 @@
         }
         .profile-card .p-name { font-size: 22px; font-weight: 700; color: var(--text-heading); }
         .profile-card .p-desc { font-size: 13px; color: var(--muted); margin-top: 6px; }
+        .profile-card .profile-stats { display: flex; gap: 16px; margin-top: 12px; }
+        .profile-card .p-stat { font-size: 13px; color: var(--muted-2); }
+        .profile-card .p-stat b { color: var(--primary); font-size: 16px; }
+        .btn {
+            background: var(--primary); color: #fff; border: none; border-radius: 18px;
+            padding: 8px 18px; font-size: 13px; cursor: pointer; transition: all .2s; flex-shrink: 0;
+        }
+        .btn:hover { background: var(--primary-hover); }
+        .follow-btn.following { background: transparent; border: 1px solid var(--border); color: var(--muted-2); }
+        .follow-btn.following:hover { border-color: var(--primary); color: var(--primary); background: transparent; }
         .feed-title { display: flex; align-items: center; justify-content: space-between; margin: 8px 0 16px; color: var(--text-heading); font-size: 18px; font-weight: 700; }
         .post {
             background: var(--card-bg); border-radius: 12px; box-shadow: 0 2px 12px var(--shadow-card);
@@ -159,6 +169,7 @@
             <a class="nav-link" href="/quote.html">💡 灵感</a>
             <a class="nav-link" href="/wheel.html">🎡 转盘</a>
             <a class="nav-link" href="/my.html">📝 我的文章</a>
+            <a class="nav-link" href="/notification.html">🔔 通知</a>
             <span class="username-tag">👤 <b id="currentUser"></b></span>
             <button class="theme-toggle" id="themeToggle" title="切换主题" onclick="toggleTheme()">🌙</button>
             <button class="logout-btn" onclick="logout()">退出</button>
@@ -169,10 +180,16 @@
         <a class="back-link" href="/index.html">← 返回动态列表</a>
         <div class="profile-card" id="profileCard">
             <div class="big-avatar" id="avatarChar">?</div>
-            <div>
+            <div style="flex:1; min-width:0;">
                 <div class="p-name" id="authorName">加载中...</div>
                 <div class="p-desc" id="authorDesc">Ta 的文章</div>
+                <div class="profile-stats">
+                    <span class="p-stat">📝 文章 <b id="statPostCount">0</b></span>
+                    <span class="p-stat">👥 粉丝 <b id="statFollowerCount">0</b></span>
+                    <span class="p-stat">❤️ 关注 <b id="statFollowingCount">0</b></span>
+                </div>
             </div>
+            <button class="btn follow-btn" id="followBtn" style="display:none;" onclick="toggleFollow()">➕ 关注</button>
         </div>
         <div class="feed-title"><span>📚 <span id="listTitle">Ta 的全部文章</span></span></div>
         <div id="loading" class="loading">加载中...</div>
@@ -223,6 +240,7 @@
         let currentPage = 1;
         const PAGE_SIZE = 10;
 
+        let ME_ID = null;
         async function loadUser() {
             if (!USER_ID) {
                 document.getElementById('authorName').textContent = '缺少用户 ID';
@@ -233,8 +251,41 @@
                 document.getElementById('avatarChar').textContent = (u.username || '?').charAt(0).toUpperCase();
                 document.getElementById('authorName').textContent = u.username;
                 document.getElementById('listTitle').textContent = u.username + ' 的全部文章';
+                try {
+                    const profile = await request('/api/users/' + USER_ID + '/profile');
+                    document.getElementById('statPostCount').textContent = profile.postCount || 0;
+                    document.getElementById('statFollowerCount').textContent = profile.followerCount || 0;
+                    document.getElementById('statFollowingCount').textContent = profile.followingCount || 0;
+                } catch (e) {}
+                // 关注状态：自己或不登录不显示关注按钮
+                if (ME_ID && Number(ME_ID) !== Number(USER_ID)) {
+                    const btn = document.getElementById('followBtn');
+                    btn.style.display = 'inline-block';
+                    try {
+                        const st = await request('/api/follows/status/' + USER_ID);
+                        btn.textContent = st.following ? '✔️ 已关注' : '➕ 关注';
+                        btn.className = 'btn follow-btn' + (st.following ? ' following' : '');
+                    } catch (e) {}
+                }
             } catch (e) {
                 document.getElementById('authorName').textContent = '用户不存在';
+                showToast('❌ ' + e.message, 'error');
+            }
+        }
+        async function toggleFollow() {
+            const btn = document.getElementById('followBtn');
+            const following = btn.classList.contains('following');
+            try {
+                if (following) {
+                    await request('/api/follows/' + USER_ID, { method: 'DELETE' });
+                    showToast('已取消关注', 'success');
+                } else {
+                    await request('/api/follows/' + USER_ID, { method: 'POST' });
+                    showToast('✅ 关注成功', 'success');
+                }
+                loadUser();
+                loadPosts();
+            } catch (e) {
                 showToast('❌ ' + e.message, 'error');
             }
         }
@@ -270,7 +321,8 @@
                             <div class="post-footer">
                                 <span class="post-id">#${p.id}</span>
                                 <div class="post-actions">
-                                    <span class="stat-link">❤️ ${p.likeCount || 0}</span>
+                                    <span class="stat-link">👁 ${p.viewCount || 0}</span>
+                                      <span class="stat-link">❤️ ${p.likeCount || 0}</span>
                                     <a class="stat-link" href="/detail.html?id=${p.id}">💬 ${p.commentCount || 0}</a>
                                     <a class="stat-link" href="/detail.html?id=${p.id}">📖 查看全文</a>
                                 </div>
@@ -320,6 +372,7 @@
                     return;
                 }
                 document.getElementById('currentUser').textContent = data.data.username;
+                ME_ID = data.data.id;
                 loadUser();
                 loadPosts();
             } catch (e) {

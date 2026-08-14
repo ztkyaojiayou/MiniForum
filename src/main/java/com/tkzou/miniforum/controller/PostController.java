@@ -89,6 +89,15 @@ public class PostController {
         return ResponseEntity.ok(Result.success(postService.search(keyword, username)));
     }
 
+    /** 热门排行（按阅读量降序） */
+    @GetMapping("/hot")
+    public ResponseEntity<Result<List<PostVO>>> getHotPosts(
+            @RequestParam(required = false, defaultValue = "10") Integer limit,
+            HttpSession session) {
+        String username = (String) session.getAttribute("username");
+        return ResponseEntity.ok(Result.success(postService.getHotPosts(limit, username)));
+    }
+
     /** 查看帖子详情（草稿仅作者本人/管理员可见） */
     @GetMapping("/{id}")
     public ResponseEntity<Result<PostVO>> getPostById(@PathVariable Long id,
@@ -121,7 +130,8 @@ public class PostController {
     public ResponseEntity<Result<PostVO>> like(@PathVariable Long id,
                                                HttpSession session) {
         String username = (String) session.getAttribute("username");
-        return ResponseEntity.ok(Result.success("点赞成功", postService.like(id, username)));
+        Long userId = (Long) session.getAttribute("userId");
+        return ResponseEntity.ok(Result.success("点赞成功", postService.like(id, username, userId)));
     }
 
     /** 取消点赞 */

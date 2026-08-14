@@ -5,6 +5,11 @@ import com.tkzou.miniforum.dto.UserUpdateDTO;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.exception.DuplicateUsernameException;
 import com.tkzou.miniforum.exception.ResourceNotFoundException;
+import com.tkzou.miniforum.repository.CommentRepository;
+import com.tkzou.miniforum.repository.FollowRepository;
+import com.tkzou.miniforum.repository.LikeRepository;
+import com.tkzou.miniforum.repository.NotificationRepository;
+import com.tkzou.miniforum.repository.PostRepository;
 import com.tkzou.miniforum.repository.UserRepository;
 import com.tkzou.miniforum.util.PasswordEncoder;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,7 +30,16 @@ class UserServiceTest {
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(new UserRepository());
+        UserRepository userRepository = new UserRepository();
+        PostRepository postRepository = new PostRepository();
+        FollowRepository followRepository = new FollowRepository();
+        LikeRepository likeRepository = new LikeRepository();
+        CommentRepository commentRepository = new CommentRepository();
+        NotificationRepository notificationRepository = new NotificationRepository();
+        NotificationService notificationService = new NotificationService(notificationRepository);
+        FollowService followService = new FollowService(followRepository, userRepository, postRepository,
+                likeRepository, commentRepository, notificationService);
+        userService = new UserService(userRepository, postRepository, followService);
     }
 
     private UserCreateDTO createDTO(String username, String email, String password, Integer age) {

@@ -41,6 +41,9 @@ public class PostVO {
     /** 评论总数 */
     private long commentCount;
 
+    /** 阅读量 */
+    private long viewCount;
+
     public PostVO() {
     }
 
@@ -141,5 +144,13 @@ public class PostVO {
 
     public void setCommentCount(long commentCount) {
         this.commentCount = commentCount;
+    }
+
+    public long getViewCount() {
+        return viewCount;
+    }
+
+    public void setViewCount(long viewCount) {
+        this.viewCount = viewCount;
     }
 }

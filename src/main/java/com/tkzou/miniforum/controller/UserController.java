@@ -3,6 +3,7 @@ package com.tkzou.miniforum.controller;
 import com.tkzou.miniforum.common.Result;
 import com.tkzou.miniforum.dto.PageResult;
 import com.tkzou.miniforum.dto.PostVO;
+import com.tkzou.miniforum.dto.ProfileVO;
 import com.tkzou.miniforum.dto.UserCreateDTO;
 import com.tkzou.miniforum.dto.UserUpdateDTO;
 import com.tkzou.miniforum.entity.User;
@@ -50,6 +51,12 @@ public class UserController {
     @GetMapping("/{id}")
     public ResponseEntity<Result<User>> getUserById(@PathVariable Long id) {
         return ResponseEntity.ok(Result.success(userService.getUserById(id)));
+    }
+
+    /** 个人主页聚合信息：用户资料 + 粉丝数 + 关注数 + 帖子数 */
+    @GetMapping("/{id}/profile")
+    public ResponseEntity<Result<ProfileVO>> getProfile(@PathVariable Long id) {
+        return ResponseEntity.ok(Result.success(userService.getProfile(id)));
     }
 
     /** 查询所有用户 */

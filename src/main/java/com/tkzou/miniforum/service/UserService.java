@@ -1,10 +1,13 @@
 package com.tkzou.miniforum.service;
 
+import com.tkzou.miniforum.dto.ProfileVO;
 import com.tkzou.miniforum.dto.UserCreateDTO;
 import com.tkzou.miniforum.dto.UserUpdateDTO;
+import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.exception.DuplicateUsernameException;
 import com.tkzou.miniforum.exception.ResourceNotFoundException;
+import com.tkzou.miniforum.repository.PostRepository;
 import com.tkzou.miniforum.repository.UserRepository;
 import com.tkzou.miniforum.util.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -18,9 +21,15 @@ import java.util.List;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PostRepository postRepository;
+    private final FollowService followService;
 
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository,
+                       PostRepository postRepository,
+                       FollowService followService) {
         this.userRepository = userRepository;
+        this.postRepository = postRepository;
+        this.followService = followService;
     }
 
     public User createUser(UserCreateDTO dto) {
@@ -38,6 +47,18 @@ public class UserService {
     public User getUserById(Long id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("用户不存在: id=" + id));
+    }
+
+    /** 个人主页聚合信息：用户资料 + 粉丝数 + 关注数 + 已发布帖子数 */
+    public ProfileVO getProfile(Long id) {
+        User user = getUserById(id);
+        ProfileVO vo = new ProfileVO(user);
+        vo.setFollowerCount(followService.countFollowers(id));
+        vo.setFollowingCount(followService.countFollowing(id));
+        vo.setPostCount(postRepository.findByAuthorId(id).stream()
+                .filter(p -> Post.STATUS_PUBLISHED.equals(p.getStatus()))
+                .count());
+        return vo;
     }
 
     public List<User> getAllUsers() {

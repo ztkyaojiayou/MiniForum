@@ -46,7 +46,8 @@ public class CommentController {
                                                     @Valid @RequestBody CommentCreateDTO dto,
                                                     HttpSession session) {
         String username = (String) session.getAttribute("username");
-        CommentVO created = commentService.addComment(postId, dto, username);
+        Long userId = (Long) session.getAttribute("userId");
+        CommentVO created = commentService.addComment(postId, dto, username, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(Result.success("评论成功", created));
     }
 

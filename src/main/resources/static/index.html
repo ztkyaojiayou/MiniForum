@@ -82,6 +82,11 @@
             border: 1px solid transparent;
         }
         .nav-link:hover { color: var(--primary); background: var(--composer-bg); }
+        .nav-badge {
+            display: inline-block; min-width: 18px; height: 18px; line-height: 18px;
+            background: #ff4d4f; color: #fff; font-size: 11px; text-align: center;
+            border-radius: 9px; padding: 0 5px; margin-left: 2px; vertical-align: top;
+        }
         .nav-link.btn-user {
             border: 1px solid var(--border);
             border-radius: 16px;
@@ -185,6 +190,22 @@
         .btn:disabled { opacity: 0.6; cursor: not-allowed; }
         /* ---- 帖子列表（微博式信息流） ---- */
         .feed-title { display: flex; align-items: center; gap: 8px; margin: 8px 0 16px; color: var(--text-heading); font-size: 18px; font-weight: 700; }
+        .feed-tabs { display: flex; gap: 8px; }
+        .feed-tab {
+            border: 1px solid var(--border); background: var(--card-bg); color: var(--muted-2);
+            font-size: 13px; padding: 6px 14px; border-radius: 16px; cursor: pointer; transition: all .2s;
+        }
+        .feed-tab:hover { border-color: var(--primary); color: var(--primary); }
+        .feed-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .stats-bar {
+            display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
+            background: var(--card-bg); border-radius: 12px; padding: 14px 20px;
+            box-shadow: 0 2px 12px var(--shadow-card); transition: background .3s;
+        }
+        .stats-bar .stat-item {
+            display: flex; align-items: baseline; gap: 4px; font-size: 12px; color: var(--muted-2);
+        }
+        .stats-bar .stat-item b { font-size: 20px; color: var(--primary); font-weight: 700; }
         .post {
             background: var(--card-bg);
             border-radius: 12px;
@@ -324,6 +345,7 @@
             <a class="nav-link" href="/quote.html">💡 灵感</a>
             <a class="nav-link" href="/wheel.html">🎡 转盘</a>
             <a class="nav-link" href="/my.html">📝 我的文章</a>
+            <a class="nav-link" href="/notification.html">🔔 通知<span class="nav-badge" id="navBadge" style="display:none;">0</span></a>
             <a class="nav-link btn-user" href="javascript:void(0)" onclick="openUserModal()">👥 用户管理</a>
             <span class="username-tag">👤 <b id="currentUser"></b></span>
             <button class="theme-toggle" id="themeToggle" title="切换主题" onclick="toggleTheme()">🌙</button>
@@ -344,9 +366,22 @@
             </div>
         </div>
 
+        <!-- 数据看板统计条 -->
+        <div class="stats-bar" id="statsBar">
+            <div class="stat-item" title="注册用户数">👥 <b id="statUsers">-</b><span>用户</span></div>
+            <div class="stat-item" title="已发布帖子数">📝 <b id="statPosts">-</b><span>帖子</span></div>
+            <div class="stat-item" title="评论总数">💬 <b id="statComments">-</b><span>评论</span></div>
+            <div class="stat-item" title="点赞总数">❤️ <b id="statLikes">-</b><span>点赞</span></div>
+            <div class="stat-item" title="今日新帖">🆕 <b id="statTodayPosts">-</b><span>今日帖</span></div>
+        </div>
+
         <!-- 帖子信息流 -->
         <div class="feed-title" style="justify-content:space-between;">
-          <span>📚 最新动态</span>
+          <div class="feed-tabs">
+              <button class="feed-tab active" id="tabLatest" onclick="switchFeed('latest')">📚 最新</button>
+              <button class="feed-tab" id="tabFollow" onclick="switchFeed('follow')">🔥 关注</button>
+              <button class="feed-tab" id="tabHot" onclick="switchFeed('hot')">🏆 热门</button>
+          </div>
           <div class="search-box">
               <input type="text" id="searchInput" placeholder="搜索标题/内容..."
                      onkeydown="if(event.key==='Enter')doSearch()">
@@ -492,6 +527,7 @@
         const PAGE_SIZE = 10;
         let searchKeyword = '';
         let activeTag = '';
+        let feedType = 'latest';
         async function loadPosts(page) {
             if (page) currentPage = page;
             const list = document.getElementById('postList');
@@ -502,6 +538,15 @@
                 if (searchKeyword) {
                     const searchRes = await request(POST_API + '/search?keyword=' + encodeURIComponent(searchKeyword));
                     posts = searchRes || [];
+                    total = posts.length;
+                    totalPages = 1;
+                } else if (feedType === 'follow') {
+                    const data = await request('/api/follows/feed?page=' + currentPage + '&size=' + PAGE_SIZE);
+                    posts = data.records || [];
+                    total = data.total;
+                    totalPages = data.totalPages;
+                } else if (feedType === 'hot') {
+                    posts = await request(POST_API + '/hot?limit=' + PAGE_SIZE) || [];
                     total = posts.length;
                     totalPages = 1;
                 } else {
@@ -517,6 +562,8 @@
                     let emptyMsg = '还没有动态，快来发布第一条吧～';
                     if (searchKeyword) emptyMsg = '没有找到相关动态';
                     else if (activeTag) emptyMsg = '该标签下暂无动态';
+                    else if (feedType === 'follow') emptyMsg = '你还没有关注任何人，快去关注感兴趣的博主吧～';
+                    else if (feedType === 'hot') emptyMsg = '暂无热门帖子～';
                     list.innerHTML = '<div class="empty">' + emptyMsg + '</div>';
                 } else {
                     posts.forEach((p, i) => {
@@ -539,7 +586,8 @@
                                 <span class="post-id">#${p.id}</span>
                                 <div class="post-actions">
                                     <button class="like-btn${p.likedByMe ? ' liked' : ''}" onclick="toggleLike(${p.id}, this)">❤️ <span class="like-num">${p.likeCount || 0}</span></button>
-                                    <a class="stat-link" href="/detail.html?id=${p.id}">💬 ${p.commentCount || 0}</a>
+                                    <span class="stat-link">👁 ${p.viewCount || 0}</span>
+                                      <a class="stat-link" href="/detail.html?id=${p.id}">💬 ${p.commentCount || 0}</a>
                                     <a class="post-detail-link" href="/detail.html?id=${p.id}">📖 查看全文</a>
                                 </div>
                             </div>`;
@@ -606,6 +654,44 @@
             document.getElementById('clearSearchBtn').style.display = 'none';
             currentPage = 1;
             loadPosts(1);
+        }
+        // ---------- 信息流切换（最新 / 关注 / 热门） ----------
+        function switchFeed(type) {
+            feedType = type;
+            searchKeyword = '';
+            activeTag = '';
+            document.getElementById('searchInput').value = '';
+            document.getElementById('clearSearchBtn').style.display = 'none';
+            document.getElementById('tabLatest').className = 'feed-tab' + (type === 'latest' ? ' active' : '');
+            document.getElementById('tabFollow').className = 'feed-tab' + (type === 'follow' ? ' active' : '');
+            document.getElementById('tabHot').className = 'feed-tab' + (type === 'hot' ? ' active' : '');
+            currentPage = 1;
+            loadPosts(1);
+        }
+        // ---------- 数据看板统计 ----------
+        async function loadStats() {
+            try {
+                const s = await request('/api/dashboard/stats');
+                document.getElementById('statUsers').textContent = s.totalUsers || 0;
+                document.getElementById('statPosts').textContent = s.totalPosts || 0;
+                document.getElementById('statComments').textContent = s.totalComments || 0;
+                document.getElementById('statLikes').textContent = s.totalLikes || 0;
+                document.getElementById('statTodayPosts').textContent = s.todayPosts || 0;
+            } catch (e) {}
+        }
+        // ---------- 通知未读数角标 ----------
+        async function loadUnreadCount() {
+            try {
+                const data = await request('/api/notifications/unread-count');
+                const badge = document.getElementById('navBadge');
+                const count = data.count || 0;
+                if (count > 0) {
+                    badge.textContent = count > 99 ? '99+' : count;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            } catch (e) {}
         }
         async function toggleLike(id, btn) {
             try {
@@ -700,6 +786,8 @@
                     return;
                 }
                 document.getElementById('currentUser').textContent = data.data.username;
+                loadStats();
+                loadUnreadCount();
                 loadPosts();
             } catch (e) {
                 window.location.href = '/login.html';
