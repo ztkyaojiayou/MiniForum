@@ -40,6 +40,9 @@ public class Post {
     /** 标签列表（可为空） */
     private List<String> tags = new ArrayList<>();
 
+    /** 分类（固定分类之一，空值/旧数据兜底为"其他"） */
+    private String category;
+
     /** 状态：DRAFT=草稿 / PUBLISHED=已发布（默认） */
     private String status = STATUS_PUBLISHED;
 
@@ -172,5 +175,13 @@ public class Post {
 
     public void setDeletedAt(LocalDateTime deletedAt) {
         this.deletedAt = deletedAt;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
     }
 }

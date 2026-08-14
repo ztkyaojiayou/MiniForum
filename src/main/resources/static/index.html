@@ -124,7 +124,61 @@
         }
         .theme-toggle:hover { border-color: var(--primary); }
         /* ===== 主内容 ===== */
-        .container { max-width: 720px; margin: 0 auto; padding: 24px 20px 60px; }
+        /* ===== 主内容 ===== */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px 20px 60px;
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+        /* 左栏：分类导航 */
+        .side-left { flex: 0 0 220px; position: sticky; top: 80px; }
+        /* 中栏：发帖 + 信息流 */
+        .main-center { flex: 1 1 auto; min-width: 0; }
+        /* 右栏：热搜榜 */
+        .side-right { flex: 0 0 300px; position: sticky; top: 80px; }
+        .side-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 2px 12px var(--shadow-card);
+            padding: 16px;
+            margin-bottom: 20px;
+            transition: background .3s;
+        }
+        .side-card h3 { font-size: 15px; font-weight: 700; color: var(--text-heading); margin-bottom: 12px; }
+        .cat-list { list-style: none; }
+        .cat-list li {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 12px; border-radius: 10px; cursor: pointer;
+            color: var(--muted-2); font-size: 14px; transition: all .2s;
+        }
+        .cat-list li:hover { background: var(--composer-bg); color: var(--primary); }
+        .cat-list li.active { background: var(--tag-bg); color: var(--tag-text); font-weight: 600; }
+        .cat-list li .cat-count { margin-left: auto; font-size: 12px; color: var(--muted); }
+        .hot-list { list-style: none; }
+        .hot-list li {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 9px 4px; border-bottom: 1px dashed var(--border-row); cursor: pointer; transition: all .2s;
+        }
+        .hot-list li:last-child { border-bottom: none; }
+        .hot-list li:hover { background: var(--composer-bg); border-radius: 8px; }
+        .hot-rank {
+            flex: 0 0 24px; height: 24px; line-height: 24px; text-align: center;
+            border-radius: 6px; font-size: 13px; font-weight: 700; background: var(--composer-bg); color: var(--muted-2);
+        }
+        .hot-list li:nth-child(-n+3) .hot-rank { background: #ff4d4f; color: #fff; }
+        .hot-word { font-size: 14px; color: var(--text); word-break: break-all; }
+        .hot-heat { font-size: 12px; color: var(--muted); }
+        .composer select {
+            width: 100%; padding: 10px 12px; margin-bottom: 10px;
+            border: 1px solid var(--border); border-radius: 10px; font-size: 13px;
+            background: var(--composer-bg); color: var(--text); transition: border-color .2s, background .3s, color .3s;
+        }
+        @media (max-width: 1024px) {
+            .side-left, .side-right { display: none; }
+        }
         /* ---- 发帖框（微博式） ---- */
         .composer {
             background: var(--card-bg);
@@ -354,10 +408,33 @@
     </div>
 
     <div class="container">
+        <!-- 左栏：帖子分类导航 -->
+        <aside class="side-left">
+            <div class="side-card">
+                <h3>📂 帖子分类</h3>
+                <ul class="cat-list" id="catList"><li>加载中...</li></ul>
+            </div>
+        </aside>
+        <!-- 中栏：发帖 + 信息流 -->
+        <main class="main-center">
         <!-- 发帖框（微博式，显眼） -->
         <div class="composer">
             <div class="composer-title"><span>✍️ 有什么新鲜事想分享？</span></div>
             <input type="text" id="postTitle" maxlength="100" placeholder="标题（选填）">
+            <select id="postCategory" title="选择分类">
+                <option value="">选择分类（可选）</option>
+                <option value="科技">💻 科技</option>
+                <option value="数码">📱 数码</option>
+                <option value="游戏">🎮 游戏</option>
+                <option value="娱乐">🎬 娱乐</option>
+                <option value="体育">⚽ 体育</option>
+                <option value="财经">💰 财经</option>
+                <option value="汽车">🚗 汽车</option>
+                <option value="时事">📰 时事</option>
+                <option value="教育">📚 教育</option>
+                <option value="生活">🏠 生活</option>
+                <option value="其他">✨ 其他</option>
+            </select>
             <textarea id="postContent" maxlength="5000" placeholder="分享你的想法、动态..."></textarea>
               <input type="text" class="tag-input" id="postTags" maxlength="120" placeholder="标签（可选，用空格分隔，最多5个，如：生活 随笔）">
             <div class="composer-actions">
@@ -391,7 +468,20 @@
       </div>
         <div id="loading" class="loading">加载中...</div>
         <div id="postList"></div>
-    <div id="pagination" class="pagination"></div>
+        <div id="pagination" class="pagination"></div>
+        </main>
+
+        <!-- 右栏：热搜榜 -->
+        <aside class="side-right">
+            <div class="side-card">
+                <h3>🔥 热搜榜</h3>
+                <ul class="hot-list" id="hotList"><li>加载中...</li></ul>
+            </div>
+            <div class="side-card">
+                <h3>🏆 热门帖子 TOP5</h3>
+                <ul class="hot-list" id="hotPostList"><li>加载中...</li></ul>
+            </div>
+        </aside>
     </div>
 
     <!-- 用户管理弹窗 -->
@@ -483,12 +573,13 @@
                 await request(POST_API, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title, content, tags, publish: true })
+                    body: JSON.stringify({ title, content, tags, category: document.getElementById('postCategory').value, publish: true })
                 });
                 showToast('✅ 发布成功', 'success');
                 document.getElementById('postTitle').value = '';
                 document.getElementById('postContent').value = '';
                 document.getElementById('postTags').value = '';
+                document.getElementById('postCategory').value = '';
                 loadPosts();
             } catch (e) {
                 showToast('❌ ' + e.message, 'error');
@@ -509,7 +600,7 @@
                 await request(POST_API, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title, content, tags, publish: false })
+                    body: JSON.stringify({ title, content, tags, category: document.getElementById('postCategory').value, publish: false })
                 });
                 showToast('\u2705 已保存为草稿', 'success');
                 document.getElementById('postTitle').value = '';
@@ -527,6 +618,7 @@
         const PAGE_SIZE = 10;
         let searchKeyword = '';
         let activeTag = '';
+        let activeCategory = '';
         let feedType = 'latest';
         async function loadPosts(page) {
             if (page) currentPage = page;
@@ -552,6 +644,7 @@
                 } else {
                     let url = POST_API + '?page=' + currentPage + '&size=' + PAGE_SIZE;
                     if (activeTag) url += '&tag=' + encodeURIComponent(activeTag);
+                    if (activeCategory) url += '&category=' + encodeURIComponent(activeCategory);
                     const data = await request(url);
                     posts = data.records || [];
                     total = data.total;
@@ -562,6 +655,7 @@
                     let emptyMsg = '还没有动态，快来发布第一条吧～';
                     if (searchKeyword) emptyMsg = '没有找到相关动态';
                     else if (activeTag) emptyMsg = '该标签下暂无动态';
+                    else if (activeCategory) emptyMsg = '该分类下暂无动态';
                     else if (feedType === 'follow') emptyMsg = '你还没有关注任何人，快去关注感兴趣的博主吧～';
                     else if (feedType === 'hot') emptyMsg = '暂无热门帖子～';
                     list.innerHTML = '<div class="empty">' + emptyMsg + '</div>';
@@ -660,6 +754,7 @@
             feedType = type;
             searchKeyword = '';
             activeTag = '';
+            activeCategory = '';
             document.getElementById('searchInput').value = '';
             document.getElementById('clearSearchBtn').style.display = 'none';
             document.getElementById('tabLatest').className = 'feed-tab' + (type === 'latest' ? ' active' : '');
@@ -668,6 +763,58 @@
             currentPage = 1;
             loadPosts(1);
         }
+        // ---------- 分类导航 ----------
+        async function loadCategories() {
+            try {
+                const cats = await request('/api/categories');
+                const box = document.getElementById('catList');
+                if (!cats || cats.length === 0) { box.innerHTML = '<li>暂无分类</li>'; return; }
+                box.innerHTML = cats.map(function (c) {
+                    return '<li data-cat="' + escapeHtml(c.name) + '" onclick="filterByCategory(this)"><span>' + (c.icon || '') + '</span> ' + escapeHtml(c.name) + '<span class="cat-count">' + (c.count || 0) + '</span></li>';
+                }).join('');
+            } catch (e) {}
+        }
+        function filterByCategory(el) {
+            const name = el.getAttribute('data-cat');
+            if (name === '全部动态') {
+                activeCategory = '';
+                document.querySelectorAll('#catList li').forEach(function (li) { li.classList.remove('active'); });
+                document.querySelector('#catList li[data-cat="全部动态"]').classList.add('active');
+            } else {
+                activeCategory = name;
+                document.querySelectorAll('#catList li').forEach(function (li) { li.classList.remove('active'); });
+                el.classList.add('active');
+            }
+            searchKeyword = '';
+            activeTag = '';
+            document.getElementById('searchInput').value = '';
+            document.getElementById('clearSearchBtn').style.display = 'none';
+            currentPage = 1;
+            loadPosts(1);
+        }
+        // ---------- 热搜榜 ----------
+        async function loadHotSearches() {
+            try {
+                const list = await request('/api/hot/search?limit=10');
+                const box = document.getElementById('hotList');
+                if (!list || list.length === 0) { box.innerHTML = '<li>暂无热搜</li>'; return; }
+                box.innerHTML = list.map(function (h) {
+                    return '<li onclick="location.href=\'/index.html?tag=' + encodeURIComponent(h.keyword) + '\'"><span class="hot-rank">' + h.rank + '</span><span><span class="hot-word">' + escapeHtml(h.keyword) + '</span><br><span class="hot-heat">热度 ' + (h.heat || 0) + ' · ' + (h.postCount || 0) + ' 帖</span></span></li>';
+                }).join('');
+            } catch (e) {}
+        }
+        // ---------- 热门帖子 TOP5 ----------
+        async function loadHotPosts() {
+            try {
+                const list = await request(POST_API + '/hot?limit=5');
+                const box = document.getElementById('hotPostList');
+                if (!list || list.length === 0) { box.innerHTML = '<li>暂无热门</li>'; return; }
+                box.innerHTML = list.map(function (p, idx) {
+                    return '<li onclick="location.href=\'/detail.html?id=' + p.id + '\'"><span class="hot-rank">' + (idx + 1) + '</span><span><span class="hot-word">' + escapeHtml(p.title || (p.content || '').slice(0, 20)) + '</span><br><span class="hot-heat">👁 ' + (p.viewCount || 0) + ' · ❤️ ' + (p.likeCount || 0) + '</span></span></li>';
+                }).join('');
+            } catch (e) {}
+        }
+
         // ---------- 数据看板统计 ----------
         async function loadStats() {
             try {
@@ -788,6 +935,9 @@
                 document.getElementById('currentUser').textContent = data.data.username;
                 loadStats();
                 loadUnreadCount();
+                loadCategories();
+                loadHotSearches();
+                loadHotPosts();
                 loadPosts();
             } catch (e) {
                 window.location.href = '/login.html';

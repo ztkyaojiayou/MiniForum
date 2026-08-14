@@ -1,5 +1,6 @@
 package com.tkzou.miniforum.service;
 
+import com.tkzou.miniforum.dto.CategoryInfo;
 import com.tkzou.miniforum.dto.PageResult;
 import com.tkzou.miniforum.dto.PostCreateDTO;
 import com.tkzou.miniforum.dto.PostVO;
@@ -42,6 +43,30 @@ public class PostService {
     /** 管理员用户名（可编辑/删除任意帖子） */
     private static final String ADMIN_USERNAME = "admin";
 
+    /** 固定分类（不含"全部动态"虚拟分类，按左栏展示顺序） */
+    public static final List<String> CATEGORIES = List.of(
+            "科技", "数码", "游戏", "娱乐", "体育", "财经", "汽车", "时事", "教育", "生活", "其他");
+    /** 默认分类（分类为空或旧数据时的兜底值） */
+    public static final String CATEGORY_DEFAULT = "其他";
+    /** 分类图标映射 */
+    private static final Map<String, String> CATEGORY_ICONS = createCategoryIcons();
+
+    private static Map<String, String> createCategoryIcons() {
+        Map<String, String> icons = new HashMap<>();
+        icons.put("科技", "💻");
+        icons.put("数码", "📱");
+        icons.put("游戏", "🎮");
+        icons.put("娱乐", "🎬");
+        icons.put("体育", "⚽");
+        icons.put("财经", "💰");
+        icons.put("汽车", "🚗");
+        icons.put("时事", "📰");
+        icons.put("教育", "📚");
+        icons.put("生活", "🏠");
+        icons.put("其他", "✨");
+        return icons;
+    }
+
     private final PostRepository postRepository;
     private final LikeRepository likeRepository;
     private final CommentRepository commentRepository;
@@ -69,9 +94,22 @@ public class PostService {
         post.setAuthorId(authorId);
         post.setCreatedAt(LocalDateTime.now());
         post.setTags(normalizeTags(dto.getTags()));
+        post.setCategory(normalizeCategory(dto.getCategory()));
         post.setStatus(dto.getPublish() ? Post.STATUS_PUBLISHED : Post.STATUS_DRAFT);
         Post saved = postRepository.save(post);
         return toVO(saved, author);
+    }
+
+    /** 规范化并校验分类：空值兜底为"其他"，非法分类抛异常 */
+    private String normalizeCategory(String category) {
+        if (category == null || category.isBlank()) {
+            return CATEGORY_DEFAULT;
+        }
+        String c = category.trim();
+        if (!CATEGORIES.contains(c)) {
+            throw new BusinessException("无效的分类：" + c);
+        }
+        return c;
     }
 
     /**
@@ -141,8 +179,8 @@ public class PostService {
                 .collect(Collectors.toList());
     }
 
-    /** 分页查询已发布帖子（最新在前），支持按标签筛选 */
-    public PageResult<PostVO> getPosts(int page, int size, String tag, String username) {
+    /** 分页查询已发布帖子（最新在前），支持按标签、分类筛选 */
+    public PageResult<PostVO> getPosts(int page, int size, String tag, String category, String username) {
         int safePage = Math.max(page, 1);
         int safeSize = Math.min(Math.max(size, 1), 100);
         List<Post> all = postRepository.findAll().stream()
@@ -154,7 +192,37 @@ public class PostService {
                     .filter(p -> p.getTags() != null && p.getTags().contains(t))
                     .collect(Collectors.toList());
         }
+        if (category != null && !category.isBlank()) {
+            String c = category.trim();
+            all = all.stream()
+                    .filter(p -> c.equals(resolveCategory(p)))
+                    .collect(Collectors.toList());
+        }
         return paginate(all, safePage, safeSize, username);
+    }
+
+    /** 解析帖子分类：旧数据/空分类兜底为"其他"，保证筛选一致 */
+    private String resolveCategory(Post p) {
+        String c = p.getCategory();
+        return (c == null || c.isBlank()) ? CATEGORY_DEFAULT : c;
+    }
+
+    /** 获取全部固定分类及各分类已发布帖子数（含"全部动态"虚拟分类，置顶） */
+    public List<CategoryInfo> getAllCategories() {
+        Map<String, Long> countMap = new HashMap<>();
+        for (Post p : postRepository.findAll()) {
+            if (!isVisible(p)) {
+                continue;
+            }
+            String c = resolveCategory(p);
+            countMap.merge(c, 1L, Long::sum);
+        }
+        List<CategoryInfo> result = new ArrayList<>();
+        result.add(new CategoryInfo("全部动态", countMap.values().stream().mapToLong(Long::longValue).sum(), "🌐"));
+        for (String name : CATEGORIES) {
+            result.add(new CategoryInfo(name, countMap.getOrDefault(name, 0L), CATEGORY_ICONS.getOrDefault(name, "✨")));
+        }
+        return result;
     }
 
     /** 个人主页：某用户的全部已发布帖子（分页，最新在前） */
@@ -188,6 +256,7 @@ public class PostService {
         post.setTitle(dto.getTitle().trim());
         post.setContent(dto.getContent().trim());
         post.setTags(normalizeTags(dto.getTags()));
+        post.setCategory(normalizeCategory(dto.getCategory()));
         post.setStatus(publish ? Post.STATUS_PUBLISHED : Post.STATUS_DRAFT);
         return toVO(postRepository.save(post), username);
     }
@@ -382,6 +451,7 @@ public class PostService {
         vo.setFavoritedByMe(username != null
                 && favoriteRepository.findByPostIdAndUsername(post.getId(), username).isPresent());
         vo.setCommentCount(commentRepository.countByPostId(post.getId()));
+        vo.setCategory(resolveCategory(post));
         return vo;
     }
 }

@@ -47,12 +47,13 @@ public class PostController {
         return ResponseEntity.status(HttpStatus.CREATED).body(Result.success("发帖成功", created));
     }
 
-    /** 查看所有已发布帖子（支持分页、按标签筛选、status=DRAFT 查看自己的草稿） */
+    /** 查看所有已发布帖子（支持分页、按标签/分类筛选、status=DRAFT 查看自己的草稿） */
     @GetMapping
     public ResponseEntity<Result<?>> getAllPosts(
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,
             @RequestParam(required = false) String tag,
+            @RequestParam(required = false) String category,
             @RequestParam(required = false) String status,
             HttpSession session) {
         String username = (String) session.getAttribute("username");
@@ -67,7 +68,7 @@ public class PostController {
         }
         int p = page == null ? 1 : page;
         int s = size == null ? 10 : size;
-        return ResponseEntity.ok(Result.success(postService.getPosts(p, s, tag, username)));
+        return ResponseEntity.ok(Result.success(postService.getPosts(p, s, tag, category, username)));
     }
 
     /** 我的文章（当前用户全部帖子，可按 status=DRAFT/PUBLISHED 过滤，分页） */

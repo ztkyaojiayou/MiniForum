@@ -29,6 +29,9 @@ public class PostVO {
 
     private List<String> tags = new ArrayList<>();
 
+    /** 分类（固定分类之一，空值兜底为"其他"） */
+    private String category;
+
     /** 状态：DRAFT / PUBLISHED */
     private String status;
 
@@ -123,6 +126,14 @@ public class PostVO {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
     }
 
     public long getLikeCount() {
