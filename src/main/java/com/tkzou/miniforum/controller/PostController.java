@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.servlet.http.HttpSession;
 import javax.validation.Valid;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 发帖 / 查看帖子接口
@@ -47,13 +48,14 @@ public class PostController {
         return ResponseEntity.status(HttpStatus.CREATED).body(Result.success("发帖成功", created));
     }
 
-    /** 查看所有已发布帖子（支持分页、按标签/分类筛选、status=DRAFT 查看自己的草稿） */
+    /** 查看所有已发布帖子（支持分页、按标签/分类/话题筛选、status=DRAFT 查看自己的草稿） */
     @GetMapping
     public ResponseEntity<Result<?>> getAllPosts(
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,
             @RequestParam(required = false) String tag,
             @RequestParam(required = false) String category,
+            @RequestParam(required = false) String topic,
             @RequestParam(required = false) String status,
             HttpSession session) {
         String username = (String) session.getAttribute("username");
@@ -62,6 +64,9 @@ public class PostController {
             int p = page == null ? 1 : page;
             int s = size == null ? 10 : size;
             return ResponseEntity.ok(Result.success(postService.getMyPosts(username, "DRAFT", p, s)));
+        }
+        if (topic != null && !topic.isBlank()) {
+            return ResponseEntity.ok(Result.success(postService.getPostsByTopic(topic.trim(), username)));
         }
         if (page == null && size == null) {
             return ResponseEntity.ok(Result.success(postService.getAllPosts(username)));
@@ -159,5 +164,17 @@ public class PostController {
                                                  HttpSession session) {
         String username = (String) session.getAttribute("username");
         return ResponseEntity.ok(Result.success("已取消点赞", postService.unlike(id, username)));
+    }
+
+    /** 转发帖子（body: {"content": "转发评语"}） */
+    @PostMapping("/{id}/repost")
+    public ResponseEntity<Result<PostVO>> repost(@PathVariable Long id,
+                                                 @RequestBody(required = false) Map<String, String> body,
+                                                 HttpSession session) {
+        String username = (String) session.getAttribute("username");
+        Long userId = (Long) session.getAttribute("userId");
+        String comment = body == null ? null : body.get("content");
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(Result.success("转发成功", postService.repost(id, comment, username, userId)));
     }
 }

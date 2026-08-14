@@ -190,6 +190,7 @@
                 </div>
             </div>
             <button class="btn follow-btn" id="followBtn" style="display:none;" onclick="toggleFollow()">➕ 关注</button>
+            <a class="btn follow-btn" id="msgBtn" style="display:none;" href="/message.html?with=">💬 发私信</a>
         </div>
         <div class="feed-title"><span>📚 <span id="listTitle">Ta 的全部文章</span></span></div>
         <div id="loading" class="loading">加载中...</div>
@@ -261,6 +262,9 @@
                 if (ME_ID && Number(ME_ID) !== Number(USER_ID)) {
                     const btn = document.getElementById('followBtn');
                     btn.style.display = 'inline-block';
+                    const msgBtn = document.getElementById('msgBtn');
+                    msgBtn.href = '/message.html?with=' + USER_ID;
+                    msgBtn.style.display = 'inline-block';
                     try {
                         const st = await request('/api/follows/status/' + USER_ID);
                         btn.textContent = st.following ? '✔️ 已关注' : '➕ 关注';

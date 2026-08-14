@@ -344,6 +344,7 @@
                         <div class="article-stats">
                             <button class="like-btn${p.likedByMe ? ' liked' : ''}" onclick="toggleLike(${p.id}, this)">❤️ <span class="like-num">${p.likeCount || 0}</span> 赞</button>
                             <button class="fav-btn${p.favoritedByMe ? ' favorited' : ''}" onclick="toggleFavorite(${p.id}, this)">⭐ <span class="fav-text">${p.favoritedByMe ? '已收藏' : '收藏'}</span></button>
+                            <button class="like-btn" onclick="doRepost('${p.id}')">🔄 转发 <span>${p.repostCount || 0}</span></button>
                             <span class="stat-text">👁 ${p.viewCount || 0} 次阅读</span>
                             <span class="stat-text">💬 ${p.commentCount || 0} 条评论</span>
                         </div>
@@ -409,6 +410,23 @@
                 btn.classList.toggle('favorited');
                 btn.querySelector('.fav-text').textContent = isFav ? '收藏' : '已收藏';
                 showToast(isFav ? '已取消收藏' : '⭐ 收藏成功', 'success');
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
+            }
+        }
+        async function doRepost(id) {
+            const comment = prompt('转发时想说点什么？（可留空）');
+            if (comment === null) return;
+            try {
+                const res = await fetch('/api/posts/' + id + '/repost', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: comment })
+                });
+                const data = await res.json();
+                if (!res.ok || data.code !== 0) { throw new Error(data.message || '转发失败'); }
+                showToast('✅ 转发成功，可在首页信息流查看', 'success');
+                setTimeout(() => loadPost(), 800);
             } catch (e) {
                 showToast('❌ ' + e.message, 'error');
             }

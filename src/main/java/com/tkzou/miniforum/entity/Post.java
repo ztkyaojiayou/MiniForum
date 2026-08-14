@@ -40,6 +40,9 @@ public class Post {
     /** 标签列表（可为空） */
     private List<String> tags = new ArrayList<>();
 
+    /** 话题列表（从内容中自动提取的 #话题#，可为空） */
+    private List<String> topics = new ArrayList<>();
+
     /** 分类（固定分类之一，空值/旧数据兜底为"其他"） */
     private String category;
 
@@ -57,6 +60,15 @@ public class Post {
 
     /** 删除时间（软删除时记录，用于 30 天自动清理） */
     private LocalDateTime deletedAt;
+
+    /** 转发原帖 ID（null = 原创帖） */
+    private Long originalPostId;
+
+    /** 转发原帖作者 ID（用于跳转原帖作者主页） */
+    private Long originalAuthorId;
+
+    /** 转发原帖作者用户名 */
+    private String originalAuthor;
 
     public Post() {
     }
@@ -145,6 +157,14 @@ public class Post {
         this.tags = tags;
     }
 
+    public List<String> getTopics() {
+        return topics;
+    }
+
+    public void setTopics(List<String> topics) {
+        this.topics = topics;
+    }
+
     public long getLikeCount() {
         return likeCount;
     }
@@ -183,5 +203,29 @@ public class Post {
 
     public void setCategory(String category) {
         this.category = category;
+    }
+
+    public Long getOriginalPostId() {
+        return originalPostId;
+    }
+
+    public void setOriginalPostId(Long originalPostId) {
+        this.originalPostId = originalPostId;
+    }
+
+    public Long getOriginalAuthorId() {
+        return originalAuthorId;
+    }
+
+    public void setOriginalAuthorId(Long originalAuthorId) {
+        this.originalAuthorId = originalAuthorId;
+    }
+
+    public String getOriginalAuthor() {
+        return originalAuthor;
+    }
+
+    public void setOriginalAuthor(String originalAuthor) {
+        this.originalAuthor = originalAuthor;
     }
 }

@@ -16,6 +16,8 @@ public class Notification {
     public static final String TYPE_COMMENT = "COMMENT";
     /** 通知类型：关注 */
     public static final String TYPE_FOLLOW = "FOLLOW";
+    /** 通知类型：转发 */
+    public static final String TYPE_REPOST = "REPOST";
 
     /** 自增 ID 生成器（内存存储用） */
     private static final AtomicLong ID_GENERATOR = new AtomicLong(1);

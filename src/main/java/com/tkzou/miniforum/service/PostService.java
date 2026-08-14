@@ -24,6 +24,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -95,6 +97,7 @@ public class PostService {
         post.setCreatedAt(LocalDateTime.now());
         post.setTags(normalizeTags(dto.getTags()));
         post.setCategory(normalizeCategory(dto.getCategory()));
+        post.setTopics(extractTopics(post.getContent()));
         post.setStatus(dto.getPublish() ? Post.STATUS_PUBLISHED : Post.STATUS_DRAFT);
         Post saved = postRepository.save(post);
         return toVO(saved, author);
@@ -139,6 +142,22 @@ public class PostService {
             throw new BusinessException("最多添加 " + MAX_TAGS + " 个标签");
         }
         return result;
+    }
+
+    /** 从内容中自动提取 #话题#（最多 5 个，去重，话题最长 30 字符） */
+    private List<String> extractTopics(String content) {
+        if (content == null || content.isBlank()) {
+            return new ArrayList<>();
+        }
+        List<String> topics = new ArrayList<>();
+        Matcher m = Pattern.compile("#([^#\\s]{1,30})#").matcher(content);
+        while (m.find() && topics.size() < 5) {
+            String t = m.group(1).trim();
+            if (!t.isEmpty() && !topics.contains(t)) {
+                topics.add(t);
+            }
+        }
+        return topics;
     }
 
     /** 查看所有已发布帖子（最新在前，草稿与回收站中的帖子不出现） */
@@ -257,6 +276,7 @@ public class PostService {
         post.setContent(dto.getContent().trim());
         post.setTags(normalizeTags(dto.getTags()));
         post.setCategory(normalizeCategory(dto.getCategory()));
+        post.setTopics(extractTopics(post.getContent()));
         post.setStatus(publish ? Post.STATUS_PUBLISHED : Post.STATUS_DRAFT);
         return toVO(postRepository.save(post), username);
     }
@@ -333,7 +353,7 @@ public class PostService {
         }
     }
 
-    /** 关键字搜索（忽略大小写，标题命中优先于内容命中，最新在前，不含草稿与回收站） */
+    /** 关键字搜索（忽略大小写，标题命中优先于内容/标签命中，最新在前，不含草稿与回收站） */
     public List<PostVO> search(String keyword, String username) {
         if (keyword == null || keyword.isBlank()) {
             return new ArrayList<>();
@@ -341,8 +361,7 @@ public class PostService {
         String kw = keyword.trim().toLowerCase();
         return postRepository.findAll().stream()
                 .filter(this::isVisible)
-                .filter(p -> (p.getTitle() != null && p.getTitle().toLowerCase().contains(kw))
-                        || (p.getContent() != null && p.getContent().toLowerCase().contains(kw)))
+                .filter(p -> matchesKeyword(p, kw))
                 .sorted((a, b) -> {
                     boolean aTitle = a.getTitle() != null && a.getTitle().toLowerCase().contains(kw);
                     boolean bTitle = b.getTitle() != null && b.getTitle().toLowerCase().contains(kw);
@@ -353,6 +372,25 @@ public class PostService {
                 })
                 .map(p -> toVO(p, username))
                 .collect(Collectors.toList());
+    }
+
+    /** 帖子是否命中关键词：标题 / 内容 / 标签 / 话题 任一命中即可 */
+    private boolean matchesKeyword(Post p, String kw) {
+        if (p.getTitle() != null && p.getTitle().toLowerCase().contains(kw)) {
+            return true;
+        }
+        if (p.getContent() != null && p.getContent().toLowerCase().contains(kw)) {
+            return true;
+        }
+        if (p.getTags() != null && p.getTags().stream()
+                .anyMatch(t -> t != null && t.toLowerCase().contains(kw))) {
+            return true;
+        }
+        if (p.getTopics() != null && p.getTopics().stream()
+                .anyMatch(t -> t != null && t.toLowerCase().contains(kw))) {
+            return true;
+        }
+        return false;
     }
 
     /** 统计所有标签及其已发布帖子数（按帖子数降序） */
@@ -369,6 +407,37 @@ public class PostService {
         return counter.entrySet().stream()
                 .map(e -> new TagInfo(e.getKey(), e.getValue()))
                 .sorted((a, b) -> Long.compare(b.getCount(), a.getCount()))
+                .collect(Collectors.toList());
+    }
+
+    /** 统计所有话题及其已发布帖子数（按帖子数降序） */
+    public List<TagInfo> getAllTopics() {
+        Map<String, Long> counter = new HashMap<>();
+        for (Post p : postRepository.findAll()) {
+            if (!isVisible(p) || p.getTopics() == null) {
+                continue;
+            }
+            for (String topic : p.getTopics()) {
+                counter.merge(topic, 1L, Long::sum);
+            }
+        }
+        return counter.entrySet().stream()
+                .map(e -> new TagInfo(e.getKey(), e.getValue()))
+                .sorted((a, b) -> Long.compare(b.getCount(), a.getCount()))
+                .collect(Collectors.toList());
+    }
+
+    /** 按话题筛选已发布帖子（最新在前，不含草稿与回收站） */
+    public List<PostVO> getPostsByTopic(String topic, String username) {
+        if (topic == null || topic.isBlank()) {
+            return new ArrayList<>();
+        }
+        String t = topic.trim();
+        return postRepository.findAll().stream()
+                .filter(this::isVisible)
+                .filter(p -> p.getTopics() != null && p.getTopics().contains(t))
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .map(p -> toVO(p, username))
                 .collect(Collectors.toList());
     }
 
@@ -406,6 +475,48 @@ public class PostService {
         return toVO(post, username);
     }
 
+    /**
+     * 转发帖子：生成一条新的已发布帖子，内容携带转发评语与原帖摘要，
+     * 并通知原帖作者。
+     *
+     * @param postId  被转发的原帖 ID
+     * @param comment 转发评语（可为空）
+     */
+    public PostVO repost(Long postId, String comment, String username, Long actorId) {
+        Post original = getPostOrThrow(postId);
+        if (!isVisible(original)) {
+            throw new BusinessException("原帖不存在或不可转发");
+        }
+        String originalTitle = original.getTitle() == null ? "" : original.getTitle();
+        Post repost = new Post();
+        repost.setTitle("转发：" + originalTitle);
+        StringBuilder content = new StringBuilder();
+        if (comment != null && !comment.isBlank()) {
+            content.append(comment.trim()).append("\n\n");
+        }
+        content.append("// 转发自 @").append(original.getAuthor()).append("：")
+                .append(original.getContent() == null ? "" : original.getContent());
+        repost.setContent(content.toString());
+        repost.setAuthor(username);
+        repost.setAuthorId(actorId);
+        repost.setCreatedAt(LocalDateTime.now());
+        repost.setTags(new ArrayList<>());
+        repost.setCategory(resolveCategory(original));
+        repost.setTopics(extractTopics(repost.getContent()));
+        repost.setStatus(Post.STATUS_PUBLISHED);
+        repost.setOriginalPostId(original.getId());
+        repost.setOriginalAuthorId(original.getAuthorId());
+        repost.setOriginalAuthor(original.getAuthor());
+        Post saved = postRepository.save(repost);
+        // 通知原帖作者（转发自己的帖子不通知）
+        String brief = originalTitle.isBlank() && original.getContent() != null
+                ? original.getContent().substring(0, Math.min(20, original.getContent().length()))
+                : originalTitle;
+        notificationService.notify(original.getAuthorId(), actorId, username,
+                Notification.TYPE_REPOST, original.getId(), "转发了你的帖子《" + brief + "》");
+        return toVO(saved, username);
+    }
+
     /** 统一分页逻辑 */
     private PageResult<PostVO> paginate(List<Post> all, int page, int size, String username) {
         long total = all.size();
@@ -441,7 +552,7 @@ public class PostService {
         return p.getAuthor().equals(username) || ADMIN_USERNAME.equals(username);
     }
 
-    /** 转换为视图对象，附带点赞数、收藏状态、当前用户点赞状态与评论数 */
+    /** 转换为视图对象，附带点赞数、收藏状态、当前用户点赞状态、评论数与转发数 */
     public PostVO toVO(Post post, String username) {
         PostVO vo = new PostVO(post);
         vo.setLikeCount(post.getLikeCount());
@@ -452,6 +563,14 @@ public class PostService {
                 && favoriteRepository.findByPostIdAndUsername(post.getId(), username).isPresent());
         vo.setCommentCount(commentRepository.countByPostId(post.getId()));
         vo.setCategory(resolveCategory(post));
+        vo.setRepostCount(countReposts(post.getId()));
         return vo;
+    }
+
+    /** 统计某帖被转发的次数（仅统计可见的转发帖） */
+    private long countReposts(Long postId) {
+        return postRepository.findAll().stream()
+                .filter(p -> postId.equals(p.getOriginalPostId()) && isVisible(p))
+                .count();
     }
 }

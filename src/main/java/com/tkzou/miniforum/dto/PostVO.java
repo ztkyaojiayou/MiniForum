@@ -29,6 +29,9 @@ public class PostVO {
 
     private List<String> tags = new ArrayList<>();
 
+    /** 话题列表（内容中自动提取的 #话题#） */
+    private List<String> topics = new ArrayList<>();
+
     /** 分类（固定分类之一，空值兜底为"其他"） */
     private String category;
 
@@ -50,6 +53,15 @@ public class PostVO {
     /** 阅读量 */
     private long viewCount;
 
+    /** 转发原帖 ID（null = 原创帖） */
+    private Long originalPostId;
+
+    /** 转发原帖作者用户名 */
+    private String originalAuthor;
+
+    /** 转发数（统计转发该帖的帖子数） */
+    private long repostCount;
+
     public PostVO() {
     }
 
@@ -61,7 +73,10 @@ public class PostVO {
         this.authorId = post.getAuthorId();
         this.createdAt = post.getCreatedAt();
         this.tags = post.getTags() == null ? new ArrayList<>() : new ArrayList<>(post.getTags());
+        this.topics = post.getTopics() == null ? new ArrayList<>() : new ArrayList<>(post.getTopics());
         this.status = post.getStatus();
+        this.originalPostId = post.getOriginalPostId();
+        this.originalAuthor = post.getOriginalAuthor();
     }
 
     public Long getId() {
@@ -120,6 +135,14 @@ public class PostVO {
         this.tags = tags;
     }
 
+    public List<String> getTopics() {
+        return topics;
+    }
+
+    public void setTopics(List<String> topics) {
+        this.topics = topics;
+    }
+
     public String getStatus() {
         return status;
     }
@@ -174,5 +197,29 @@ public class PostVO {
 
     public void setViewCount(long viewCount) {
         this.viewCount = viewCount;
+    }
+
+    public Long getOriginalPostId() {
+        return originalPostId;
+    }
+
+    public void setOriginalPostId(Long originalPostId) {
+        this.originalPostId = originalPostId;
+    }
+
+    public String getOriginalAuthor() {
+        return originalAuthor;
+    }
+
+    public void setOriginalAuthor(String originalAuthor) {
+        this.originalAuthor = originalAuthor;
+    }
+
+    public long getRepostCount() {
+        return repostCount;
+    }
+
+    public void setRepostCount(long repostCount) {
+        this.repostCount = repostCount;
     }
 }

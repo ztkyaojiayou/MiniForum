@@ -1,18 +1,24 @@
 package com.tkzou.miniforum.persistence;
 
 import com.tkzou.miniforum.entity.Comment;
+import com.tkzou.miniforum.entity.Conversation;
 import com.tkzou.miniforum.entity.Favorite;
 import com.tkzou.miniforum.entity.Follow;
 import com.tkzou.miniforum.entity.Like;
+import com.tkzou.miniforum.entity.Message;
 import com.tkzou.miniforum.entity.Notification;
 import com.tkzou.miniforum.entity.Post;
+import com.tkzou.miniforum.entity.SearchRecord;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.repository.CommentRepository;
+import com.tkzou.miniforum.repository.ConversationRepository;
 import com.tkzou.miniforum.repository.FavoriteRepository;
 import com.tkzou.miniforum.repository.FollowRepository;
 import com.tkzou.miniforum.repository.LikeRepository;
+import com.tkzou.miniforum.repository.MessageRepository;
 import com.tkzou.miniforum.repository.NotificationRepository;
 import com.tkzou.miniforum.repository.PostRepository;
+import com.tkzou.miniforum.repository.SearchRecordRepository;
 import com.tkzou.miniforum.repository.UserRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,8 +40,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * JSON 文件持久化
  * <p>
- * 将内存中的用户、帖子、评论、点赞、关注关系、通知数据定时写入 <code>data/*.json</code> 文件，
- * 应用启动完成后从文件恢复，从而解决「重启后数据丢失」的问题。
+ * 将内存中的用户、帖子、评论、点赞、关注关系、通知、收藏、搜索词、私信会话与消息数据
+ * 定时写入 <code>data/*.json</code> 文件，应用启动完成后从文件恢复，
+ * 从而解决「重启后数据丢失」的问题。
  * <ul>
  *   <li>启动：{@link #loadAll()}（ApplicationRunner，在所有 Bean 初始化后执行）</li>
  *   <li>运行：{@link #saveAll()} 定时保存（默认 30 秒一次）</li>
@@ -55,6 +62,9 @@ public class DataStore implements ApplicationRunner {
     private final FollowRepository followRepository;
     private final NotificationRepository notificationRepository;
     private final FavoriteRepository favoriteRepository;
+    private final SearchRecordRepository searchRecordRepository;
+    private final ConversationRepository conversationRepository;
+    private final MessageRepository messageRepository;
 
     /** 数据文件目录 */
     @Value("${app.data-dir:./data}")
@@ -79,7 +89,10 @@ public class DataStore implements ApplicationRunner {
                      LikeRepository likeRepository,
                      FollowRepository followRepository,
                      NotificationRepository notificationRepository,
-                     FavoriteRepository favoriteRepository) {
+                     FavoriteRepository favoriteRepository,
+                     SearchRecordRepository searchRecordRepository,
+                     ConversationRepository conversationRepository,
+                     MessageRepository messageRepository) {
         this.objectMapper = objectMapper;
         this.userRepository = userRepository;
         this.postRepository = postRepository;
@@ -88,6 +101,9 @@ public class DataStore implements ApplicationRunner {
         this.followRepository = followRepository;
         this.notificationRepository = notificationRepository;
         this.favoriteRepository = favoriteRepository;
+        this.searchRecordRepository = searchRecordRepository;
+        this.conversationRepository = conversationRepository;
+        this.messageRepository = messageRepository;
     }
 
     @Override
@@ -109,6 +125,9 @@ public class DataStore implements ApplicationRunner {
             loadFollows();
             loadNotifications();
             loadFavorites();
+            loadSearchRecords();
+            loadConversations();
+            loadMessages();
             log.info("数据持久化加载完成，目录: {}", dataDir);
         } catch (Exception e) {
             log.warn("数据持久化加载失败，将使用空数据启动: {}", e.getMessage());
@@ -133,6 +152,9 @@ public class DataStore implements ApplicationRunner {
             objectMapper.writeValue(Paths.get(dataDir, "follows.json").toFile(), followRepository.exportAll());
             objectMapper.writeValue(Paths.get(dataDir, "notifications.json").toFile(), notificationRepository.exportAll());
             objectMapper.writeValue(Paths.get(dataDir, "favorites.json").toFile(), favoriteRepository.exportAll());
+            objectMapper.writeValue(Paths.get(dataDir, "search-records.json").toFile(), searchRecordRepository.exportAll());
+            objectMapper.writeValue(Paths.get(dataDir, "conversations.json").toFile(), conversationRepository.exportAll());
+            objectMapper.writeValue(Paths.get(dataDir, "messages.json").toFile(), messageRepository.exportAll());
         } catch (Exception e) {
             log.warn("数据持久化保存失败: {}", e.getMessage());
         }
@@ -219,5 +241,35 @@ public class DataStore implements ApplicationRunner {
         List<Favorite> favorites = objectMapper.readValue(file.toFile(), new TypeReference<List<Favorite>>() {});
         favoriteRepository.importAll(favorites);
         favorites.stream().map(Favorite::getId).max(Long::compareTo).ifPresent(Favorite::resetIdGenerator);
+    }
+
+    private void loadSearchRecords() throws Exception {
+        Path file = Paths.get(dataDir, "search-records.json");
+        if (!Files.exists(file)) {
+            return;
+        }
+        List<SearchRecord> records = objectMapper.readValue(file.toFile(), new TypeReference<List<SearchRecord>>() {});
+        searchRecordRepository.importAll(records);
+        records.stream().map(SearchRecord::getId).max(Long::compareTo).ifPresent(SearchRecord::resetIdGenerator);
+    }
+
+    private void loadConversations() throws Exception {
+        Path file = Paths.get(dataDir, "conversations.json");
+        if (!Files.exists(file)) {
+            return;
+        }
+        List<Conversation> conversations = objectMapper.readValue(file.toFile(), new TypeReference<List<Conversation>>() {});
+        conversationRepository.importAll(conversations);
+        conversations.stream().map(Conversation::getId).max(Long::compareTo).ifPresent(Conversation::resetIdGenerator);
+    }
+
+    private void loadMessages() throws Exception {
+        Path file = Paths.get(dataDir, "messages.json");
+        if (!Files.exists(file)) {
+            return;
+        }
+        List<Message> messages = objectMapper.readValue(file.toFile(), new TypeReference<List<Message>>() {});
+        messageRepository.importAll(messages);
+        messages.stream().map(Message::getId).max(Long::compareTo).ifPresent(Message::resetIdGenerator);
     }
 }

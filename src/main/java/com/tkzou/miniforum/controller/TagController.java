@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * 标签接口：返回所有标签及其帖子数
+ * 标签 / 话题接口：返回所有标签、话题及其帖子数
  */
 @RestController
 @RequestMapping("/api/tags")
@@ -26,5 +26,11 @@ public class TagController {
     @GetMapping
     public ResponseEntity<Result<List<TagInfo>>> getTags() {
         return ResponseEntity.ok(Result.success(postService.getAllTags()));
+    }
+
+    /** 话题列表（内容中 #话题# 聚合，按帖子数降序） */
+    @GetMapping("/topics")
+    public ResponseEntity<Result<List<TagInfo>>> getTopics() {
+        return ResponseEntity.ok(Result.success(postService.getAllTopics()));
     }
 }

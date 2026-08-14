@@ -389,6 +389,25 @@
         .toast.success { background: #52c41a; }
         .fade-in { animation: fadeIn .4s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .topic-chip {
+            display: inline-block; color: var(--primary); cursor: pointer;
+            background: var(--tag-bg); border-radius: 4px; padding: 0 4px;
+            font-weight: 600; transition: all .2s;
+        }
+        .topic-chip:hover { opacity: .8; }
+        .post-repost-source {
+            font-size: 13px; color: var(--muted); background: var(--composer-bg);
+            border-radius: 8px; padding: 8px 10px; margin: 8px 0;
+            border-left: 3px solid var(--primary);
+        }
+        .post-repost-source a { color: var(--primary); text-decoration: none; }
+        .user-result-list { display: flex; flex-wrap: wrap; gap: 8px; }
+        .user-result-item {
+            display: inline-block; padding: 6px 12px; border-radius: 16px;
+            background: var(--composer-bg); color: var(--muted-2); font-size: 13px;
+            text-decoration: none; transition: all .2s; border: 1px solid var(--border);
+        }
+        .user-result-item:hover { border-color: var(--primary); color: var(--primary); }
     </style>
 </head>
 <body>
@@ -399,6 +418,7 @@
             <a class="nav-link" href="/quote.html">💡 灵感</a>
             <a class="nav-link" href="/wheel.html">🎡 转盘</a>
             <a class="nav-link" href="/my.html">📝 我的文章</a>
+            <a class="nav-link" href="/message.html">💬 私信<span class="nav-badge" id="msgBadge" style="display:none;">0</span></a>
             <a class="nav-link" href="/notification.html">🔔 通知<span class="nav-badge" id="navBadge" style="display:none;">0</span></a>
             <a class="nav-link btn-user" href="javascript:void(0)" onclick="openUserModal()">👥 用户管理</a>
             <span class="username-tag">👤 <b id="currentUser"></b></span>
@@ -454,18 +474,19 @@
 
         <!-- 帖子信息流 -->
         <div class="feed-title" style="justify-content:space-between;">
-          <div class="feed-tabs">
-              <button class="feed-tab active" id="tabLatest" onclick="switchFeed('latest')">📚 最新</button>
-              <button class="feed-tab" id="tabFollow" onclick="switchFeed('follow')">🔥 关注</button>
-              <button class="feed-tab" id="tabHot" onclick="switchFeed('hot')">🏆 热门</button>
-          </div>
-          <div class="search-box">
-              <input type="text" id="searchInput" placeholder="搜索标题/内容..."
-                     onkeydown="if(event.key==='Enter')doSearch()">
-              <button class="btn btn-sm btn-search" onclick="doSearch()">🔍 搜索</button>
-              <button class="btn btn-sm btn-cancel" id="clearSearchBtn" style="display:none;" onclick="clearSearch()">清除</button>
-          </div>
-      </div>
+            <div class="feed-tabs">
+                <button class="feed-tab active" id="tabLatest" onclick="switchFeed('latest')">📚 最新</button>
+                <button class="feed-tab" id="tabFollow" onclick="switchFeed('follow')">🔥 关注</button>
+                <button class="feed-tab" id="tabHot" onclick="switchFeed('hot')">🏆 热门</button>
+            </div>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="搜索帖子/用户/话题..."
+                       onkeydown="if(event.key==='Enter')doSearch()">
+                <button class="btn btn-sm btn-search" onclick="doSearch()">🔍 搜索</button>
+                <button class="btn btn-sm btn-cancel" id="clearSearchBtn" style="display:none;" onclick="clearSearch()">清除</button>
+            </div>
+        </div>
+        <div id="userResult"></div>
         <div id="loading" class="loading">加载中...</div>
         <div id="postList"></div>
         <div id="pagination" class="pagination"></div>
@@ -516,6 +537,21 @@
                     <tbody id="userBody"></tbody>
                 </table>
                 <div id="userEmpty" class="empty" style="display:none;">暂无用户</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 转发弹窗 -->
+    <div class="modal-mask" id="repostModal">
+        <div class="modal">
+            <h3>🔄 转发动态</h3>
+            <div class="form-group">
+                <label>说说你的想法（选填）</label>
+                <textarea id="repostContent" maxlength="500" placeholder="转发时想说点什么..."></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-cancel" onclick="closeRepostModal()">取消</button>
+                <button class="btn" onclick="doRepost()">🔄 转发</button>
             </div>
         </div>
     </div>
@@ -619,6 +655,7 @@
         let searchKeyword = '';
         let activeTag = '';
         let activeCategory = '';
+        let activeTopic = '';
         let feedType = 'latest';
         async function loadPosts(page) {
             if (page) currentPage = page;
@@ -628,10 +665,11 @@
             try {
                 let posts = [], total = 0, totalPages = 0;
                 if (searchKeyword) {
-                    const searchRes = await request(POST_API + '/search?keyword=' + encodeURIComponent(searchKeyword));
-                    posts = searchRes || [];
+                    const searchRes = await request('/api/search?keyword=' + encodeURIComponent(searchKeyword));
+                    posts = (searchRes && searchRes.posts) || [];
                     total = posts.length;
                     totalPages = 1;
+                    renderUserResults(searchRes ? searchRes.users : []);
                 } else if (feedType === 'follow') {
                     const data = await request('/api/follows/feed?page=' + currentPage + '&size=' + PAGE_SIZE);
                     posts = data.records || [];
@@ -645,12 +683,14 @@
                     let url = POST_API + '?page=' + currentPage + '&size=' + PAGE_SIZE;
                     if (activeTag) url += '&tag=' + encodeURIComponent(activeTag);
                     if (activeCategory) url += '&category=' + encodeURIComponent(activeCategory);
+                    if (activeTopic) url += '&topic=' + encodeURIComponent(activeTopic);
                     const data = await request(url);
                     posts = data.records || [];
                     total = data.total;
                     totalPages = data.totalPages;
                 }
                 list.innerHTML = '';
+                if (!searchKeyword) document.getElementById('userResult').innerHTML = '';
                 if (!posts || posts.length === 0) {
                     let emptyMsg = '还没有动态，快来发布第一条吧～';
                     if (searchKeyword) emptyMsg = '没有找到相关动态';
@@ -675,11 +715,13 @@
                             </div>
                             ${p.title ? `<div class="post-title"><a class="post-title-link" href="/detail.html?id=${p.id}">${escapeHtml(p.title)}</a></div>` : ''}
                             ${renderTags(p.tags)}
-                            <div class="post-content">${escapeHtml(p.content)}</div>
+                            ${p.originalPostId ? `<div class="post-repost-source">🔁 转发自 <a href="/user.html?id=${p.originalAuthorId || ''}">@${escapeHtml(p.originalAuthor || '')}</a> · <a href="/detail.html?id=${p.originalPostId}">查看原帖 #${p.originalPostId}</a></div>` : ''}
+                            <div class="post-content">${renderContent(p.content)}</div>
                             <div class="post-footer">
                                 <span class="post-id">#${p.id}</span>
                                 <div class="post-actions">
                                     <button class="like-btn${p.likedByMe ? ' liked' : ''}" onclick="toggleLike(${p.id}, this)">❤️ <span class="like-num">${p.likeCount || 0}</span></button>
+                                    <button class="repost-btn" onclick="openRepostModal(${p.id})" title="转发">🔄 <span>${p.repostCount || 0}</span></button>
                                     <span class="stat-link">👁 ${p.viewCount || 0}</span>
                                       <a class="stat-link" href="/detail.html?id=${p.id}">💬 ${p.commentCount || 0}</a>
                                     <a class="post-detail-link" href="/detail.html?id=${p.id}">📖 查看全文</a>
@@ -738,16 +780,84 @@
             const kw = document.getElementById('searchInput').value.trim();
             searchKeyword = kw;
             activeTag = '';
+            activeTopic = '';
             document.getElementById('clearSearchBtn').style.display = kw ? 'inline-block' : 'none';
             currentPage = 1;
             loadPosts(1);
         }
         function clearSearch() {
             searchKeyword = '';
+            activeTag = '';
+            activeTopic = '';
             document.getElementById('searchInput').value = '';
             document.getElementById('clearSearchBtn').style.display = 'none';
+            document.getElementById('userResult').innerHTML = '';
             currentPage = 1;
             loadPosts(1);
+        }
+        // ---------- 话题 / 用户搜索结果 / 转发 ----------
+        function renderContent(text) {
+            if (!text) return '';
+            const escaped = escapeHtml(text);
+            return escaped.replace(/#([^#\s]{1,30})#/g, function (m, t) {
+                return '<span class="topic-chip" onclick="filterByTopic(\'' + t + '\')">#' + t + '#</span>';
+            });
+        }
+        function filterByTopic(topic) {
+            activeTopic = topic;
+            searchKeyword = '';
+            activeTag = '';
+            document.getElementById('searchInput').value = '';
+            document.getElementById('clearSearchBtn').style.display = 'none';
+            document.getElementById('userResult').innerHTML = '';
+            currentPage = 1;
+            loadPosts(1);
+        }
+        function renderUserResults(users) {
+            const box = document.getElementById('userResult');
+            if (!users || users.length === 0) { box.innerHTML = ''; return; }
+            box.innerHTML = '<div class="side-card" style="margin-bottom:16px;"><h3>👥 相关用户</h3><div class="user-result-list">' +
+                users.map(u => '<a class="user-result-item" href="/user.html?id=' + u.id + '">👤 <b>' + escapeHtml(u.username) + '</b></a>').join('') +
+                '</div></div>';
+        }
+        let repostTargetId = null;
+        function openRepostModal(id) {
+            repostTargetId = id;
+            document.getElementById('repostContent').value = '';
+            document.getElementById('repostModal').classList.add('show');
+        }
+        function closeRepostModal() {
+            document.getElementById('repostModal').classList.remove('show');
+        }
+        async function doRepost() {
+            if (!repostTargetId) return;
+            const content = document.getElementById('repostContent').value.trim();
+            const btn = document.querySelector('.repost-btn');
+            try {
+                await request(POST_API + '/' + repostTargetId + '/repost', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: content })
+                });
+                showToast('✅ 转发成功', 'success');
+                closeRepostModal();
+                loadPosts();
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
+            }
+        }
+        async function loadMsgUnread() {
+            try {
+                const data = await request('/api/messages/unread-count');
+                const badge = document.getElementById('msgBadge');
+                const count = data.count || 0;
+                if (count > 0) {
+                    badge.textContent = count > 99 ? '99+' : count;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            } catch (e) {}
         }
         // ---------- 信息流切换（最新 / 关注 / 热门） ----------
         function switchFeed(type) {
@@ -935,6 +1045,7 @@
                 document.getElementById('currentUser').textContent = data.data.username;
                 loadStats();
                 loadUnreadCount();
+                loadMsgUnread();
                 loadCategories();
                 loadHotSearches();
                 loadHotPosts();
@@ -948,6 +1059,8 @@
             window.location.href = '/login.html';
         }
         checkLogin();
+        // 每 15 秒轮询私信未读数
+        setInterval(loadMsgUnread, 15000);
 
         // ---------- 主题切换 ----------
         function updateToggleIcon() {
