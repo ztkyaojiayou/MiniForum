@@ -22,8 +22,11 @@ Thumbs.db
 
 # 临时/调试文件
 \!LOG_FILE!
-cookies.txt
+cookies*.txt
 out.txt
+
+# 接口验证临时响应（脚本生成）
+resp_*.json
 
 # 运行时日志目录
 logs/
