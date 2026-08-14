@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>发帖广场</title>
+    <title>发表文章</title>
     <script>
         (function () {
             var saved = localStorage.getItem('theme');
@@ -100,7 +100,7 @@
             transition: background .3s;
         }
         .card h2 { font-size: 17px; color: var(--text-heading); margin-bottom: 14px; }
-        input[type="text"], textarea {
+        input[type="text"], textarea, select {
             width: 100%;
             padding: 10px 12px;
             border: 1px solid var(--border);
@@ -111,8 +111,9 @@
             transition: border-color .2s, background .3s, color .3s;
         }
         input[type="text"] { margin-bottom: 10px; }
-        textarea { min-height: 120px; resize: vertical; }
-        input:focus, textarea:focus { outline: none; border-color: var(--primary); }
+        select { margin-bottom: 10px; }
+        textarea { min-height: 180px; resize: vertical; }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: var(--primary); }
         .btn {
             padding: 10px 24px;
             border: none;
@@ -126,6 +127,8 @@
         }
         .btn:hover { background: var(--primary-hover); }
         .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-cancel { background: var(--muted); }
+        .btn-cancel:hover { background: var(--muted-2); }
         /* 帖子列表 */
         .post {
             background: var(--card-bg);
@@ -185,16 +188,32 @@
     <a class="back-btn" href="/index.html">← 返回</a>
     <button class="theme-toggle" id="themeToggle" title="切换主题" onclick="toggleTheme()">🌙</button>
     <div class="container">
-        <h1>📝 发帖广场</h1>
+        <h1>📝 发表文章</h1>
 
         <div class="card">
-            <h2>✍️ 发布新帖</h2>
-            <input type="text" id="postTitle" maxlength="100" placeholder="标题">
-            <textarea id="postContent" maxlength="5000" placeholder="分享你的想法..."></textarea>
-            <button class="btn" id="publishBtn" onclick="publishPost()">🚀 发布</button>
+            <h2>✍️ 撰写文章</h2>
+            <input type="text" id="postTitle" maxlength="100" placeholder="标题（必填）">
+            <select id="postCategory" title="选择分类">
+                <option value="">选择分类（可选）</option>
+                <option value="科技">💻 科技</option>
+                <option value="数码">📱 数码</option>
+                <option value="游戏">🎮 游戏</option>
+                <option value="娱乐">🎬 娱乐</option>
+                <option value="体育">⚽ 体育</option>
+                <option value="财经">💰 财经</option>
+                <option value="汽车">🚗 汽车</option>
+                <option value="时事">📰 时事</option>
+                <option value="教育">📚 教育</option>
+                <option value="生活">🏠 生活</option>
+                <option value="其他">✨ 其他</option>
+            </select>
+            <input type="text" class="tag-input" id="postTags" maxlength="120" placeholder="标签（可选，用空格分隔，最多5个，如：生活 随笔）">
+            <textarea id="postContent" maxlength="5000" placeholder="写点有价值的内容，支持 Markdown 语法..."></textarea>
+            <button class="btn btn-cancel" id="draftBtn" onclick="saveDraft()" style="margin-right:10px;">💾 存草稿</button>
+            <button class="btn" id="publishBtn" onclick="publishPost()">🚀 发布文章</button>
         </div>
 
-        <h2 style="color:var(--text-heading);font-size:17px;margin-bottom:14px;">📚 全部帖子</h2>
+        <h2 style="color:var(--text-heading);font-size:17px;margin-bottom:14px;">📚 全部文章</h2>
         <div id="postList"></div>
         <div id="loading" class="loading">加载中...</div>
     </div>
@@ -203,9 +222,10 @@
     <script>
         const API = '/api/posts';
 
-        function showToast(msg) {
+        function showToast(msg, type) {
             const toast = document.getElementById('toast');
             toast.textContent = msg;
+            toast.style.background = type === 'error' ? '#c0392b' : '#333';
             toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 2000);
         }
@@ -224,6 +244,12 @@
                 + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
         }
 
+        function parseTags(str) {
+            if (!str) return [];
+            const tags = str.split(/\s+/).map(t => t.trim()).filter(Boolean);
+            return [...new Set(tags)].slice(0, 5);
+        }
+
         async function request(url, options) {
             const res = await fetch(url, options);
             const data = await res.json();
@@ -233,26 +259,55 @@
             return data.data;
         }
 
-        // 发布帖子
+        // 发布文章（标题必填，可带分类/标签）
         async function publishPost() {
             const title = document.getElementById('postTitle').value.trim();
             const content = document.getElementById('postContent').value.trim();
-            if (!title) { showToast('❌ 标题不能为空'); return; }
-            if (!content) { showToast('❌ 内容不能为空'); return; }
+            if (!title) { showToast('❌ 标题不能为空', 'error'); return; }
+            if (!content) { showToast('❌ 内容不能为空', 'error'); return; }
+            const tags = parseTags(document.getElementById('postTags').value);
             const btn = document.getElementById('publishBtn');
             btn.disabled = true;
             try {
                 await request(API, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title, content })
+                    body: JSON.stringify({ title, content, tags, category: document.getElementById('postCategory').value, publish: true })
                 });
                 showToast('✅ 发布成功');
                 document.getElementById('postTitle').value = '';
                 document.getElementById('postContent').value = '';
+                document.getElementById('postTags').value = '';
+                document.getElementById('postCategory').value = '';
                 loadPosts();
             } catch (e) {
-                showToast('❌ ' + e.message);
+                showToast('❌ ' + e.message, 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // 存为草稿（标题必填）
+        async function saveDraft() {
+            const title = document.getElementById('postTitle').value.trim();
+            const content = document.getElementById('postContent').value.trim();
+            if (!title) { showToast('❌ 标题不能为空', 'error'); return; }
+            const tags = parseTags(document.getElementById('postTags').value);
+            const btn = document.getElementById('draftBtn');
+            btn.disabled = true;
+            try {
+                await request(API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, content, tags, category: document.getElementById('postCategory').value, publish: false })
+                });
+                showToast('✅ 已保存为草稿');
+                document.getElementById('postTitle').value = '';
+                document.getElementById('postContent').value = '';
+                document.getElementById('postTags').value = '';
+                document.getElementById('postCategory').value = '';
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
             } finally {
                 btn.disabled = false;
             }
@@ -267,14 +322,14 @@
                 const posts = await request(API);
                 list.innerHTML = '';
                 if (!posts || posts.length === 0) {
-                    list.innerHTML = '<div class="empty">暂无帖子，快来发布第一条吧～</div>';
+                    list.innerHTML = '<div class="empty">暂无文章，快来发布第一篇吧～</div>';
                 } else {
                     posts.forEach((p, i) => {
                         const div = document.createElement('div');
                         div.className = 'post fade-in';
                         div.style.animationDelay = (i * 0.05) + 's';
                         div.innerHTML = `
-                            <div class="post-title">${escapeHtml(p.title)}</div>
+                            <div class="post-title">${escapeHtml(p.title || '（无标题）')}</div>
                             <div class="post-content">${escapeHtml(p.content)}</div>
                             <div class="post-meta">
                                 <span class="author-tag">👤 ${escapeHtml(p.author)}</span>

@@ -195,6 +195,19 @@
         }
         .composer .composer-title { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
         .composer .composer-title span { font-size: 16px; font-weight: 600; color: var(--text-heading); }
+        .composer .article-entry {
+            margin-left: auto;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--primary);
+            text-decoration: none;
+            background: var(--tag-bg);
+            padding: 6px 14px;
+            border-radius: 16px;
+            transition: filter .2s;
+            white-space: nowrap;
+        }
+        .composer .article-entry:hover { filter: brightness(1.15); }
         .composer input[type="text"], .composer textarea {
             width: 100%;
             padding: 12px 14px;
@@ -450,28 +463,14 @@
         </aside>
         <!-- 中栏：发帖 + 信息流 -->
         <main class="main-center">
-        <!-- 发帖框（微博式，显眼） -->
+        <!-- 发帖框（微博式，显眼，仅文字动态） -->
         <div class="composer">
-            <div class="composer-title"><span>✍️ 有什么新鲜事想分享？</span></div>
-            <input type="text" id="postTitle" maxlength="100" placeholder="标题（选填）">
-            <select id="postCategory" title="选择分类">
-                <option value="">选择分类（可选）</option>
-                <option value="科技">💻 科技</option>
-                <option value="数码">📱 数码</option>
-                <option value="游戏">🎮 游戏</option>
-                <option value="娱乐">🎬 娱乐</option>
-                <option value="体育">⚽ 体育</option>
-                <option value="财经">💰 财经</option>
-                <option value="汽车">🚗 汽车</option>
-                <option value="时事">📰 时事</option>
-                <option value="教育">📚 教育</option>
-                <option value="生活">🏠 生活</option>
-                <option value="其他">✨ 其他</option>
-            </select>
+            <div class="composer-title">
+                <span>✍️ 有什么新鲜事想分享？</span>
+                <a href="/post.html" class="article-entry">📝 发表文章</a>
+            </div>
             <textarea id="postContent" maxlength="5000" placeholder="分享你的想法、动态..."></textarea>
-              <input type="text" class="tag-input" id="postTags" maxlength="120" placeholder="标签（可选，用空格分隔，最多5个，如：生活 随笔）">
             <div class="composer-actions">
-                <button class="btn btn-cancel" id="draftBtn" onclick="saveDraft()" style="margin-right:10px;padding:10px 22px;">💾 存草稿</button>
                 <button class="btn" id="publishBtn" onclick="publishPost()">🚀 发布</button>
             </div>
         </div>
@@ -606,53 +605,23 @@
             return data;
         }
 
-        // ---------- 发帖 ----------
+        // ---------- 发动态（首页仅文字，无标题/分类/标签） ----------
         async function publishPost() {
-            const title = document.getElementById('postTitle').value.trim();
             const content = document.getElementById('postContent').value.trim();
             if (!content) { showToast('❌ 内容不能为空', 'error'); return; }
-            const tags = parseTags(document.getElementById('postTags').value);
             const btn = document.getElementById('publishBtn');
             btn.disabled = true;
             try {
                 await request(POST_API, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title, content, tags, category: document.getElementById('postCategory').value, publish: true })
+                    body: JSON.stringify({ content, publish: true })
                 });
                 showToast('✅ 发布成功', 'success');
-                document.getElementById('postTitle').value = '';
                 document.getElementById('postContent').value = '';
-                document.getElementById('postTags').value = '';
-                document.getElementById('postCategory').value = '';
                 loadPosts();
             } catch (e) {
                 showToast('❌ ' + e.message, 'error');
-            } finally {
-                btn.disabled = false;
-            }
-        }
-
-        // ---------- 存为草稿 ----------
-        async function saveDraft() {
-            const title = document.getElementById('postTitle').value.trim();
-            const content = document.getElementById('postContent').value.trim();
-            if (!title && !content) { showToast('\u2716 \u6807题或内容不能为空', 'error'); return; }
-            const tags = parseTags(document.getElementById('postTags').value);
-            const btn = document.getElementById('draftBtn');
-            btn.disabled = true;
-            try {
-                await request(POST_API, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title, content, tags, category: document.getElementById('postCategory').value, publish: false })
-                });
-                showToast('\u2705 已保存为草稿', 'success');
-                document.getElementById('postTitle').value = '';
-                document.getElementById('postContent').value = '';
-                document.getElementById('postTags').value = '';
-            } catch (e) {
-                showToast('\u2716 ' + e.message, 'error');
             } finally {
                 btn.disabled = false;
             }

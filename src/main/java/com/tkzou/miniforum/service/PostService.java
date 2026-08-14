@@ -95,7 +95,7 @@ public class PostService {
     /** 发帖（publish=false 时存为草稿） */
     public PostVO createPost(PostCreateDTO dto, String author, Long authorId) {
         Post post = new Post();
-        post.setTitle(dto.getTitle().trim());
+        post.setTitle(dto.getTitle() == null ? "" : dto.getTitle().trim());
         post.setContent(dto.getContent().trim());
         post.setAuthor(author);
         post.setAuthorId(authorId);
@@ -186,7 +186,7 @@ public class PostService {
 
     /** 为被 @ 的用户生成 MENTION 通知（用户不存在时静默忽略；@ 自己由 NotificationService 去重） */
     private void notifyMentions(Post post, String actorUsername, Long actorId) {
-        String title = post.getTitle() == null ? "帖子" : post.getTitle();
+        String title = (post.getTitle() == null || post.getTitle().isBlank()) ? "动态" : post.getTitle();
         for (String mentionName : extractMentions(post.getContent())) {
             userRepository.findByUsername(mentionName).ifPresent(u ->
                     notificationService.notify(u.getId(), actorId, actorUsername,
@@ -306,7 +306,7 @@ public class PostService {
         if (!isOwnerOrAdmin(post, username)) {
             throw new BusinessException("只能编辑自己发布的帖子");
         }
-        post.setTitle(dto.getTitle().trim());
+        post.setTitle(dto.getTitle() == null ? "" : dto.getTitle().trim());
         post.setContent(dto.getContent().trim());
         post.setTags(normalizeTags(dto.getTags()));
         post.setCategory(normalizeCategory(dto.getCategory()));

@@ -9,7 +9,7 @@ import java.util.List;
  */
 public class PostCreateDTO {
 
-    @NotBlank(message = "标题不能为空")
+    /** 标题（可选：首页"发动态"可不填，仅内容；"发文章"需填写，由前端约束） */
     @Size(max = 100, message = "标题不能超过 100 个字符")
     private String title;
 
