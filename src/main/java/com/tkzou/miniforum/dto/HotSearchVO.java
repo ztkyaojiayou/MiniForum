@@ -20,6 +20,9 @@ public class HotSearchVO {
     /** 趋势：1=上升，0=持平，-1=下降，2=新上榜 */
     private int trend;
 
+    /** 热度等级：爆 / 沸 / 热 / 新（仿微博热搜标签） */
+    private String level = "热";
+
     public HotSearchVO() {
     }
 
@@ -29,6 +32,14 @@ public class HotSearchVO {
         this.postCount = postCount;
         this.rank = rank;
         this.trend = 0;
+    }
+
+    public String getLevel() {
+        return level;
+    }
+
+    public void setLevel(String level) {
+        this.level = level;
     }
 
     public String getKeyword() {

@@ -9,6 +9,8 @@ import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.exception.BusinessException;
 import com.tkzou.miniforum.exception.ResourceNotFoundException;
+import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
+import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 import com.tkzou.miniforum.repository.FollowRepository;
 import com.tkzou.miniforum.repository.FavoriteRepository;
 import com.tkzou.miniforum.repository.LikeRepository;
@@ -38,6 +40,7 @@ public class FollowService {
     private final CommentRepository commentRepository;
     private final FavoriteRepository favoriteRepository;
     private final NotificationService notificationService;
+    private final BehaviorLogger behaviorLogger;
 
     public FollowService(FollowRepository followRepository,
                          UserRepository userRepository,
@@ -45,7 +48,8 @@ public class FollowService {
                          LikeRepository likeRepository,
                          CommentRepository commentRepository,
                          FavoriteRepository favoriteRepository,
-                         NotificationService notificationService) {
+                         NotificationService notificationService,
+                         BehaviorLogger behaviorLogger) {
         this.followRepository = followRepository;
         this.userRepository = userRepository;
         this.postRepository = postRepository;
@@ -53,6 +57,7 @@ public class FollowService {
         this.commentRepository = commentRepository;
         this.favoriteRepository = favoriteRepository;
         this.notificationService = notificationService;
+        this.behaviorLogger = behaviorLogger;
     }
 
     /** 关注（不能关注自己，不能重复关注；关注后通知被关注者） */
@@ -71,6 +76,7 @@ public class FollowService {
         follow.setFolloweeId(followeeId);
         follow.setCreatedAt(LocalDateTime.now());
         followRepository.save(follow);
+        behaviorLogger.log(followerId, null, BehaviorType.FOLLOW, "POST", null);
         // 通知被关注者
         notificationService.notify(followeeId, followerId, followerUsername,
                 Notification.TYPE_FOLLOW, null, "关注了你");

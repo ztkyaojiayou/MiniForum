@@ -13,6 +13,36 @@ app:
     enabled: true
     # 定时保存间隔（毫秒）
     interval-ms: 30000
+  rec:
+    # 推荐系统配置（与 recommend.config.RecConfig 对应，可在运行时经 ConfigService 更新）
+    final-top-n: 20
+    merge-top-n: 200
+    recall-per-channel: 100
+    cold-start-ratio: 0.15
+    min-behavior-for-warm: 5
+    half-life-hours: 4.0
+    category-max-count: 2
+    mmr-lambda: 0.6
+    mmr-window: 10
+    new-item-age-hours: 48
+    new-item-min-interactions: 5
+    explore-lambda-new-user: 0.7
+    explore-lambda-warm-user: 0.1
+    realtime-window-minutes: 5
+    realtime-window-max-events: 100
+    # 召回通道权重（hot/topic/category/itemcf/newitem/follow）
+    channel-weight: '{"hot":1.0,"topic":1.0,"category":0.6,"itemcf":1.2,"newitem":0.5,"follow":0.8}'
+    # 排序特征权重（interact/quality/interest/social/author/hot/realtime）
+    rank-weight: '{"interact":0.30,"quality":0.20,"interest":0.30,"social":0.15,"author":0.10,"hot":0.10,"realtime":0.05}'
+  sim:
+    # 模拟活动：定时产生少量新帖与互动，让系统像真实社区持续"转起来"（数据量可控）
+    enabled: true
+    # 每轮间隔（毫秒）：默认 15 分钟
+    interval-ms: 900000
+    # 每轮新帖数（随机 1~N，别太大）
+    posts-per-tick: 2
+    # 每轮互动数（点赞/评论，随机 0~N）
+    interactions-per-tick: 2
 
 logging:
   level:

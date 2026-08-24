@@ -6,8 +6,11 @@ import com.tkzou.miniforum.entity.Favorite;
 import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.exception.BusinessException;
 import com.tkzou.miniforum.exception.ResourceNotFoundException;
+import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
+import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 import com.tkzou.miniforum.repository.FavoriteRepository;
 import com.tkzou.miniforum.repository.PostRepository;
+import com.tkzou.miniforum.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -26,13 +29,19 @@ public class FavoriteService {
     private final FavoriteRepository favoriteRepository;
     private final PostRepository postRepository;
     private final PostService postService;
+    private final UserRepository userRepository;
+    private final BehaviorLogger behaviorLogger;
 
     public FavoriteService(FavoriteRepository favoriteRepository,
                            PostRepository postRepository,
-                           PostService postService) {
+                           PostService postService,
+                           UserRepository userRepository,
+                           BehaviorLogger behaviorLogger) {
         this.favoriteRepository = favoriteRepository;
         this.postRepository = postRepository;
         this.postService = postService;
+        this.userRepository = userRepository;
+        this.behaviorLogger = behaviorLogger;
     }
 
     /** 收藏帖子（同一用户对同一帖子只能收藏一次，草稿不可收藏） */
@@ -49,6 +58,8 @@ public class FavoriteService {
         favorite.setUsername(username);
         favorite.setCreatedAt(LocalDateTime.now());
         favoriteRepository.save(favorite);
+        userRepository.findByUsername(username)
+                .ifPresent(u -> behaviorLogger.log(u.getId(), postId, BehaviorType.FAVORITE, "POST", null));
     }
 
     /** 取消收藏 */

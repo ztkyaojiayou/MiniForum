@@ -7,6 +7,8 @@ import com.tkzou.miniforum.entity.SearchRecord;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.repository.SearchRecordRepository;
 import com.tkzou.miniforum.repository.UserRepository;
+import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
+import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -25,13 +27,16 @@ public class SearchService {
     private final PostService postService;
     private final UserRepository userRepository;
     private final SearchRecordRepository searchRecordRepository;
+    private final BehaviorLogger behaviorLogger;
 
     public SearchService(PostService postService,
                          UserRepository userRepository,
-                         SearchRecordRepository searchRecordRepository) {
+                         SearchRecordRepository searchRecordRepository,
+                         BehaviorLogger behaviorLogger) {
         this.postService = postService;
         this.userRepository = userRepository;
         this.searchRecordRepository = searchRecordRepository;
+        this.behaviorLogger = behaviorLogger;
     }
 
     /** 综合搜索：帖子 + 用户，并记录搜索词 */
@@ -41,6 +46,9 @@ public class SearchService {
         }
         String kw = keyword.trim();
         recordKeyword(kw);
+        // 记录用户级搜索行为（画像信号；生产形态进 Kafka）
+        userRepository.findByUsername(username)
+                .ifPresent(u -> behaviorLogger.log(u.getId(), null, BehaviorType.SEARCH, "POST", null));
         List<PostVO> posts = postService.search(kw, username);
         String lower = kw.toLowerCase();
         List<UserBriefVO> users = userRepository.findAll().stream()

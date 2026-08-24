@@ -10,6 +10,8 @@ import com.tkzou.miniforum.entity.Notification;
 import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.entity.SearchRecord;
 import com.tkzou.miniforum.entity.User;
+import com.tkzou.miniforum.recommend.behavior.BehaviorLog;
+import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;
 import com.tkzou.miniforum.repository.CommentRepository;
 import com.tkzou.miniforum.repository.ConversationRepository;
 import com.tkzou.miniforum.repository.FavoriteRepository;
@@ -65,6 +67,7 @@ public class DataStore implements ApplicationRunner {
     private final SearchRecordRepository searchRecordRepository;
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
+    private final BehaviorLogRepository behaviorLogRepository;
 
     /** 数据文件目录 */
     @Value("${app.data-dir:./data}")
@@ -92,7 +95,8 @@ public class DataStore implements ApplicationRunner {
                      FavoriteRepository favoriteRepository,
                      SearchRecordRepository searchRecordRepository,
                      ConversationRepository conversationRepository,
-                     MessageRepository messageRepository) {
+                     MessageRepository messageRepository,
+                     BehaviorLogRepository behaviorLogRepository) {
         this.objectMapper = objectMapper;
         this.userRepository = userRepository;
         this.postRepository = postRepository;
@@ -104,6 +108,7 @@ public class DataStore implements ApplicationRunner {
         this.searchRecordRepository = searchRecordRepository;
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
+        this.behaviorLogRepository = behaviorLogRepository;
     }
 
     @Override
@@ -128,6 +133,7 @@ public class DataStore implements ApplicationRunner {
             loadSearchRecords();
             loadConversations();
             loadMessages();
+            loadBehaviorLogs();
             log.info("数据持久化加载完成，目录: {}", dataDir);
         } catch (Exception e) {
             log.warn("数据持久化加载失败，将使用空数据启动: {}", e.getMessage());
@@ -155,6 +161,7 @@ public class DataStore implements ApplicationRunner {
             objectMapper.writeValue(Paths.get(dataDir, "search-records.json").toFile(), searchRecordRepository.exportAll());
             objectMapper.writeValue(Paths.get(dataDir, "conversations.json").toFile(), conversationRepository.exportAll());
             objectMapper.writeValue(Paths.get(dataDir, "messages.json").toFile(), messageRepository.exportAll());
+            objectMapper.writeValue(Paths.get(dataDir, "behavior-log.json").toFile(), behaviorLogRepository.exportAll());
         } catch (Exception e) {
             log.warn("数据持久化保存失败: {}", e.getMessage());
         }
@@ -271,5 +278,15 @@ public class DataStore implements ApplicationRunner {
         List<Message> messages = objectMapper.readValue(file.toFile(), new TypeReference<List<Message>>() {});
         messageRepository.importAll(messages);
         messages.stream().map(Message::getId).max(Long::compareTo).ifPresent(Message::resetIdGenerator);
+    }
+
+    private void loadBehaviorLogs() throws Exception {
+        Path file = Paths.get(dataDir, "behavior-log.json");
+        if (!Files.exists(file)) {
+            return;
+        }
+        List<BehaviorLog> behaviors = objectMapper.readValue(file.toFile(), new TypeReference<List<BehaviorLog>>() {});
+        behaviorLogRepository.importAll(behaviors);
+        behaviors.stream().map(BehaviorLog::getId).max(Long::compareTo).ifPresent(BehaviorLog::resetIdGenerator);
     }
 }

@@ -21,6 +21,6 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(authInterceptor)
                 .addPathPatterns("/api/users/**", "/api/posts/**", "/api/comments/**", "/api/tags/**",
                         "/api/follows/**", "/api/notifications/**", "/api/dashboard/**", "/api/search/**",
-                        "/api/messages/**");
+                        "/api/messages/**", "/api/recommend/**");
     }
 }

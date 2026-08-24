@@ -12,6 +12,10 @@ import com.tkzou.miniforum.repository.LikeRepository;
 import com.tkzou.miniforum.repository.NotificationRepository;
 import com.tkzou.miniforum.repository.PostRepository;
 import com.tkzou.miniforum.repository.UserRepository;
+import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;
+import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
+import com.tkzou.miniforum.recommend.behavior.InMemoryBehaviorLogger;
+import com.tkzou.miniforum.recommend.stream.BehaviorEventQueue;
 import com.tkzou.miniforum.util.PasswordEncoder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,8 +43,9 @@ class UserServiceTest {
         NotificationRepository notificationRepository = new NotificationRepository();
         FavoriteRepository favoriteRepository = new FavoriteRepository();
         NotificationService notificationService = new NotificationService(notificationRepository);
+        BehaviorLogger behaviorLogger = new InMemoryBehaviorLogger(new BehaviorLogRepository(), new BehaviorEventQueue());
         FollowService followService = new FollowService(followRepository, userRepository, postRepository,
-                likeRepository, commentRepository, favoriteRepository, notificationService);
+                likeRepository, commentRepository, favoriteRepository, notificationService, behaviorLogger);
         userService = new UserService(userRepository, postRepository, followService);
     }
 

@@ -100,8 +100,9 @@
             color: var(--muted-2);
         }
         .nav-link.btn-user:hover { border-color: var(--primary); color: var(--primary); background: transparent; }
-        .navbar .username-tag { font-size: 14px; color: var(--muted-2); }
+        .navbar .username-tag { font-size: 14px; color: var(--muted-2); text-decoration: none; }
         .navbar .username-tag b { color: var(--primary); font-weight: 600; }
+        .navbar .username-tag:hover { color: var(--primary); }
         .navbar .logout-btn {
             background: none;
             border: 1px solid var(--border);
@@ -113,6 +114,18 @@
             transition: all .2s;
         }
         .navbar .logout-btn:hover { border-color: #ff4d4f; color: #ff4d4f; }
+        .navbar .login-btn {
+            background: none;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            font-size: 13px;
+            font-weight: 500;
+            padding: 4px 14px;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all .2s;
+        }
+        .navbar .login-btn:hover { background: var(--primary); color: #fff; }
         .theme-toggle {
             width: 36px;
             height: 36px;
@@ -176,6 +189,42 @@
         .hot-list li:nth-child(-n+3) .hot-rank { background: #ff4d4f; color: #fff; }
         .hot-word { font-size: 14px; color: var(--text); word-break: break-all; }
         .hot-heat { font-size: 12px; color: var(--muted); }
+        /* ---- 热搜榜（仿微博） ---- */
+        .side-card-head { display: flex; align-items: center; justify-content: space-between; }
+        .hot-refresh { border: none; background: none; cursor: pointer; font-size: 14px; color: var(--muted); transition: transform .3s; }
+        .hot-refresh:hover { color: var(--primary); transform: rotate(180deg); }
+        .hot-search-list { list-style: none; }
+        .hot-search-list li {
+            display: flex; align-items: center; gap: 8px; padding: 8px 4px;
+            border-bottom: 1px dashed var(--border-row); cursor: pointer; transition: all .2s;
+        }
+        .hot-search-list li:last-child { border-bottom: none; }
+        .hot-search-list li:hover { background: var(--composer-bg); border-radius: 8px; }
+        .hot-search-list .hot-rank { flex: 0 0 24px; }
+        .hot-rank.hot-rank-top { background: #ff4d4f; color: #fff; font-size: 15px; }
+        .hot-search-list .hot-word { flex: 1; font-size: 14px; }
+        .hot-level { font-size: 11px; padding: 1px 5px; border-radius: 4px; font-weight: 600; flex-shrink: 0; }
+        .lv-爆 { background: #ffecec; color: #ff4d4f; }
+        .lv-沸 { background: #fff3e0; color: #ff8200; }
+        .lv-热 { background: var(--composer-bg); color: var(--muted-2); }
+        .lv-新 { background: #e6f7ff; color: #1890ff; }
+        .hot-trend { font-size: 12px; flex-shrink: 0; }
+        .hot-trend.up { color: #ff4d4f; }
+        .hot-trend.down { color: #52c41a; }
+        .hot-trend.new { color: #1890ff; }
+        .hot-search-list .hot-heat { font-size: 12px; color: var(--muted); flex-shrink: 0; }
+        .hot-more { margin-top: 8px; text-align: center; font-size: 13px; }
+        .hot-more a { color: var(--primary); text-decoration: none; }
+        .hot-more a:hover { text-decoration: underline; }
+        /* ---- 发博字数临界提示 ---- */
+        .composer-count { font-size: 12px; color: var(--muted); margin-right: 10px; align-self: center; }
+        .composer-count.warn { color: #ff8200; font-weight: 600; }
+        .composer-count.danger { color: #ff4d4f; font-weight: 700; }
+        /* ---- 点赞点亮动效 ---- */
+        @keyframes likePop { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+        .like-btn.like-pop { animation: likePop .3s ease; display: inline-block; }
+        /* ---- 转发弹窗"同时评论" ---- */
+        .repost-as-comment { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted-2); margin-bottom: 14px; cursor: pointer; }
         .composer select {
             width: 100%; padding: 10px 12px; margin-bottom: 10px;
             border: 1px solid var(--border); border-radius: 10px; font-size: 13px;
@@ -195,6 +244,15 @@
         }
         .composer .composer-title { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
         .composer .composer-title span { font-size: 16px; font-weight: 600; color: var(--text-heading); }
+        .guest-prompt {
+            padding: 18px 20px; text-align: center; margin-bottom: 4px;
+            background: var(--composer-bg); border: 1px dashed var(--primary); border-radius: 10px;
+            color: var(--muted-2); font-size: 14px;
+        }
+        .guest-prompt .guest-login-link {
+            color: var(--primary); font-weight: 600; text-decoration: none; margin-left: 6px;
+        }
+        .guest-prompt .guest-login-link:hover { text-decoration: underline; }
         .composer .article-entry {
             margin-left: auto;
             font-size: 13px;
@@ -269,15 +327,15 @@
         }
         .feed-tab:hover { border-color: var(--primary); color: var(--primary); }
         .feed-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-        .stats-bar {
-            display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
-            background: var(--card-bg); border-radius: 12px; padding: 14px 20px;
-            box-shadow: 0 2px 12px var(--shadow-card); transition: background .3s;
+        /* 新微博提示条 + 新卡片高亮（仿微博增量刷新） */
+        .new-post-bar {
+            background: var(--primary); color: #fff; text-align: center; padding: 9px 0;
+            border-radius: 10px; cursor: pointer; font-size: 13px; margin-bottom: 14px;
+            box-shadow: 0 2px 10px var(--primary-ring); transition: all .2s;
         }
-        .stats-bar .stat-item {
-            display: flex; align-items: baseline; gap: 4px; font-size: 12px; color: var(--muted-2);
-        }
-        .stats-bar .stat-item b { font-size: 20px; color: var(--primary); font-weight: 700; }
+        .new-post-bar:hover { opacity: 0.9; }
+        .post.new-post { animation: newPostFlash 2.2s ease; }
+        @keyframes newPostFlash { 0% { background: rgba(255, 130, 0, 0.18); } 100% { background: var(--card-bg); } }
         .post {
             background: var(--card-bg);
             border-radius: 12px;
@@ -419,6 +477,27 @@
             border-left: 3px solid var(--primary);
         }
         .post-repost-source a { color: var(--primary); text-decoration: none; }
+        /* 转发泡：内嵌原帖灰框（仿微博） */
+        .repost-bubble {
+            background: var(--composer-bg); border: 1px solid var(--border-row); border-radius: 10px;
+            padding: 10px 14px; margin: 10px 0; cursor: pointer; transition: all .2s;
+        }
+        .repost-bubble:hover { border-color: var(--primary); }
+        .repost-bubble-head { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+        .repost-bubble-title { font-size: 14px; font-weight: 600; color: var(--text-heading); margin-bottom: 2px; }
+        .repost-bubble-content {
+            font-size: 13px; color: var(--muted-2); line-height: 1.5;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .post-reason {
+            font-size: 12px; color: var(--primary); background: rgba(255, 82, 82, .08);
+            border-radius: 6px; padding: 4px 8px; margin: 6px 0; display: inline-block;
+        }
+        .dislike-btn {
+            border: none; background: transparent; color: var(--muted);
+            font-size: 15px; cursor: pointer; padding: 2px 4px; border-radius: 6px;
+        }
+        .dislike-btn:hover { color: var(--danger, #e5484d); background: rgba(229, 72, 77, .1); }
         .user-result-list { display: flex; flex-wrap: wrap; gap: 8px; }
         .user-result-item {
             display: inline-block; padding: 6px 12px; border-radius: 16px;
@@ -443,13 +522,16 @@
         <div class="nav-right">
             <a class="nav-link" href="/quote.html">💡 灵感</a>
             <a class="nav-link" href="/wheel.html">🎡 转盘</a>
-            <a class="nav-link" href="/my.html">📝 我的文章</a>
-            <a class="nav-link" href="/message.html">💬 私信<span class="nav-badge" id="msgBadge" style="display:none;">0</span></a>
-            <a class="nav-link" href="/notification.html">🔔 通知<span class="nav-badge" id="navBadge" style="display:none;">0</span></a>
-            <a class="nav-link btn-user" href="javascript:void(0)" onclick="openUserModal()">👥 用户管理</a>
-            <span class="username-tag">👤 <b id="currentUser"></b></span>
+            <span id="navAuthLinks">
+                <a class="nav-link" href="/my.html">📝 我的文章</a>
+                <a class="nav-link" href="/message.html">💬 私信<span class="nav-badge" id="msgBadge" style="display:none;">0</span></a>
+                <a class="nav-link" href="/notification.html">🔔 通知<span class="nav-badge" id="navBadge" style="display:none;">0</span></a>
+                <a class="nav-link btn-user" id="userAdminLink" href="javascript:void(0)" onclick="openUserModal()">👥 用户管理</a>
+            </span>
+            <a class="username-tag" href="/my.html" title="我的主页">👤 <b id="currentUser"></b></a>
+            <button class="login-btn" id="loginBtn" style="display:none;" onclick="location.href='/login.html'">登录 / 注册</button>
             <button class="theme-toggle" id="themeToggle" title="切换主题" onclick="toggleTheme()">🌙</button>
-            <button class="logout-btn" onclick="logout()">退出</button>
+            <button class="logout-btn" id="logoutBtn" onclick="logout()">退出</button>
         </div>
     </div>
 
@@ -469,19 +551,17 @@
                 <span>✍️ 有什么新鲜事想分享？</span>
                 <a href="/post.html" class="article-entry">📝 发表文章</a>
             </div>
-            <textarea id="postContent" maxlength="5000" placeholder="分享你的想法、动态..."></textarea>
-            <div class="composer-actions">
-                <button class="btn" id="publishBtn" onclick="publishPost()">🚀 发布</button>
+            <div id="guestPrompt" style="display:none;" class="guest-prompt">
+                🔒 <b>登录后即可发布动态、点赞评论</b>
+                <a href="/login.html" class="guest-login-link">去登录 / 注册 →</a>
             </div>
-        </div>
-
-        <!-- 数据看板统计条 -->
-        <div class="stats-bar" id="statsBar">
-            <div class="stat-item" title="注册用户数">👥 <b id="statUsers">-</b><span>用户</span></div>
-            <div class="stat-item" title="已发布帖子数">📝 <b id="statPosts">-</b><span>帖子</span></div>
-            <div class="stat-item" title="评论总数">💬 <b id="statComments">-</b><span>评论</span></div>
-            <div class="stat-item" title="点赞总数">❤️ <b id="statLikes">-</b><span>点赞</span></div>
-            <div class="stat-item" title="今日新帖">🆕 <b id="statTodayPosts">-</b><span>今日帖</span></div>
+            <div id="composerEditor">
+                <textarea id="postContent" maxlength="5000" placeholder="分享你的想法、动态..." oninput="updateComposerCount()"></textarea>
+                <div class="composer-actions">
+                    <span id="composerCount" class="composer-count"></span>
+                    <button class="btn" id="publishBtn" onclick="publishPost()" disabled>🚀 发布</button>
+                </div>
+            </div>
         </div>
 
         <!-- 帖子信息流 -->
@@ -490,18 +570,28 @@
                 <button class="feed-tab active" id="tabLatest" onclick="switchFeed('latest')">📚 最新</button>
                 <button class="feed-tab" id="tabFollow" onclick="switchFeed('follow')">🔥 关注</button>
                 <button class="feed-tab" id="tabHot" onclick="switchFeed('hot')">🏆 热门</button>
+                <button class="feed-tab" id="tabRecommend" onclick="switchFeed('recommend')">✨ 推荐</button>
             </div>
         </div>
         <div id="userResult"></div>
         <div id="loading" class="loading">加载中...</div>
+        <div id="newPostBar" class="new-post-bar" style="display:none;" onclick="loadNewPosts()">有新动态，点击查看</div>
         <div id="postList"></div>
         <div id="pagination" class="pagination"></div>
         </main>
 
-        <!-- 右栏：热门帖子榜 -->
+        <!-- 右栏：微博热搜 + 热门帖子 -->
         <aside class="side-right">
             <div class="side-card">
-                <h3>🔥 热门帖子</h3>
+                <div class="side-card-head">
+                    <h3>🔥 微博热搜</h3>
+                    <button class="hot-refresh" onclick="loadHotSearches()" title="刷新">🔄</button>
+                </div>
+                <ul class="hot-search-list" id="hotSearchList"><li>加载中...</li></ul>
+                <div class="hot-more"><a href="/hot.html">展开完整榜单 →</a></div>
+            </div>
+            <div class="side-card">
+                <h3>🏆 热门帖子</h3>
                 <ul class="hot-list" id="hotPostList"><li>加载中...</li></ul>
             </div>
         </aside>
@@ -551,6 +641,7 @@
                 <label>说说你的想法（选填）</label>
                 <textarea id="repostContent" maxlength="500" placeholder="转发时想说点什么..."></textarea>
             </div>
+            <label class="repost-as-comment"><input type="checkbox" id="repostAsComment"> 同时作为评论发表</label>
             <div class="modal-actions">
                 <button class="btn btn-cancel" onclick="closeRepostModal()">取消</button>
                 <button class="btn" onclick="doRepost()">🔄 转发</button>
@@ -571,6 +662,14 @@
             toast.className = 'toast show ' + (type || '');
             setTimeout(() => { toast.className = 'toast'; }, 2500);
         }
+        // 大数字缩写：128500 -> 12.8万（仿微博计数展示）
+        function formatCount(n) {
+            n = parseInt(n || 0, 10);
+            if (n >= 10000) {
+                return (n / 10000).toFixed(1).replace(/\.0$/, '') + '万';
+            }
+            return '' + n;
+        }
         function escapeHtml(str) {
             const div = document.createElement('div');
             div.textContent = str;
@@ -588,6 +687,10 @@
             let data = null;
             try { data = await res.json(); } catch (e) {}
             if (!res.ok) {
+                if (res.status === 401) {
+                    window.location.href = '/login.html';
+                    throw new Error('请先登录');
+                }
                 let msg = '请求失败 (' + res.status + ')';
                 if (data && data.message) msg = data.message;
                 throw new Error(msg);
@@ -600,6 +703,26 @@
         }
 
         // ---------- 发动态（首页仅文字，无标题/分类/标签） ----------
+        // 字数临界提示：>90% 变橙，满 5000 变红并禁用；空内容禁用发布（仿微博）
+        function updateComposerCount() {
+            const ta = document.getElementById('postContent');
+            const countEl = document.getElementById('composerCount');
+            const btn = document.getElementById('publishBtn');
+            if (!ta || !countEl || !btn) return;
+            const len = (ta.value || '').length;
+            const max = 5000;
+            btn.disabled = len === 0;
+            if (len > max * 0.9) {
+                countEl.textContent = (max - len) + ' / 5000';
+                countEl.className = 'composer-count warn';
+                if (len >= max) {
+                    countEl.className = 'composer-count danger';
+                    btn.disabled = true;
+                }
+            } else {
+                countEl.textContent = '';
+            }
+        }
         async function publishPost() {
             const content = document.getElementById('postContent').value.trim();
             if (!content) { showToast('❌ 内容不能为空', 'error'); return; }
@@ -617,7 +740,7 @@
             } catch (e) {
                 showToast('❌ ' + e.message, 'error');
             } finally {
-                btn.disabled = false;
+                updateComposerCount();
             }
         }
 
@@ -629,6 +752,9 @@
         let activeCategory = '';
         let activeTopic = '';
         let feedType = 'latest';
+        let isLoggedIn = false;
+        let lastNewestId = 0;      // 已看到的最新帖子 ID（新微博轮询基准）
+        let highlightAfterId = 0;  // 刷新后需高亮的帖子 ID 基准
         async function loadPosts(page) {
             if (page) currentPage = page;
             const list = document.getElementById('postList');
@@ -651,6 +777,13 @@
                     posts = await request(POST_API + '/hot?limit=' + PAGE_SIZE) || [];
                     total = posts.length;
                     totalPages = 1;
+                } else if (feedType === 'recommend') {
+                    const data = await request('/api/recommend/feed?page=' + currentPage + '&size=' + PAGE_SIZE);
+                    posts = (data.records || []).map(function (r) {
+                        return Object.assign({}, r.post, { reason: r.reason, sources: r.sources, score: r.score });
+                    });
+                    total = data.total;
+                    totalPages = data.totalPages;
                 } else {
                     let url = POST_API + '?page=' + currentPage + '&size=' + PAGE_SIZE;
                     if (activeTag) url += '&tag=' + encodeURIComponent(activeTag);
@@ -670,11 +803,12 @@
                     else if (activeCategory) emptyMsg = '该分类下暂无动态';
                     else if (feedType === 'follow') emptyMsg = '你还没有关注任何人，快去关注感兴趣的博主吧～';
                     else if (feedType === 'hot') emptyMsg = '暂无热门帖子～';
+                    else if (feedType === 'recommend') emptyMsg = '还没有推荐内容，去发帖/互动一下吧～';
                     list.innerHTML = '<div class="empty">' + emptyMsg + '</div>';
                 } else {
                     posts.forEach((p, i) => {
                         const div = document.createElement('div');
-                        div.className = 'post fade-in';
+                        div.className = 'post fade-in' + (highlightAfterId && p.id > highlightAfterId ? ' new-post' : '');
                         div.style.animationDelay = (i * 0.05) + 's';
                         const avatarChar = (p.author || '?').charAt(0).toUpperCase();
                         div.innerHTML = `
@@ -685,22 +819,30 @@
                                     <div class="post-time">🕐 ${formatTime(p.createdAt)}</div>
                                 </div>
                             </div>
-                            ${p.title ? `<div class="post-title"><a class="post-title-link" href="/detail.html?id=${p.id}">${escapeHtml(p.title)}</a></div>` : ''}
+                            ${p.title ? `<div class="post-title"><a class="post-title-link" href="/detail.html?id=${p.id}" ${feedType === 'recommend' ? 'onclick="track(\'CLICK\',' + p.id + ')"' : ''}>${escapeHtml(p.title)}</a></div>` : ''}
                             ${renderTags(p.tags)}
-                            ${p.originalPostId ? `<div class="post-repost-source">🔁 转发自 <a href="/user.html?id=${p.originalAuthorId || ''}">@${escapeHtml(p.originalAuthor || '')}</a> · <a href="/detail.html?id=${p.originalPostId}">查看原帖 #${p.originalPostId}</a></div>` : ''}
-                            <div class="post-content">${renderContent(p.content)}</div>
+                            ${renderRepostBubble(p)}
+                            ${p.reason ? `<div class="post-reason">🔍 ${escapeHtml(p.reason)}</div>` : ''}
+                            ${renderPostContent(p)}
                             <div class="post-footer">
                                 <span class="post-id">#${p.id}</span>
                                 <div class="post-actions">
-                                    <button class="like-btn${p.likedByMe ? ' liked' : ''}" onclick="toggleLike(${p.id}, this)">❤️ <span class="like-num">${p.likeCount || 0}</span></button>
-                                    <button class="repost-btn" onclick="openRepostModal(${p.id})" title="转发">🔄 <span>${p.repostCount || 0}</span></button>
-                                    <span class="stat-link">👁 ${p.viewCount || 0}</span>
-                                      <a class="stat-link" href="/detail.html?id=${p.id}">💬 ${p.commentCount || 0}</a>
-                                    <a class="post-detail-link" href="/detail.html?id=${p.id}">📖 查看全文</a>
+                                    <button class="like-btn${p.likedByMe ? ' liked' : ''}" data-count="${p.likeCount || 0}" onclick="toggleLike(${p.id}, this)">❤️ <span class="like-num">${formatCount(p.likeCount || 0)}</span></button>
+                                    <button class="repost-btn" onclick="openRepostModal(${p.id})" title="转发">🔄 <span>${formatCount(p.repostCount || 0)}</span></button>
+                                    <span class="stat-link">👁 ${formatCount(p.viewCount || 0)}</span>
+                                      <a class="stat-link" href="/detail.html?id=${p.id}">💬 ${formatCount(p.commentCount || 0)}</a>
+                                    <a class="post-detail-link" href="/detail.html?id=${p.id}" ${feedType === 'recommend' ? 'onclick="track(\'CLICK\',' + p.id + ')"' : ''}>📖 查看全文</a>
+                                    ${feedType === 'recommend' ? '<button class="dislike-btn" onclick="dislikePost(' + p.id + ', this)" title="不感兴趣">🙅</button>' : ''}
                                 </div>
                             </div>`;
                         list.appendChild(div);
                     });
+                    // 记录已见最新帖 ID，并清除本次高亮标记
+                    if (posts && posts.length) {
+                        const newest = Math.max.apply(null, posts.map(function (x) { return x.id; }));
+                        lastNewestId = Math.max(lastNewestId, newest);
+                    }
+                    highlightAfterId = 0;
                 }
                 renderPagination(total, totalPages);
             } catch (e) {
@@ -742,9 +884,12 @@
         }
         function filterByTag(tag) {
             activeTag = tag;
+            activeTopic = '';
             searchKeyword = '';
+            feedType = 'latest'; // 点标签聚合：切回"最新"Tab 使筛选生效
             document.getElementById('searchInput').value = '';
             document.getElementById('clearSearchBtn').style.display = 'none';
+            updateTabActive();
             currentPage = 1;
             loadPosts(1);
         }
@@ -778,13 +923,35 @@
                 return '<a class="mention-link" href="/user.html?username=' + encodeURIComponent(u) + '">@' + u + '</a>';
             });
         }
+        // \u8f6c\u53d1\u5e16\u5185\u5bb9 = \u8bc4\u8bed + "// \u8f6c\u53d1\u81ea..."\uff0c\u5361\u7247\u53ea\u5c55\u793a\u8bc4\u8bed\u90e8\u5206\uff08\u539f\u5e16\u8fdb\u8f6c\u53d1\u6ce1\uff09
+        function repostComment(content) {
+            const idx = content ? content.indexOf('// \u8f6c\u53d1\u81ea') : -1;
+            return idx > 0 ? content.substring(0, idx).trim() : content;
+        }
+        function renderPostContent(p) {
+            if (p.originalPostId) {
+                return '<div class="post-content">' + renderContent(repostComment(p.content)) + '</div>';
+            }
+            return '<div class="post-content">' + renderContent(p.content) + '</div>';
+        }
+        // \u8f6c\u53d1\u6ce1\uff1a\u5185\u5d4c\u539f\u5e16\u7070\u6846\uff0c\u70b9\u51fb\u8df3\u539f\u535a\u8be6\u60c5\uff08\u4eff\u5fae\u535a\uff09
+        function renderRepostBubble(p) {
+            if (!p.originalPostId) return '';
+            return '<div class="repost-bubble" onclick="location.href=\'/detail.html?id=' + p.originalPostId + '\'">' +
+                '<div class="repost-bubble-head">\ud83d\udd01 @' + escapeHtml(p.originalAuthor || '') + ' \u7684\u539f\u5fae\u535a</div>' +
+                (p.originalTitle ? '<div class="repost-bubble-title">' + escapeHtml(p.originalTitle) + '</div>' : '') +
+                '<div class="repost-bubble-content">' + escapeHtml(p.originalContent || '') + '</div>' +
+                '</div>';
+        }
         function filterByTopic(topic) {
             activeTopic = topic;
             searchKeyword = '';
             activeTag = '';
+            feedType = 'latest'; // 点 #话题# 聚合：切回"最新"Tab 使筛选生效
             document.getElementById('searchInput').value = '';
             document.getElementById('clearSearchBtn').style.display = 'none';
             document.getElementById('userResult').innerHTML = '';
+            updateTabActive();
             currentPage = 1;
             loadPosts(1);
         }
@@ -798,7 +965,12 @@
         let repostTargetId = null;
         function openRepostModal(id) {
             repostTargetId = id;
-            document.getElementById('repostContent').value = '';
+            // 预填"转发微博"，光标置于其后（仿微博转发弹窗）
+            const ta = document.getElementById('repostContent');
+            ta.value = '转发微博';
+            ta.focus();
+            ta.setSelectionRange(ta.value.length, ta.value.length);
+            document.getElementById('repostAsComment').checked = false;
             document.getElementById('repostModal').classList.add('show');
         }
         function closeRepostModal() {
@@ -807,13 +979,20 @@
         async function doRepost() {
             if (!repostTargetId) return;
             const content = document.getElementById('repostContent').value.trim();
-            const btn = document.querySelector('.repost-btn');
             try {
                 await request(POST_API + '/' + repostTargetId + '/repost', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ content: content })
                 });
+                // 同时作为评论发表（仿微博）
+                if (document.getElementById('repostAsComment') && document.getElementById('repostAsComment').checked) {
+                    await request(POST_API + '/' + repostTargetId + '/comments', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ content: content || '转发微博' })
+                    });
+                }
                 showToast('✅ 转发成功', 'success');
                 closeRepostModal();
                 loadPosts();
@@ -834,19 +1013,48 @@
                 }
             } catch (e) {}
         }
-        // ---------- 信息流切换（最新 / 关注 / 热门） ----------
+        // ---------- 信息流切换（最新 / 关注 / 热门 / 推荐） ----------
+        function updateTabActive() {
+            const map = { latest: 'tabLatest', follow: 'tabFollow', hot: 'tabHot', recommend: 'tabRecommend' };
+            ['tabLatest', 'tabFollow', 'tabHot', 'tabRecommend'].forEach(function (id) {
+                document.getElementById(id).className = 'feed-tab' + (id === map[feedType] ? ' active' : '');
+            });
+        }
         function switchFeed(type) {
+            // 游客需登录才能看关注流 / 个性化推荐（参考微博首页）
+            if ((type === 'follow' || type === 'recommend') && !isLoggedIn) {
+                window.location.href = '/login.html';
+                return;
+            }
             feedType = type;
             searchKeyword = '';
             activeTag = '';
             activeCategory = '';
+            activeTopic = '';
             document.getElementById('searchInput').value = '';
             document.getElementById('clearSearchBtn').style.display = 'none';
-            document.getElementById('tabLatest').className = 'feed-tab' + (type === 'latest' ? ' active' : '');
-            document.getElementById('tabFollow').className = 'feed-tab' + (type === 'follow' ? ' active' : '');
-            document.getElementById('tabHot').className = 'feed-tab' + (type === 'hot' ? ' active' : '');
+            updateTabActive();
             currentPage = 1;
             loadPosts(1);
+        }
+        // ---------- 推荐行为打点（点击 / 不感兴趣） ----------
+        let _tracked = {};
+        async function track(action, postId) {
+            const key = postId + ':' + action;
+            if (_tracked[key]) return; // 防抖：同 postId+action 只上报一次
+            _tracked[key] = true;
+            try {
+                await request('/api/recommend/track', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ postId: postId, action: action })
+                });
+            } catch (e) {}
+        }
+        function dislikePost(postId, btn) {
+            track('DISLIKE', postId);
+            const card = btn.closest('.post');
+            if (card) card.style.opacity = '0.35';
         }
         // ---------- 分类导航 ----------
         async function loadCategories() {
@@ -888,6 +1096,28 @@
             currentPage = 1;
             loadPosts(1);
         }
+        // ---------- 微博热搜榜 ----------
+        async function loadHotSearches() {
+            try {
+                const list = await request('/api/hot/search?limit=15');
+                const box = document.getElementById('hotSearchList');
+                if (!list || list.length === 0) { box.innerHTML = '<li>暂无热搜</li>'; return; }
+                box.innerHTML = list.map(function (h) {
+                    const rankClass = h.rank <= 3 ? ' hot-rank-top' : '';
+                    const levelTag = h.level ? '<span class="hot-level lv-' + h.level + '">' + h.level + '</span>' : '';
+                    let trend = '';
+                    if (h.trend === 1) trend = '<span class="hot-trend up">↑</span>';
+                    else if (h.trend === -1) trend = '<span class="hot-trend down">↓</span>';
+                    else if (h.trend === 2) trend = '<span class="hot-trend new">新</span>';
+                    return '<li onclick="location.href=\'/hot.html\'">' +
+                        '<span class="hot-rank' + rankClass + '">' + h.rank + '</span>' +
+                        '<span class="hot-word">' + escapeHtml(h.keyword) + '</span>' +
+                        levelTag + trend +
+                        '<span class="hot-heat">' + formatCount(h.heat) + '</span></li>';
+                }).join('');
+            } catch (e) {}
+        }
+
         // ---------- 热门帖子榜 ----------
         async function loadHotPosts() {
             try {
@@ -895,22 +1125,11 @@
                 const box = document.getElementById('hotPostList');
                 if (!list || list.length === 0) { box.innerHTML = '<li>暂无热门</li>'; return; }
                 box.innerHTML = list.map(function (p, idx) {
-                    return '<li onclick="location.href=\'/detail.html?id=' + p.id + '\'"><span class="hot-rank">' + (idx + 1) + '</span><span><span class="hot-word">' + escapeHtml(p.title || (p.content || '').slice(0, 20)) + '</span><br><span class="hot-heat">👁 ' + (p.viewCount || 0) + ' · ❤️ ' + (p.likeCount || 0) + ' · 💬 ' + (p.commentCount || 0) + '</span></span></li>';
+                    return '<li onclick="location.href=\'/detail.html?id=' + p.id + '\'"><span class="hot-rank' + (idx < 3 ? ' hot-rank-top' : '') + '">' + (idx + 1) + '</span><span><span class="hot-word">' + escapeHtml(p.title || (p.content || '').slice(0, 20)) + '</span><br><span class="hot-heat">👁 ' + formatCount(p.viewCount) + ' · ❤️ ' + formatCount(p.likeCount) + ' · 💬 ' + formatCount(p.commentCount) + '</span></span></li>';
                 }).join('');
             } catch (e) {}
         }
 
-        // ---------- 数据看板统计 ----------
-        async function loadStats() {
-            try {
-                const s = await request('/api/dashboard/stats');
-                document.getElementById('statUsers').textContent = s.totalUsers || 0;
-                document.getElementById('statPosts').textContent = s.totalPosts || 0;
-                document.getElementById('statComments').textContent = s.totalComments || 0;
-                document.getElementById('statLikes').textContent = s.totalLikes || 0;
-                document.getElementById('statTodayPosts').textContent = s.todayPosts || 0;
-            } catch (e) {}
-        }
         // ---------- 通知未读数角标 ----------
         async function loadUnreadCount() {
             try {
@@ -926,13 +1145,28 @@
             } catch (e) {}
         }
         async function toggleLike(id, btn) {
+            const liked = btn.classList.contains('liked');
+            const numEl = btn.querySelector('.like-num');
+            const orig = parseInt(btn.getAttribute('data-count') || '0', 10) || 0;
+            const next = Math.max(0, orig + (liked ? -1 : 1));
+            // 乐观更新：先变 UI，接口失败再回滚
+            btn.classList.toggle('liked');
+            btn.setAttribute('data-count', next);
+            if (numEl) numEl.textContent = formatCount(next);
+            btn.classList.remove('like-pop');
+            void btn.offsetWidth;
+            btn.classList.add('like-pop');
             try {
-                const method = btn.classList.contains('liked') ? 'DELETE' : 'POST';
+                const method = liked ? 'DELETE' : 'POST';
                 const data = await request(POST_API + '/' + id + '/like', { method: method });
-                btn.classList.toggle('liked');
-                btn.querySelector('.like-num').textContent = data.likeCount;
-                showToast(method === 'POST' ? '❤️ 点赞成功' : '已取消点赞', 'success');
+                if (data && typeof data.likeCount !== 'undefined') {
+                    btn.setAttribute('data-count', data.likeCount);
+                    if (numEl) numEl.textContent = formatCount(data.likeCount);
+                }
             } catch (e) {
+                btn.classList.toggle('liked');
+                btn.setAttribute('data-count', orig);
+                if (numEl) numEl.textContent = formatCount(orig);
                 showToast('❌ ' + e.message, 'error');
             }
         }
@@ -1008,25 +1242,60 @@
             }
         }
 
-        // ---------- 登录校验 ----------
+        // ---------- 新微博提示条（仿微博：增量刷新不打断） ----------
+        async function checkNewPosts() {
+            try {
+                if (feedType !== 'latest') return;
+                const data = await request(POST_API + '?page=1&size=1');
+                const newest = data && data.records && data.records[0];
+                if (!newest || newest.id <= lastNewestId) return;
+                // 统计新微博条数
+                const countData = await request(POST_API + '?page=1&size=50');
+                let n = 0;
+                (countData.records || []).forEach(function (p) { if (p.id > lastNewestId) n++; });
+                const bar = document.getElementById('newPostBar');
+                bar.innerHTML = '有 <b>' + n + '</b> 条新微博，点击查看';
+                bar.style.display = 'block';
+            } catch (e) {}
+        }
+        async function loadNewPosts() {
+            highlightAfterId = lastNewestId;
+            document.getElementById('newPostBar').style.display = 'none';
+            currentPage = 1;
+            loadPosts(1);
+        }
+
+        // ---------- 登录校验（游客模式：可浏览热门/最新，弱化登录入口） ----------
         async function checkLogin() {
+            let username = '游客';
+            let isAdmin = false;
             try {
                 const res = await fetch('/api/auth/me');
                 const data = await res.json();
-                if (!res.ok || data.code !== 0) {
-                    window.location.href = '/login.html';
-                    return;
+                if (res.ok && data.code === 0) {
+                    isLoggedIn = true;
+                    username = data.data.username;
+                    isAdmin = (username === 'admin');
                 }
-                document.getElementById('currentUser').textContent = data.data.username;
-                loadStats();
+            } catch (e) {}
+            document.getElementById('currentUser').textContent = username;
+            document.getElementById('loginBtn').style.display = isLoggedIn ? 'none' : 'inline-block';
+            document.getElementById('logoutBtn').style.display = isLoggedIn ? 'inline-block' : 'none';
+            document.getElementById('navAuthLinks').style.display = isLoggedIn ? '' : 'none';
+            document.getElementById('userAdminLink').style.display = isLoggedIn && isAdmin ? '' : 'none';
+            document.getElementById('guestPrompt').style.display = isLoggedIn ? 'none' : '';
+            document.getElementById('composerEditor').style.display = isLoggedIn ? '' : 'none';
+            if (!isLoggedIn) {
+                feedType = 'hot'; // 游客默认看热门（参考微博首页）
+                updateTabActive();
+            } else {
                 loadUnreadCount();
                 loadMsgUnread();
-                loadCategories();
-                loadHotPosts();
-                loadPosts();
-            } catch (e) {
-                window.location.href = '/login.html';
             }
+            loadCategories();
+            loadHotSearches();
+            loadHotPosts();
+            loadPosts();
         }
         async function logout() {
             try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (e) {}
@@ -1035,6 +1304,8 @@
         checkLogin();
         // 每 15 秒轮询私信未读数
         setInterval(loadMsgUnread, 15000);
+        // 每 30 秒轮询新微博（增量刷新提示条）
+        setInterval(checkNewPosts, 30000);
 
         // ---------- 主题切换 ----------
         function updateToggleIcon() {

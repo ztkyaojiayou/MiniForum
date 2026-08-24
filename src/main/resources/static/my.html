@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的文章</title>
+    <title>我的主页</title>
     <script>
         (function () {
             var saved = localStorage.getItem('theme');
@@ -66,7 +66,7 @@
         .navbar .nav-right { display: flex; align-items: center; gap: 12px; }
         .nav-link { text-decoration: none; color: var(--muted-2); font-size: 14px; padding: 6px 10px; border-radius: 6px; transition: all .2s; }
         .nav-link:hover { color: var(--primary); background: var(--composer-bg); }
-        .navbar .username-tag { font-size: 14px; color: var(--muted-2); }
+        .navbar .username-tag { font-size: 14px; color: var(--muted-2); text-decoration: none; }
         .navbar .username-tag b { color: var(--primary); font-weight: 600; }
         .navbar .logout-btn { background: none; border: 1px solid var(--border); color: var(--muted-2); font-size: 13px; padding: 4px 12px; border-radius: 16px; cursor: pointer; transition: all .2s; }
         .navbar .logout-btn:hover { border-color: #ff4d4f; color: #ff4d4f; }
@@ -172,7 +172,7 @@
             <a class="nav-link" href="/wheel.html">🎡 转盘</a>
             <a class="nav-link" href="/my.html">📝 我的文章</a>
             <a class="nav-link" href="/notification.html">🔔 通知</a>
-            <span class="username-tag">👤 <b id="currentUser"></b></span>
+            <a class="username-tag" href="/my.html" title="我的主页">👤 <b id="currentUser"></b></a>
             <button class="theme-toggle" id="themeToggle" title="切换主题" onclick="toggleTheme()">🌙</button>
             <button class="logout-btn" onclick="logout()">退出</button>
         </div>
@@ -180,7 +180,7 @@
 
     <div class="container">
         <div class="page-title">
-            <span>📝 我的文章</span>
+            <span>🏠 我的主页</span>
             <div>
                 <button class="settings-btn" onclick="toggleSettings()">👤 个人设置</button>
                 <button class="btn btn-sm" onclick="startNew()">✍️ 写新文章</button>
@@ -423,7 +423,7 @@
                                 <button class="btn btn-sm btn-danger" onclick="deletePost(${p.id})">🗑️ 删除</button>`;
                         }
                         div.innerHTML = `
-                            <div class="post-title"><a class="post-title-link" href="/detail.html?id=${p.id}">${escapeHtml(p.title || '（无标题）')}</a> ${badge}</div>
+                            <div class="post-title"><a class="post-title-link" href="/detail.html?id=${p.id}">${escapeHtml(p.title || '查看这篇微博')}</a> ${badge}</div>
                             <div class="post-meta">
                                 <span>🕐 ${formatTime(p.createdAt)}</span>
                                 <span>👁 ${p.viewCount || 0} 阅</span>

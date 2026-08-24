@@ -329,7 +329,7 @@
                         div.className = 'post fade-in';
                         div.style.animationDelay = (i * 0.05) + 's';
                         div.innerHTML = `
-                            <div class="post-title">${escapeHtml(p.title || '（无标题）')}</div>
+                            ${p.title ? `<div class="post-title">${escapeHtml(p.title)}</div>` : ''}
                             <div class="post-content">${escapeHtml(p.content)}</div>
                             <div class="post-meta">
                                 <span class="author-tag">👤 ${escapeHtml(p.author)}</span>

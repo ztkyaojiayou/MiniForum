@@ -59,6 +59,12 @@ public class PostVO {
     /** 转发原帖作者用户名 */
     private String originalAuthor;
 
+    /** 转发原帖标题（用于"转发泡"展示） */
+    private String originalTitle;
+
+    /** 转发原帖内容片段（用于"转发泡"展示） */
+    private String originalContent;
+
     /** 转发数（统计转发该帖的帖子数） */
     private long repostCount;
 
@@ -213,6 +219,22 @@ public class PostVO {
 
     public void setOriginalAuthor(String originalAuthor) {
         this.originalAuthor = originalAuthor;
+    }
+
+    public String getOriginalTitle() {
+        return originalTitle;
+    }
+
+    public void setOriginalTitle(String originalTitle) {
+        this.originalTitle = originalTitle;
+    }
+
+    public String getOriginalContent() {
+        return originalContent;
+    }
+
+    public void setOriginalContent(String originalContent) {
+        this.originalContent = originalContent;
     }
 
     public long getRepostCount() {

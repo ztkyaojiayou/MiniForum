@@ -27,6 +27,12 @@ public class Comment {
     /** 评论时间 */
     private LocalDateTime createdAt;
 
+    /** 点赞数（评论点赞，仿微博） */
+    private long likeCount;
+
+    /** 回复的父评论 ID（null = 根评论，非 null = 楼中楼回复） */
+    private Long parentId;
+
     public Comment() {
     }
 
@@ -36,6 +42,7 @@ public class Comment {
         this.author = author;
         this.content = content;
         this.createdAt = createdAt;
+        this.likeCount = 0;
     }
 
     /** 生成下一个自增 ID */
@@ -88,5 +95,21 @@ public class Comment {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public long getLikeCount() {
+        return likeCount;
+    }
+
+    public void setLikeCount(long likeCount) {
+        this.likeCount = likeCount;
+    }
+
+    public Long getParentId() {
+        return parentId;
+    }
+
+    public void setParentId(Long parentId) {
+        this.parentId = parentId;
     }
 }

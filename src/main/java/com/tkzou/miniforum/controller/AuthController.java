@@ -1,8 +1,10 @@
 package com.tkzou.miniforum.controller;
 
 import com.tkzou.miniforum.common.Result;
+import com.tkzou.miniforum.dto.UserCreateDTO;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.service.AuthService;
+import com.tkzou.miniforum.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,15 +18,19 @@ import javax.validation.constraints.NotBlank;
 
 /**
  * 登录认证接口
+ * <p>
+ * /api/auth/** 为公开路径（WebConfig 不拦截），注册/登录均可匿名访问。
  */
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
     private final AuthService authService;
+    private final UserService userService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, UserService userService) {
         this.authService = authService;
+        this.userService = userService;
     }
 
     /** 登录请求体 */
@@ -50,6 +56,16 @@ public class AuthController {
         session.setAttribute("username", user.getUsername());
         LoginResponse data = new LoginResponse(user);
         return ResponseEntity.ok(Result.success("登录成功", data));
+    }
+
+    /** 注册（校验见 UserCreateDTO，注册成功后自动登录） */
+    @PostMapping("/register")
+    public ResponseEntity<Result<LoginResponse>> register(@Valid @RequestBody UserCreateDTO dto,
+                                                          HttpSession session) {
+        User user = userService.createUser(dto);
+        session.setAttribute("userId", user.getId());
+        session.setAttribute("username", user.getUsername());
+        return ResponseEntity.ok(Result.success("注册成功", new LoginResponse(user)));
     }
 
     /** 登出 */

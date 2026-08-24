@@ -69,7 +69,7 @@
             padding: 6px 10px; border-radius: 6px; transition: all .2s;
         }
         .nav-link:hover { color: var(--primary); background: var(--composer-bg); }
-        .navbar .username-tag { font-size: 14px; color: var(--muted-2); }
+        .navbar .username-tag { font-size: 14px; color: var(--muted-2); text-decoration: none; }
         .navbar .username-tag b { color: var(--primary); font-weight: 600; }
         .navbar .logout-btn {
             background: none; border: 1px solid var(--border); color: var(--muted-2);
@@ -107,7 +107,10 @@
         }
         .btn:hover { background: var(--primary-hover); }
         .follow-btn.following { background: transparent; border: 1px solid var(--border); color: var(--muted-2); }
-        .follow-btn.following:hover { border-color: var(--primary); color: var(--primary); background: transparent; }
+        .follow-btn.following .follow-hover { display: none; }
+        .follow-btn.following:hover { border-color: #ff4d4f; color: #ff4d4f; background: rgba(255, 77, 79, 0.06); }
+        .follow-btn.following:hover .follow-text { display: none; }
+        .follow-btn.following:hover .follow-hover { display: inline; }
         .feed-title { display: flex; align-items: center; justify-content: space-between; margin: 8px 0 16px; color: var(--text-heading); font-size: 18px; font-weight: 700; }
         .post {
             background: var(--card-bg); border-radius: 12px; box-shadow: 0 2px 12px var(--shadow-card);
@@ -170,7 +173,7 @@
             <a class="nav-link" href="/wheel.html">🎡 转盘</a>
             <a class="nav-link" href="/my.html">📝 我的文章</a>
             <a class="nav-link" href="/notification.html">🔔 通知</a>
-            <span class="username-tag">👤 <b id="currentUser"></b></span>
+            <a class="username-tag" href="/my.html" title="我的主页">👤 <b id="currentUser"></b></a>
             <button class="theme-toggle" id="themeToggle" title="切换主题" onclick="toggleTheme()">🌙</button>
             <button class="logout-btn" onclick="logout()">退出</button>
         </div>
@@ -278,7 +281,10 @@
                     msgBtn.style.display = 'inline-block';
                     try {
                         const st = await request('/api/follows/status/' + USER_ID);
-                        btn.textContent = st.following ? '✔️ 已关注' : '➕ 关注';
+                        // 关注三态：➕关注(橙实心) → 已关注(灰) → hover 变红"取消关注"（仿微博）
+                        btn.innerHTML = st.following
+                            ? '<span class="follow-text">✔️ 已关注</span><span class="follow-hover">取消关注</span>'
+                            : '➕ 关注';
                         btn.className = 'btn follow-btn' + (st.following ? ' following' : '');
                     } catch (e) {}
                 }

@@ -77,7 +77,7 @@
             border: 1px solid transparent;
         }
         .nav-link:hover { color: var(--primary); background: var(--composer-bg); }
-        .navbar .username-tag { font-size: 14px; color: var(--muted-2); }
+        .navbar .username-tag { font-size: 14px; color: var(--muted-2); text-decoration: none; }
         .navbar .username-tag b { color: var(--primary); font-weight: 600; }
         .navbar .logout-btn {
             background: none;
@@ -90,6 +90,19 @@
             transition: all .2s;
         }
         .navbar .logout-btn:hover { border-color: #ff4d4f; color: #ff4d4f; }
+        .navbar .login-btn {
+            background: none; border: 1px solid var(--primary); color: var(--primary);
+            font-size: 13px; font-weight: 500; padding: 4px 14px; border-radius: 16px;
+            cursor: pointer; transition: all .2s;
+        }
+        .navbar .login-btn:hover { background: var(--primary); color: #fff; }
+        .guest-prompt {
+            padding: 14px 18px; text-align: center; margin-bottom: 14px;
+            background: var(--card-bg); border: 1px dashed var(--primary); border-radius: 10px;
+            color: var(--muted-2); font-size: 14px;
+        }
+        .guest-prompt a { color: var(--primary); font-weight: 600; text-decoration: none; margin-left: 6px; }
+        .guest-prompt a:hover { text-decoration: underline; }
         .theme-toggle {
             width: 36px;
             height: 36px;
@@ -198,6 +211,8 @@
             padding: 5px 16px; font-size: 14px; color: var(--muted-2); cursor: pointer; transition: all .2s;
         }
         .like-btn:hover { border-color: #ff4d4f; color: #ff4d4f; }
+        @keyframes likePop { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+        .like-btn.like-pop { animation: likePop .3s ease; display: inline-block; }
         .like-btn.liked { border-color: #ff4d4f; color: #ff4d4f; background: rgba(255,77,79,0.08); }
         .fav-btn {
             background: none; border: 1px solid var(--border); border-radius: 16px;
@@ -219,6 +234,17 @@
         .comment-composer textarea:focus { border-color: var(--primary); }
         .comment-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
         .comments-title { font-size: 16px; font-weight: 600; color: var(--text-heading); margin-bottom: 12px; }
+        .related-section { margin-top: 28px; padding: 16px; background: var(--card-bg); border-radius: 12px; box-shadow: 0 2px 12px var(--shadow-card); }
+        .related-title { font-size: 16px; font-weight: 600; color: var(--text-heading); margin-bottom: 12px; }
+        .related-card { padding: 10px 0; border-bottom: 1px solid var(--border-row); }
+        .related-card:last-child { border-bottom: none; }
+        .related-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .avatar-sm { width: 26px; height: 26px; font-size: 13px; }
+        .related-author { color: var(--muted); font-size: 13px; text-decoration: none; }
+        .related-meta { color: var(--muted-2); font-size: 12px; }
+        .related-title-link { color: var(--text-heading); font-weight: 600; text-decoration: none; font-size: 14px; }
+        .related-title-link:hover { color: var(--primary); }
+        .related-reason { color: var(--primary); font-size: 12px; margin-top: 4px; }
         .comment-list { background: var(--card-bg); border-radius: 12px; box-shadow: 0 2px 12px var(--shadow-card); padding: 8px 16px; }
         .comment { padding: 14px 0; border-bottom: 1px solid var(--border-row); }
         .comment:last-child { border-bottom: none; }
@@ -231,6 +257,27 @@
         .comment-time { font-size: 12px; color: var(--muted); }
         .comment-head .btn-sm { margin-left: auto; }
         .comment-content { font-size: 14px; line-height: 1.7; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+        /* ---- 评论区增强（仿微博：热度/时间排序 + 点赞 + 楼中楼） ---- */
+        .comment-sort { display: flex; align-items: center; gap: 8px; margin: 10px 0; }
+        .comment-sort-tab {
+            border: 1px solid var(--border); background: var(--card-bg); color: var(--muted-2);
+            font-size: 12px; padding: 3px 12px; border-radius: 14px; cursor: pointer; transition: all .2s;
+        }
+        .comment-sort-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .comment-foot { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+        .comment-like { font-size: 12px; color: var(--muted-2); cursor: pointer; }
+        .comment-like:hover { color: #ff4d4f; }
+        .comment-reply-link { font-size: 12px; color: var(--muted); cursor: pointer; }
+        .comment-reply-link:hover { color: var(--primary); }
+        .comment-reply-toggle { font-size: 12px; color: var(--primary); cursor: pointer; margin: 8px 0 4px; }
+        .comment-replies { background: var(--composer-bg); border-radius: 8px; padding: 4px 12px; margin-top: 8px; }
+        .comment-reply { padding: 6px 0; font-size: 13px; border-bottom: 1px solid var(--border-row); }
+        .comment-reply:last-child { border-bottom: none; }
+        .comment-reply .comment-reply-text { color: var(--text); }
+        .comment-reply .comment-like { float: right; }
+        .reply-box { display: flex; align-items: center; gap: 8px; margin: 10px 0; }
+        .reply-box input { flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: var(--card-bg); color: var(--text); }
+        .reply-box input:focus { outline: none; border-color: var(--primary); }
         .empty { text-align: center; color: var(--muted); padding: 40px 0; }
         .loading { text-align: center; color: var(--muted); padding: 20px; }
         .toast {
@@ -260,9 +307,10 @@
             <a class="nav-link" href="/quote.html">💡 灵感</a>
             <a class="nav-link" href="/wheel.html">🎡 转盘</a>
             <a class="nav-link" href="/notification.html">🔔 通知</a>
-            <span class="username-tag">👤 <b id="currentUser"></b></span>
+            <a class="username-tag" href="/my.html" title="我的主页">👤 <b id="currentUser"></b></a>
+            <button class="login-btn" id="loginBtn" style="display:none;" onclick="location.href='/login.html'">登录 / 注册</button>
             <button class="theme-toggle" id="themeToggle" title="切换主题" onclick="toggleTheme()">🌙</button>
-            <button class="logout-btn" onclick="logout()">退出</button>
+            <button class="logout-btn" id="logoutBtn" onclick="logout()">退出</button>
         </div>
     </div>
 
@@ -270,14 +318,28 @@
         <a class="back-link" href="/index.html">← 返回动态列表</a>
         <div id="loading" class="loading">加载中...</div>
         <div id="article"></div>
+        <div id="related" class="related-section" style="display:none;">
+            <div class="related-title">📚 相关推荐</div>
+            <div id="relatedList"></div>
+        </div>
         <div class="comments-section" id="commentsSection" style="display:none;">
+            <div class="guest-prompt" id="guestPrompt" style="display:none;">🔒 <b>登录后即可评论、点赞、收藏、转发</b><a href="/login.html">去登录 / 注册 →</a></div>
             <div class="comment-composer">
                 <textarea id="commentContent" maxlength="500" placeholder="写下你的评论..."></textarea>
                 <div class="comment-actions">
                     <button class="btn" style="padding:6px 20px; font-size:13px;" onclick="addComment()">💬 发表评论</button>
                 </div>
             </div>
+            <div class="comment-sort">
+                <button class="comment-sort-tab active" id="sortHeat" onclick="switchCommentSort('heat')">🔥 热度</button>
+                <button class="comment-sort-tab" id="sortTime" onclick="switchCommentSort('time')">🕐 时间</button>
+            </div>
             <div class="comments-title">💬 评论 <span id="commentCount">0</span></div>
+            <div class="reply-box" id="replyBox" style="display:none;">
+                <input type="text" id="replyContent" maxlength="500" placeholder="回复...">
+                <button class="btn btn-sm" onclick="submitReply()">回复</button>
+                <button class="btn btn-sm btn-cancel" onclick="closeReply()">取消</button>
+            </div>
             <div class="comment-list" id="commentList">
                 <div class="empty">还没有评论，快来抢沙发～</div>
             </div>
@@ -305,6 +367,13 @@
             return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
                 + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
         }
+        function formatCount(n) {
+            n = parseInt(n || 0, 10);
+            if (n >= 10000) {
+                return (n / 10000).toFixed(1).replace(/\.0$/, '') + '万';
+            }
+            return '' + n;
+        }
         function getPostId() {
             const params = new URLSearchParams(window.location.search);
             return params.get('id');
@@ -331,7 +400,7 @@
                 loading.style.display = 'none';
                 article.innerHTML = `
                     <div class="article fade-in">
-                        <div class="article-title">${p.title ? escapeHtml(p.title) : '（无标题）'}</div>
+                        ${p.title ? `<div class="article-title">${escapeHtml(p.title)}</div>` : ''}
                         <div class="meta">
                             <a class="avatar-link" href="/user.html?id=${p.authorId}" title="${escapeHtml(p.author)}"><div class="avatar">${escapeHtml(avatarChar)}</div></a>
                             <div>
@@ -342,7 +411,7 @@
                         ${renderTags(p.tags)}
                         <div class="article-content markdown">${renderMarkdown(p.content)}</div>
                         <div class="article-stats">
-                            <button class="like-btn${p.likedByMe ? ' liked' : ''}" onclick="toggleLike(${p.id}, this)">❤️ <span class="like-num">${p.likeCount || 0}</span> 赞</button>
+                            <button class="like-btn${p.likedByMe ? ' liked' : ''}" data-count="${p.likeCount || 0}" onclick="toggleLike(${p.id}, this)">❤️ <span class="like-num">${formatCount(p.likeCount || 0)}</span> 赞</button>
                             <button class="fav-btn${p.favoritedByMe ? ' favorited' : ''}" onclick="toggleFavorite(${p.id}, this)">⭐ <span class="fav-text">${p.favoritedByMe ? '已收藏' : '收藏'}</span></button>
                             <button class="like-btn" onclick="doRepost('${p.id}')">🔄 转发 <span>${p.repostCount || 0}</span></button>
                             <span class="stat-text">👁 ${p.viewCount || 0} 次阅读</span>
@@ -352,10 +421,53 @@
                     </div>`;
                     document.getElementById('commentsSection').style.display = 'block';
                     loadComments(id);
+                    loadRelated(id);
             } catch (e) {
                 loading.style.display = 'none';
                 article.innerHTML = '<div class="empty">加载失败：' + escapeHtml(e.message) + '</div>';
             }
+        }
+        /** 相关推荐（ItemCF "看过这篇的人还看"） */
+        async function loadRelated(postId) {
+            const box = document.getElementById('related');
+            const list = document.getElementById('relatedList');
+            if (!postId) return;
+            try {
+                const res = await fetch('/api/recommend/related?postId=' + postId);
+                const data = await res.json();
+                if (!res.ok || data.code !== 0 || !data.data || data.data.length === 0) {
+                    box.style.display = 'none';
+                    return;
+                }
+                list.innerHTML = data.data.map(function (r) {
+                    const p = r.post;
+                    const avatarChar = (p.author || '?').charAt(0).toUpperCase();
+                    return `
+                        <div class="related-card">
+                            <div class="related-header">
+                                <a class="avatar-link" href="/user.html?id=${p.authorId}"><div class="avatar avatar-sm">${escapeHtml(avatarChar)}</div></a>
+                                <div>
+                                    <a class="related-author" href="/user.html?id=${p.authorId}">@${escapeHtml(p.author)}</a>
+                                    <div class="related-meta">👁 ${p.viewCount || 0} · 💬 ${p.commentCount || 0}</div>
+                                </div>
+                            </div>
+                            <a class="related-title-link" href="/detail.html?id=${p.id}" onclick="trackClick(${p.id})">${escapeHtml(p.title || '查看这篇微博')}</a>
+                            <div class="related-reason">🔍 ${escapeHtml(r.reason || '')}</div>
+                        </div>`;
+                }).join('');
+                box.style.display = 'block';
+            } catch (e) {
+                box.style.display = 'none';
+            }
+        }
+        function trackClick(postId) {
+            try {
+                fetch('/api/recommend/track', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ postId: postId, action: 'CLICK' })
+                });
+            } catch (e) {}
         }
         /** 轻量 Markdown 渲染：支持标题/粗体/斜体/行内代码/代码块/列表/引用/链接/分割线 */
         function renderMarkdown(src) {
@@ -414,6 +526,7 @@
             });
         }
         async function toggleFavorite(id, btn) {
+            if (!isLoggedIn) { window.location.href = '/login.html'; return; }
             try {
                 const isFav = btn.classList.contains('favorited');
                 const res = await fetch('/api/favorites/' + id, { method: isFav ? 'DELETE' : 'POST' });
@@ -427,6 +540,7 @@
             }
         }
         async function doRepost(id) {
+            if (!isLoggedIn) { window.location.href = '/login.html'; return; }
             const comment = prompt('转发时想说点什么？（可留空）');
             if (comment === null) return;
             try {
@@ -450,44 +564,142 @@
             }).join('') + '</div>';
         }
         async function toggleLike(id, btn) {
+            if (!isLoggedIn) { window.location.href = '/login.html'; return; }
+            const liked = btn.classList.contains('liked');
+            const numEl = btn.querySelector('.like-num');
+            const orig = parseInt(btn.getAttribute('data-count') || '0', 10) || 0;
+            const next = Math.max(0, orig + (liked ? -1 : 1));
+            // 乐观更新：先变 UI，失败回滚
+            btn.classList.toggle('liked');
+            btn.setAttribute('data-count', next);
+            if (numEl) numEl.textContent = formatCount(next);
+            btn.classList.remove('like-pop');
+            void btn.offsetWidth;
+            btn.classList.add('like-pop');
             try {
-                const method = btn.classList.contains('liked') ? 'DELETE' : 'POST';
+                const method = liked ? 'DELETE' : 'POST';
                 const res = await fetch('/api/posts/' + id + '/like', { method: method });
                 const data = await res.json();
                 if (!res.ok || data.code !== 0) { throw new Error(data.message || '操作失败'); }
-                btn.classList.toggle('liked');
-                btn.querySelector('.like-num').textContent = data.likeCount;
-                showToast(method === 'POST' ? '❤️ 点赞成功' : '已取消点赞', 'success');
+                if (data.data && typeof data.data.likeCount !== 'undefined') {
+                    btn.setAttribute('data-count', data.data.likeCount);
+                    if (numEl) numEl.textContent = formatCount(data.data.likeCount);
+                }
             } catch (e) {
+                btn.classList.toggle('liked');
+                btn.setAttribute('data-count', orig);
+                if (numEl) numEl.textContent = formatCount(orig);
                 showToast('❌ ' + e.message, 'error');
             }
+        }
+        let commentSort = 'heat';
+        function switchCommentSort(sort) {
+            commentSort = sort;
+            document.getElementById('sortHeat').className = 'comment-sort-tab' + (sort === 'heat' ? ' active' : '');
+            document.getElementById('sortTime').className = 'comment-sort-tab' + (sort === 'time' ? ' active' : '');
+            loadComments(getPostId());
         }
         async function loadComments(postId) {
             const box = document.getElementById('commentList');
             try {
-                const res = await fetch('/api/posts/' + postId + '/comments');
+                const res = await fetch('/api/posts/' + postId + '/comments?sort=' + commentSort);
                 const data = await res.json();
                 if (!res.ok || data.code !== 0) { throw new Error(data.message || '加载评论失败'); }
                 const comments = data.data || [];
-                document.getElementById('commentCount').textContent = comments.length;
+                const total = comments.reduce(function (s, c) { return s + 1 + (c.replies || []).length; }, 0);
+                document.getElementById('commentCount').textContent = total;
                 if (comments.length === 0) {
                     box.innerHTML = '<div class="empty">还没有评论，快来抢沙发～</div>';
                 } else {
                     box.innerHTML = comments.map(function (c) {
-                        return `
-                            <div class="comment">
-                                <div class="comment-head">
-                                    <span class="comment-avatar">${escapeHtml((c.author || '?').charAt(0).toUpperCase())}</span>
-                                    <span class="comment-author">${escapeHtml(c.author)}</span>
-                                    <span class="comment-time">${formatTime(c.createdAt)}</span>
-                                    ${c.mine ? '<button class="btn btn-danger btn-sm" onclick="deleteComment(' + c.id + ')">删除</button>' : ''}
-                                </div>
-                                <div class="comment-content">${renderMention(c.content)}</div>
-                            </div>`;
+                        const replies = (c.replies || []).map(function (r) {
+                            return '<div class="comment-reply">' +
+                                '<span class="comment-author">' + escapeHtml(r.author) + '</span>：' +
+                                '<span class="comment-reply-text">' + renderMention(r.content) + '</span>' +
+                                '<span class="comment-like" data-count="' + r.likeCount + '" onclick="likeComment(' + r.id + ', this)">❤️ <b>' + formatCount(r.likeCount) + '</b></span>' +
+                                '</div>';
+                        }).join('');
+                        const replyToggle = c.replyCount > 0
+                            ? '<div class="comment-reply-toggle" onclick="toggleReplies(this)">共 ' + c.replyCount + ' 条回复 · 展开回复</div>'
+                            : '';
+                        return '<div class="comment" data-root="' + c.id + '">' +
+                            '<div class="comment-head">' +
+                            '<span class="comment-avatar">' + escapeHtml((c.author || '?').charAt(0).toUpperCase()) + '</span>' +
+                            '<span class="comment-author">' + escapeHtml(c.author) + '</span>' +
+                            '<span class="comment-time">' + formatTime(c.createdAt) + '</span>' +
+                            (c.mine ? '<button class="btn btn-danger btn-sm" onclick="deleteComment(' + c.id + ')">删除</button>' : '') +
+                            '</div>' +
+                            '<div class="comment-content">' + renderMention(c.content) + '</div>' +
+                            '<div class="comment-foot">' +
+                            '<span class="comment-like" data-count="' + c.likeCount + '" onclick="likeComment(' + c.id + ', this)">❤️ <b>' + formatCount(c.likeCount) + '</b></span>' +
+                            '<span class="comment-reply-link" onclick="openReply(' + c.id + ', \'' + escapeHtml(c.author) + '\')">回复</span>' +
+                            '</div>' +
+                            replyToggle +
+                            '<div class="comment-replies" style="display:none;">' + replies + '</div>' +
+                            '</div>';
                     }).join('');
                 }
             } catch (e) {
                 box.innerHTML = '<div class="empty">加载评论失败</div>';
+            }
+        }
+        // 评论点赞（乐观 +1，失败回滚）
+        async function likeComment(commentId, el) {
+            const b = el.querySelector('b');
+            const orig = parseInt(el.getAttribute('data-count') || '0', 10) || 0;
+            el.setAttribute('data-count', orig + 1);
+            if (b) b.textContent = formatCount(orig + 1);
+            try {
+                const res = await fetch('/api/comments/' + commentId + '/like', { method: 'POST' });
+                const data = await res.json();
+                if (!res.ok || data.code !== 0) { throw new Error(data.message || '操作失败'); }
+                if (data.data) { el.setAttribute('data-count', data.data.likeCount); if (b) b.textContent = formatCount(data.data.likeCount); }
+            } catch (e) {
+                el.setAttribute('data-count', orig);
+                if (b) b.textContent = formatCount(orig);
+                showToast('❌ ' + e.message, 'error');
+            }
+        }
+        // 楼中楼展开/收起
+        function toggleReplies(btn) {
+            const box = btn.nextElementSibling;
+            if (!box) return;
+            const hidden = box.style.display === 'none';
+            box.style.display = hidden ? 'block' : 'none';
+            btn.textContent = hidden ? '收起回复' : btn.textContent.replace('展开', '展开');
+        }
+        // 回复框
+        let replyTargetId = null;
+        function openReply(parentId, author) {
+            replyTargetId = parentId;
+            const input = document.getElementById('replyContent');
+            input.value = '回复 @' + author + ' ';
+            document.getElementById('replyBox').style.display = 'flex';
+            input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
+        }
+        function closeReply() {
+            document.getElementById('replyBox').style.display = 'none';
+            replyTargetId = null;
+        }
+        async function submitReply() {
+            if (!replyTargetId) return;
+            const postId = getPostId();
+            const content = document.getElementById('replyContent').value.trim();
+            if (!content) { showToast('回复内容不能为空', 'error'); return; }
+            try {
+                const res = await fetch('/api/posts/' + postId + '/comments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: content, parentId: replyTargetId })
+                });
+                const data = await res.json();
+                if (!res.ok || data.code !== 0) { throw new Error(data.message || '回复失败'); }
+                showToast('✅ 回复成功', 'success');
+                closeReply();
+                loadComments(postId);
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
             }
         }
         async function addComment() {
@@ -522,19 +734,25 @@
             }
         }
 
+        let isLoggedIn = false;
         async function checkLogin() {
             try {
                 const res = await fetch('/api/auth/me');
                 const data = await res.json();
-                if (!res.ok || data.code !== 0) {
-                    window.location.href = '/login.html';
-                    return;
+                if (res.ok && data.code === 0) {
+                    isLoggedIn = true;
+                    document.getElementById('currentUser').textContent = data.data.username;
+                } else {
+                    document.getElementById('currentUser').textContent = '游客';
                 }
-                document.getElementById('currentUser').textContent = data.data.username;
-                loadPost();
             } catch (e) {
-                window.location.href = '/login.html';
+                document.getElementById('currentUser').textContent = '游客';
             }
+            // 游客模式：弱化登录入口，可看文章/评论/相关推荐，互动需登录
+            document.getElementById('loginBtn').style.display = isLoggedIn ? 'none' : 'inline-block';
+            document.getElementById('logoutBtn').style.display = isLoggedIn ? 'inline-block' : 'none';
+            document.getElementById('guestPrompt').style.display = isLoggedIn ? 'none' : '';
+            loadPost();
         }
         async function logout() {
             try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (e) {}

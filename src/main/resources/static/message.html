@@ -45,7 +45,7 @@
             border-radius: 6px; transition: all .2s; border: 1px solid transparent;
         }
         .nav-link:hover { color: var(--primary); background: var(--composer-bg); }
-        .navbar .username-tag { font-size: 14px; color: var(--muted-2); }
+        .navbar .username-tag { font-size: 14px; color: var(--muted-2); text-decoration: none; }
         .navbar .username-tag b { color: var(--primary); font-weight: 600; }
         .navbar .logout-btn {
             background: none; border: 1px solid var(--border); color: var(--muted-2);
@@ -132,7 +132,7 @@
             <a class="nav-link" href="/index.html">🏠 首页</a>
             <a class="nav-link" href="/my.html">📝 我的文章</a>
             <a class="nav-link" href="/notification.html">🔔 通知</a>
-            <span class="username-tag">👤 <b id="currentUser"></b></span>
+            <a class="username-tag" href="/my.html" title="我的主页">👤 <b id="currentUser"></b></a>
             <button class="theme-toggle" id="themeToggle" title="切换主题" onclick="toggleTheme()">🌙</button>
             <button class="logout-btn" onclick="logout()">退出</button>
         </div>

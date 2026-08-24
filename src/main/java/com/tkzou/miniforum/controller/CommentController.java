@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpSession;
@@ -32,23 +33,30 @@ public class CommentController {
         this.commentService = commentService;
     }
 
-    /** 查看某帖子的评论列表 */
+    /** 查看某帖子的评论列表（sort=heat 按热度，默认按时间最新在前） */
     @GetMapping("/api/posts/{postId}/comments")
     public ResponseEntity<Result<List<CommentVO>>> list(@PathVariable Long postId,
+                                                        @RequestParam(required = false, defaultValue = "time") String sort,
                                                         HttpSession session) {
         String username = (String) session.getAttribute("username");
-        return ResponseEntity.ok(Result.success(commentService.getComments(postId, username)));
+        return ResponseEntity.ok(Result.success(commentService.getComments(postId, username, sort)));
     }
 
-    /** 发表评论 */
+    /** 发表评论 / 楼中楼回复（parentId 非空则为回复） */
     @PostMapping("/api/posts/{postId}/comments")
     public ResponseEntity<Result<CommentVO>> create(@PathVariable Long postId,
                                                     @Valid @RequestBody CommentCreateDTO dto,
                                                     HttpSession session) {
         String username = (String) session.getAttribute("username");
         Long userId = (Long) session.getAttribute("userId");
-        CommentVO created = commentService.addComment(postId, dto, username, userId);
+        CommentVO created = commentService.addComment(postId, dto, username, userId, dto.getParentId());
         return ResponseEntity.status(HttpStatus.CREATED).body(Result.success("评论成功", created));
+    }
+
+    /** 评论点赞 */
+    @PostMapping("/api/comments/{commentId}/like")
+    public ResponseEntity<Result<CommentVO>> like(@PathVariable Long commentId) {
+        return ResponseEntity.ok(Result.success("已点赞", commentService.likeComment(commentId)));
     }
 
     /** 删除评论（作者本人或管理员） */

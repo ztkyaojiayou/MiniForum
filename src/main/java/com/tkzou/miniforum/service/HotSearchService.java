@@ -89,7 +89,32 @@ public class HotSearchService {
                 vo.setTrend(0); // 持平
             }
         }
+        // 热度等级（仿微博爆/沸/热/新标签）
+        long maxHeat = topN.isEmpty() ? 0 : topN.get(0).getHeat();
+        for (HotSearchVO vo : topN) {
+            vo.setLevel(computeLevel(vo, maxHeat));
+        }
         return topN;
+    }
+
+    /**
+     * 热度等级：爆(≥90%榜首热度) / 沸(≥60%) / 热(其余)；新上榜标"新"。
+     */
+    private String computeLevel(HotSearchVO vo, long maxHeat) {
+        if (vo.getTrend() == 2) {
+            return "新";
+        }
+        if (maxHeat <= 0) {
+            return "热";
+        }
+        double ratio = (double) vo.getHeat() / maxHeat;
+        if (ratio >= 0.9) {
+            return "爆";
+        }
+        if (ratio >= 0.6) {
+            return "沸";
+        }
+        return "热";
     }
 
     /**

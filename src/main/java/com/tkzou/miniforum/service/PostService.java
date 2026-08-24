@@ -16,6 +16,8 @@ import com.tkzou.miniforum.repository.FavoriteRepository;
 import com.tkzou.miniforum.repository.LikeRepository;
 import com.tkzou.miniforum.repository.PostRepository;
 import com.tkzou.miniforum.repository.UserRepository;
+import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
+import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -77,19 +79,22 @@ public class PostService {
     private final FavoriteRepository favoriteRepository;
     private final NotificationService notificationService;
     private final UserRepository userRepository;
+    private final BehaviorLogger behaviorLogger;
 
     public PostService(PostRepository postRepository,
                        LikeRepository likeRepository,
                        CommentRepository commentRepository,
                        FavoriteRepository favoriteRepository,
                        NotificationService notificationService,
-                       UserRepository userRepository) {
+                       UserRepository userRepository,
+                       BehaviorLogger behaviorLogger) {
         this.postRepository = postRepository;
         this.likeRepository = likeRepository;
         this.commentRepository = commentRepository;
         this.favoriteRepository = favoriteRepository;
         this.notificationService = notificationService;
         this.userRepository = userRepository;
+        this.behaviorLogger = behaviorLogger;
     }
 
     /** 发帖（publish=false 时存为草稿） */
@@ -214,6 +219,9 @@ public class PostService {
         if (isPublished(post)) {
             post.setViewCount(post.getViewCount() + 1);
             postRepository.save(post);
+            // 记录浏览行为（供画像/推荐信号，生产形态进 Kafka）
+            userRepository.findByUsername(username)
+                    .ifPresent(u -> behaviorLogger.log(u.getId(), id, BehaviorType.VIEW, "POST", null));
         }
         return toVO(post, username);
     }
@@ -496,6 +504,7 @@ public class PostService {
         like.setCreatedAt(LocalDateTime.now());
         likeRepository.save(like);
         post.setLikeCount(post.getLikeCount() + 1);
+        behaviorLogger.log(actorId, postId, BehaviorType.LIKE, "POST", null);
         // 通知帖子作者（给自己点赞不通知）
         notificationService.notify(post.getAuthorId(), actorId, username,
                 Notification.TYPE_LIKE, postId, "赞了你的帖子《" + post.getTitle() + "》");
@@ -548,6 +557,7 @@ public class PostService {
         repost.setOriginalAuthorId(original.getAuthorId());
         repost.setOriginalAuthor(original.getAuthor());
         Post saved = postRepository.save(repost);
+        behaviorLogger.log(actorId, saved.getId(), BehaviorType.REPOST, "POST", null);
         // 通知原帖作者（转发自己的帖子不通知）
         String brief = originalTitle.isBlank() && original.getContent() != null
                 ? original.getContent().substring(0, Math.min(20, original.getContent().length()))
@@ -604,6 +614,14 @@ public class PostService {
         vo.setCommentCount(commentRepository.countByPostId(post.getId()));
         vo.setCategory(resolveCategory(post));
         vo.setRepostCount(countReposts(post.getId()));
+        // 转发泡：补充原帖标题与内容片段
+        if (post.getOriginalPostId() != null) {
+            postRepository.findById(post.getOriginalPostId()).ifPresent(orig -> {
+                vo.setOriginalTitle(orig.getTitle());
+                String origContent = orig.getContent() == null ? "" : orig.getContent();
+                vo.setOriginalContent(origContent.length() > 100 ? origContent.substring(0, 100) + "…" : origContent);
+            });
+        }
         return vo;
     }
 

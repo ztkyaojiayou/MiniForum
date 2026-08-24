@@ -99,6 +99,14 @@
             font-size: 13px;
             margin-bottom: 28px;
         }
+        .mode-tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+        .mode-tab {
+            flex: 1; padding: 9px; border: 1px solid var(--border);
+            background: var(--card-bg); color: var(--muted-2); border-radius: 6px;
+            font-size: 14px; cursor: pointer; transition: all .2s;
+        }
+        .mode-tab:hover { border-color: var(--primary); color: var(--primary); }
+        .mode-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
         .form-group { margin-bottom: 18px; }
         .form-group label { display: block; font-size: 13px; color: var(--muted-2); margin-bottom: 6px; }
         .form-group input {
@@ -151,8 +159,14 @@
 <body>
     <button class="theme-toggle" id="themeToggle" title="切换主题" onclick="toggleTheme()">🌙</button>
     <div class="login-card">
-        <h1>欢迎回来 👋</h1>
-        <div class="subtitle">登录「动态广场」，分享你的新鲜事</div>
+        <div class="mode-tabs">
+            <button class="mode-tab active" id="tabLogin" onclick="switchMode('login')">登 录</button>
+            <button class="mode-tab" id="tabRegister" onclick="switchMode('register')">注 册</button>
+        </div>
+        <h1 id="cardTitle">欢迎回来 👋</h1>
+        <div class="subtitle" id="cardSubtitle">登录「动态广场」，分享你的新鲜事</div>
+
+        <!-- 登录表单 -->
         <form id="loginForm">
             <div class="form-group">
                 <label>用户名</label>
@@ -164,8 +178,30 @@
             </div>
             <button type="submit" class="btn" id="loginBtn">登 录</button>
         </form>
+
+        <!-- 注册表单 -->
+        <form id="registerForm" style="display:none;">
+            <div class="form-group">
+                <label>用户名</label>
+                <input type="text" id="regUsername" required placeholder="请输入用户名">
+            </div>
+            <div class="form-group">
+                <label>邮箱</label>
+                <input type="email" id="regEmail" required placeholder="请输入邮箱">
+            </div>
+            <div class="form-group">
+                <label>密码（6-20 位）</label>
+                <input type="password" id="regPassword" required placeholder="请输入密码">
+            </div>
+            <div class="form-group">
+                <label>年龄</label>
+                <input type="number" id="regAge" required placeholder="请输入年龄">
+            </div>
+            <button type="submit" class="btn" id="registerBtn">注 册</button>
+        </form>
+
         <div class="error-msg" id="errorMsg"></div>
-        <div class="hint">💡 默认管理员账号：<code>admin</code> / <code>admin123</code></div>
+        <div class="hint">💡 默认管理员账号：<code>admin</code> / <code>admin123</code>；游客可直接 <a href="/index.html">返回首页逛逛</a> →</div>
     </div>
 
     <script>
@@ -196,6 +232,50 @@
         document.getElementById('loginForm').addEventListener('submit', function (e) {
             e.preventDefault();
             login();
+        });
+
+        // ---------- 登录 / 注册 切换 ----------
+        function switchMode(mode) {
+            const isLogin = mode === 'login';
+            document.getElementById('loginForm').style.display = isLogin ? '' : 'none';
+            document.getElementById('registerForm').style.display = isLogin ? 'none' : '';
+            document.getElementById('tabLogin').className = 'mode-tab' + (isLogin ? ' active' : '');
+            document.getElementById('tabRegister').className = 'mode-tab' + (isLogin ? '' : ' active');
+            document.getElementById('cardTitle').textContent = isLogin ? '欢迎回来 👋' : '创建账号 ✨';
+            document.getElementById('cardSubtitle').textContent = isLogin ? '登录「动态广场」，分享你的新鲜事' : '注册后即可发布动态、点赞评论';
+            document.getElementById('errorMsg').textContent = '';
+        }
+
+        // ---------- 注册 ----------
+        async function register() {
+            const username = document.getElementById('regUsername').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const password = document.getElementById('regPassword').value;
+            const age = parseInt(document.getElementById('regAge').value, 10);
+            const errorMsg = document.getElementById('errorMsg');
+            const btn = document.getElementById('registerBtn');
+            errorMsg.textContent = '';
+            btn.disabled = true;
+            try {
+                const res = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password, age })
+                });
+                const data = await res.json();
+                if (!res.ok || data.code !== 0) {
+                    throw new Error(data.message || '注册失败');
+                }
+                window.location.href = '/index.html'; // 注册即自动登录
+            } catch (e) {
+                errorMsg.textContent = '❌ ' + e.message;
+                btn.disabled = false;
+            }
+        }
+
+        document.getElementById('registerForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            register();
         });
 
         // ---------- 主题切换 ----------

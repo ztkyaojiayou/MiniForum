@@ -30,7 +30,13 @@
 ### 🔍 发现与数据
 - ✅ **全文搜索**：帖子（标题 / 内容 / 标签 / 话题）+ 用户综合搜索，搜索词计入热搜
 - ✅ **热搜榜**：标签热度聚合（阅读×1 + 点赞×2 + 评论×3，30 天时间衰减），独立热搜详情页（Top50 + 排名趋势）
-- ✅ **微博式三栏首页**：左分类导航 ｜ 中发帖框 + 信息流（最新/关注/热门）｜ 右热搜榜
+- ✅ **个性化推荐流**：多路召回（热门 / 话题 / 类目 / ItemCF / 新内容 / 关注）+ 微博式排序 + 打散重排，**每条带可解释推荐理由**（"因为你看过 #话题# / 你关注的人发布了 / 大家都在看"）
+- ✅ **详情相关推荐**：详情页"看过这篇的人还看"（ItemCF 相似帖）
+- ✅ **行为打点闭环**：点击 / 不感兴趣 → 行为日志 → 用户画像 / 实时特征（模拟 Kafka + Flink → Redis 链路，生产适配代码见 recommend/prod）
+- ✅ **冷启动**：新内容 Thompson bandit 探索、新用户热门兜底 + 热搜协同
+- ✅ **AB 实验**：哈希分桶分层正交，实验组走多样性变体配置，行为日志携带 expId 可离线归因
+- ✅ **离线评估**：时间切分 + AUC/GAUC/Recall@K/NDCG@K/Coverage/Diversity/Freshness 指标
+- ✅ **微博式三栏首页**：左分类导航 ｜ 中发帖框 + 信息流（最新/关注/热门/**推荐**）｜ 右热搜榜
 - ✅ **分类页独立路由**：`/category/tech` 直达分类，可分享、刷新不丢状态
 - ✅ 数据看板（用户 / 帖子 / 评论 / 点赞 / 今日新增统计）
 
@@ -41,7 +47,9 @@
 - ✅ 健康检测接口
 
 ### ⚙️ 系统能力
-- ✅ 用户注册 / 登录 / 退出（Session 认证 + 全局登录拦截）
+- ✅ 用户注册 / 登录 / 退出（Session 认证 + 全局登录拦截 + 游客浏览）
+- ✅ **我的主页**：点击右上角账号名进入个人中心（资料编辑 + 发帖/粉丝/关注统计 + 我的文章/草稿/收藏/回收站）
+- ✅ **账号管理仅管理员**："用户管理"按钮仅 admin 可见，接口层也做了管理员校验
 - ✅ 密码安全（SHA-256 + 盐加密，用户信息脱敏）
 - ✅ 修改密码 / 修改资料（昵称 / 头像 / 简介）
 - ✅ **JSON 文件持久化**（`data/*.json`，定时落盘 + 启动加载，重启不丢）
@@ -65,7 +73,9 @@
 ```
 my-first-nanobot-server/
 ├── src/main/java/com/tkzou/miniforum/
-│   ├── controller/        # REST 控制器（17 个）
+│   ├── controller/        # REST 控制器（18 个）
+│   │   ├── ...
+│   │   └── RecommendController.java   # 推荐：feed/related/track
 │   │   ├── AuthController.java        # 登录/注册/退出
 │   │   ├── PostController.java        # 发帖/编辑/删除/详情/热门/回收站/转发/点赞
 │   │   ├── UserController.java        # 用户管理/资料/主页聚合
@@ -83,10 +93,24 @@ my-first-nanobot-server/
 │   │   ├── DecisionController.java    # 决策转盘
 │   │   ├── HealthController.java      # 健康检测
 │   │   └── HomeController.java        # 页面路由
-│   ├── service/           # 业务逻辑层（12 个）
-│   ├── repository/        # 数据访问层（10 个，内存存储）
-│   ├── entity/            # 实体类（10 个）
-│   ├── dto/               # 请求/响应 DTO（18 个）
+│   ├── service/           # 业务逻辑层（13 个）
+│   ├── repository/        # 数据访问层（11 个，内存存储）
+│   ├── entity/            # 实体类（11 个）
+│   ├── dto/               # 请求/响应 DTO（19 个）
+│   ├── recommend/         # 推荐系统子系统（业务侧，弱训练侧）
+│   │   ├── recall/        #   多路召回（热门/话题/类目/ItemCF/新内容/关注）+ 融合
+│   │   ├── rank/          #   微博式规则排序（interact/quality/interest/social/author/hot/realtime）
+│   │   ├── rerank/        #   打散 + MMR 多样性重排
+│   │   ├── feature/       #   用户画像 / 物品特征 / 实时特征（接口 + 内存实现）
+│   │   ├── behavior/      #   行为日志（实体/仓库/采集器，织入点赞·收藏·评论·转发·搜索·关注·浏览）
+│   │   ├── stream/        #   事件队列(模拟Kafka) + 实时特征窗口(模拟Flink) + 存储(模拟Redis)
+│   │   ├── coldstart/     #   Thompson bandit 新内容池 / 冷启动服务
+│   │   ├── config/        #   RecConfig 配置中心（接口 + 内存实现）
+│   │   ├── ab/            #   AB 实验分桶（hash 分层正交）
+│   │   ├── eval/          #   离线评估（时间切分 + 7 指标）
+│   │   ├── model/         #   ItemCF 构建/模型/打分
+│   │   ├── service/       #   RecommendService 漏斗编排
+│   │   └── prod/          #   生产适配（Kafka/Redis/Nacos，@Profile("prod")，默认不连接）
 │   ├── persistence/       # JSON 持久化（DataStore）
 │   ├── config/            # 登录拦截器 + Web 配置
 │   ├── exception/         # 全局异常处理
@@ -108,7 +132,7 @@ my-first-nanobot-server/
 │   └── application.yml      # 配置文件
 ├── data/                  # 运行时 JSON 数据（自动生成）
 ├── docs/                  # 需求规划 / API 文档 / 功能全景
-├── scripts/               # 辅助脚本（演示数据初始化等）
+├── scripts/               # 辅助脚本（seed_users / seed_posts / seed_interactions / **seed_recsys_data** 造数等）
 ├── Dockerfile             # 容器化部署
 ├── pom.xml                # Maven 配置
 └── README.md
@@ -172,15 +196,17 @@ scripts/start.bat
 
 ## 登录认证
 
-系统提供基于 **Session** 的登录认证功能。
+系统提供基于 **Session** 的登录认证功能，并支持**游客浏览**（参考微博首页设计）：
 
 - 默认管理员账号：`admin` / `admin123`
-- 发布帖子、互动等接口均需登录，未登录返回 `401`
-- 前端页面自动校验登录状态，未登录跳转到 `login.html`
+- **游客可浏览**：热门帖子、最新动态、搜索、标签、帖子详情、相关推荐（无需登录）
+- **需登录**：发帖、点赞、评论、收藏、转发、关注、私信、个性化推荐、行为打点（写操作返回 `401`）
+- 首页未登录时**弱化登录入口**：显示"登录 / 注册"按钮 + 发帖框处提示登录，不强制跳转登录页
+- 注册成功即自动登录
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| `POST` | `/api/auth/register` | 注册 |
+| `POST` | `/api/auth/register` | 注册（公开，注册后自动登录） |
 | `POST` | `/api/auth/login` | 登录 |
 | `POST` | `/api/auth/logout` | 退出登录 |
 | `GET` | `/api/auth/me` | 获取当前登录用户 |
@@ -213,6 +239,7 @@ scripts/start.bat
 | 标签/话题 | `GET /api/tags`、`GET /api/tags/topics`、`GET /api/tags/{tag}/posts` |
 | 搜索 | `GET /api/search?keyword=` |
 | 私信 | `GET /api/messages/conversations`、`POST /api/messages/send`、`GET /api/messages/{conversationId}`、`GET /api/messages/unread` |
+| **推荐** | `GET /api/recommend/feed`（推荐流）、`GET /api/recommend/related`（相关推荐）、`POST /api/recommend/track`（点击/负反馈打点） |
 | 看板 | `GET /api/dashboard/stats` |
 | 趣味 | `GET /api/quotes/random`、`POST /api/decide` |
 | 健康 | `GET /api/health`、`GET /api/health/ping` |
@@ -241,7 +268,33 @@ scripts/start.bat
 mvn test
 ```
 
-共 **32 个单元测试**（5 个测试类，覆盖用户 / 密码 / 帖子 / 搜索 / 私信核心逻辑）。
+共 **43 个测试**（覆盖用户 / 密码 / 帖子 / 搜索 / 私信 + 推荐系统 19 个，含端到端集成测试）。
+
+## 推荐系统（如何体验）
+
+1. 启动服务后先造数（让推荐有数据可用）：
+   ```bash
+   python scripts/seed_recsys_data.py   # 30 用户 / 150 帖 / 交互+关注+搜索，写入行为日志
+   ```
+2. 登录任意 `user01`~`user30`（密码统一为 `admin123`，与 admin 一致），首页信息流切换到 **✨ 推荐** Tab：
+   - 每条带**推荐理由**与召回路来源（"因为你看过 #话题# / 你关注的人发布了 / 大家都在看"）
+   - 点击卡片记 **CLICK**、点 🙅 记"不感兴趣"（负反馈）
+   - 详情页底部显示 **相关推荐**（ItemCF "看过这篇的人还看"）
+3. 推荐原理：多路召回（热门/话题/类目/ItemCF/新内容/关注）→ 微博式排序 → 打散重排 → 冷启动兜底，详见 [docs/推荐系统设计方案.md](docs/推荐系统设计方案.md) 与 [docs/微博推荐调研.md](docs/微博推荐调研.md)。
+4. 中间件形态：默认**内存实现**跑通全链路（模拟 Kafka→Flink→Redis），生产适配代码在 `recommend/prod/`（Kafka/Redis/Nacos，`@Profile("prod")` 激活，默认不连接）。
+
+## 模拟活动（定时造数，让系统"转起来"）
+
+系统内置 **模拟活动任务**（`SimulatedActivityService`），定时产生少量新帖与互动，让信息流、热搜、推荐像真实社区一样持续演进。默认**克制**：每 15 分钟随机产生 1~2 条动态 + 少量点赞/评论。
+
+| 配置项 | 默认值 | 说明 |
+|---|---|---|
+| `app.sim.enabled` | `true` | 是否启用 |
+| `app.sim.interval-ms` | `900000` | 每轮间隔（毫秒）= 15 分钟 |
+| `app.sim.posts-per-tick` | `2` | 每轮新帖数（随机 1~N） |
+| `app.sim.interactions-per-tick` | `2` | 每轮互动数（点赞/评论） |
+
+> 关闭：`app.sim.enabled: false`；加快测试：把 `interval-ms` 调小（如 `20000`）后重启，观察日志"模拟活动一轮：新建 X 帖，互动 Y 次"。
 
 ## 文档索引
 

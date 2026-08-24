@@ -66,7 +66,10 @@ public class PostController {
             return ResponseEntity.ok(Result.success(postService.getMyPosts(username, "DRAFT", p, s)));
         }
         if (topic != null && !topic.isBlank()) {
-            return ResponseEntity.ok(Result.success(postService.getPostsByTopic(topic.trim(), username)));
+            // 话题聚合：返回 PageResult 结构，与前端 feed 分页解析一致
+            List<PostVO> list = postService.getPostsByTopic(topic.trim(), username);
+            PageResult<PostVO> pr = new PageResult<>(list, list.size(), 1, Math.max(1, list.size()));
+            return ResponseEntity.ok(Result.success(pr));
         }
         if (page == null && size == null) {
             return ResponseEntity.ok(Result.success(postService.getAllPosts(username)));

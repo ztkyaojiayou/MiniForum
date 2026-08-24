@@ -44,9 +44,11 @@ public class UserController {
         this.postService = postService;
     }
 
-    /** 新增用户 */
+    /** 新增用户（仅管理员；注册走公开的 /api/auth/register） */
     @PostMapping
-    public ResponseEntity<Result<User>> createUser(@Valid @RequestBody UserCreateDTO dto) {
+    public ResponseEntity<Result<User>> createUser(@Valid @RequestBody UserCreateDTO dto,
+                                                   HttpSession session) {
+        requireAdmin(session);
         User created = userService.createUser(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(Result.success(created));
     }
@@ -69,15 +71,19 @@ public class UserController {
         return ResponseEntity.ok(Result.success(userService.getProfile(id)));
     }
 
-    /** 查询所有用户 */
+    /** 查询所有用户（仅管理员，用户管理弹窗用） */
     @GetMapping
-    public ResponseEntity<Result<List<User>>> getAllUsers() {
+    public ResponseEntity<Result<List<User>>> getAllUsers(HttpSession session) {
+        requireAdmin(session);
         return ResponseEntity.ok(Result.success(userService.getAllUsers()));
     }
 
-    /** 修改用户 */
+    /** 修改用户（仅管理员） */
     @PutMapping("/{id}")
-    public ResponseEntity<Result<User>> updateUser(@PathVariable Long id, @Valid @RequestBody UserUpdateDTO dto) {
+    public ResponseEntity<Result<User>> updateUser(@PathVariable Long id,
+                                                   @Valid @RequestBody UserUpdateDTO dto,
+                                                   HttpSession session) {
+        requireAdmin(session);
         return ResponseEntity.ok(Result.success(userService.updateUser(id, dto)));
     }
 
@@ -109,11 +115,20 @@ public class UserController {
         }
     }
 
-    /** 删除用户 */
+    /** 删除用户（仅管理员） */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Result<Void>> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<Result<Void>> deleteUser(@PathVariable Long id, HttpSession session) {
+        requireAdmin(session);
         userService.deleteUser(id);
         return ResponseEntity.ok(Result.success("删除成功", null));
+    }
+
+    /** 校验管理员权限（账号管理仅管理员可用） */
+    private void requireAdmin(HttpSession session) {
+        String username = (String) session.getAttribute("username");
+        if (!"admin".equals(username)) {
+            throw new BusinessException("仅管理员可执行此操作");
+        }
     }
 
     /** 个人主页：某用户的全部已发布帖子（分页，最新在前） */
