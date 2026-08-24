@@ -141,6 +141,7 @@ AbExperimentService：floorMod(hash(uid:salt), 100) 分桶
 
 生产适配（`-Pprod` 编译 src/prod/java，`@Profile("prod")` 运行时激活，默认内存实现）：
   prod.kafka.KafkaBehaviorLogger（行为→Kafka topic behavior-log）
+  prod.kafka.KafkaBehaviorConsumer（Kafka behavior-log→行为库+事件队列，离线侧回灌）
   prod.redis.RedisRealtimeFeatureStore（实时特征→Redis, TTL 60s）
   prod.nacos.NacosConfigService（配置→Nacos rec-config, 监听热更新）
   prod.flink.FlinkRealtimeWindow（Flink 实时特征作业：Kafka→滑动窗口→Redis，独立进程）

@@ -9,6 +9,7 @@ import com.tkzou.miniforum.recommend.feature.RealtimeFeatureStore;
 import com.tkzou.miniforum.repository.PostRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -26,9 +27,11 @@ import java.util.Map;
  * <b>数据流程</b>：订阅 {@link BehaviorEventQueue}（模拟 Kafka）→ 维护最近 N 条行为 → {@link #flush}
  * 按时间窗口（近 realtimeWindowMinutes 分钟）聚合：用户侧记"user:{id}"的点击数/曝光/点击过的话题分布，
  * 物品侧记"post:{id}"的互动/曝光 → 写入 {@link RealtimeFeatureStore}（模拟 Redis）→ 在线排序特征 realtime 读取。
- * 生产形态为 Flink 窗口算子（见 prod.flink.FlinkRealtimeWindow 骨架，聚合逻辑一致）。
+ * 生产形态为 Flink 窗口算子（见 prod.flink.FlinkRealtimeWindow），本内存实现默认（!prod）生效，
+ * prod 模式由 Flink 作业承担实时特征（避免重复写 Redis）。
  */
 @Component
+@Profile("!prod")
 public class RealtimeFeatureWindow {
 
     private static final Logger log = LoggerFactory.getLogger(RealtimeFeatureWindow.class);
