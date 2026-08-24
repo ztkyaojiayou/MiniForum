@@ -2,7 +2,6 @@ package com.tkzou.miniforum.dto;
 
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 
 /**
@@ -15,7 +14,7 @@ public class UserCreateDTO {
     @Size(max = 50, message = "用户名长度不能超过 50")
     private String username;
 
-    @NotBlank(message = "邮箱不能为空")
+    /** 邮箱（可选，注册可不填） */
     @Email(message = "邮箱格式不正确")
     private String email;
 
@@ -23,7 +22,7 @@ public class UserCreateDTO {
     @Size(min = 6, max = 20, message = "密码长度必须在 6-20 之间")
     private String password;
 
-    @NotNull(message = "年龄不能为空")
+    /** 年龄（可选，注册可不填） */
     private Integer age;
 
     public String getUsername() {

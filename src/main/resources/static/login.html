@@ -186,16 +186,8 @@
                 <input type="text" id="regUsername" required placeholder="请输入用户名">
             </div>
             <div class="form-group">
-                <label>邮箱</label>
-                <input type="email" id="regEmail" required placeholder="请输入邮箱">
-            </div>
-            <div class="form-group">
                 <label>密码（6-20 位）</label>
                 <input type="password" id="regPassword" required placeholder="请输入密码">
-            </div>
-            <div class="form-group">
-                <label>年龄</label>
-                <input type="number" id="regAge" required placeholder="请输入年龄">
             </div>
             <button type="submit" class="btn" id="registerBtn">注 册</button>
         </form>
@@ -249,9 +241,7 @@
         // ---------- 注册 ----------
         async function register() {
             const username = document.getElementById('regUsername').value.trim();
-            const email = document.getElementById('regEmail').value.trim();
             const password = document.getElementById('regPassword').value;
-            const age = parseInt(document.getElementById('regAge').value, 10);
             const errorMsg = document.getElementById('errorMsg');
             const btn = document.getElementById('registerBtn');
             errorMsg.textContent = '';
@@ -260,7 +250,7 @@
                 const res = await fetch('/api/auth/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, email, password, age })
+                    body: JSON.stringify({ username, password })
                 });
                 const data = await res.json();
                 if (!res.ok || data.code !== 0) {
