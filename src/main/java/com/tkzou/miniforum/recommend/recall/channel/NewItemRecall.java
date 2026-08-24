@@ -15,7 +15,8 @@ import java.util.stream.Collectors;
 
 /**
  * 新内容召回：冷启内容池（新发布或互动过少）按新鲜度取 TopN，保证新帖有曝光机会。
- * 与冷启动池配合（Thompson 探索分在冷启动阶段注入）。
+ * <p>数据流程：PostRepository 可见帖 → FeatureService.itemFeature().isInNewPool 过滤 → 按 freshness 降序取 N
+ * → RecallHit(source="newitem")。与冷启动池配合（Thompson 探索分在排序阶段注入）。
  */
 @Component
 public class NewItemRecall implements RecallChannel {

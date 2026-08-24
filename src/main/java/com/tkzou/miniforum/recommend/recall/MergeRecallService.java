@@ -16,8 +16,10 @@ import java.util.stream.Collectors;
 /**
  * 多路召回融合器
  * <p>
- * 对每路召回做 rank-based 归一化（norm = 1/(rankInChannel + 60)，比 min-max 更稳健），
- * 再按通道权重加权求和作为融合分，按 itemId 去重后取 TopN。
+ * <b>数据流程</b>：{@code List<RecallHit>（各路通道原始命中）} → 按通道分组 → 通道内按分降序做
+ * <b>rank-based 归一化</b>（norm = 1/(rankInChannel + 60)，比 min-max 更稳健）→ 按 itemId 聚合各路归一化分
+ * → 按通道权重加权求和（{@code RecConfig.channelWeight}）→ 去重 + 截断 → {@code List<Candidate>} 供排序层。
+ * Candidate 保留 channelScores 构成，用于推荐理由与可解释。
  */
 @Component
 public class MergeRecallService {

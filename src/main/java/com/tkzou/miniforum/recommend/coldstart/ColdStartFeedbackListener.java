@@ -8,7 +8,8 @@ import org.springframework.stereotype.Component;
 /**
  * 冷启动反馈监听器
  * <p>
- * 订阅行为事件队列，把池内新内容的深度互动/曝光反馈回灌到 NewItemPool 的 Thompson 后验
+ * <b>数据流程</b>：订阅 {@code BehaviorEventQueue} → 池内新内容的深度互动(点击/点赞/收藏/评论/转发)记为成功、
+ * 曝光记为一次待惩罚 → 回灌 {@link NewItemPool#recordOutcome} 更新 Thompson 后验
  * （模拟生产"曝光→点击→回灌 bandit"的在线学习闭环）。
  */
 @Component

@@ -16,8 +16,8 @@ import java.util.Optional;
 /**
  * Redis 实时特征存储（生产适配，@Profile("prod") 激活，默认不加载）
  * <p>
- * 用 Redis String 存 JSON（key = "realtime:{key}"，TTL=60s），近线层写入、在线层读取。
- * 生产更细的形态可用 Hash + HEXPIRE 逐字段过期，此处演示核心机制。
+ * <b>数据流程</b>：近线层（Flink 窗口）{@link #put} → Redis String 存 JSON（key = "realtime:{key}"，TTL=60s）
+ * → 在线层 {@link #get} 读取实时特征。生产更细的形态可用 Hash + HEXPIRE 逐字段过期，此处演示核心机制。
  */
 @Component
 @Profile("prod")

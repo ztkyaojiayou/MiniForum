@@ -21,8 +21,8 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * Nacos 配置中心（生产适配，@Profile("prod") 激活，默认不加载）
  * <p>
- * 拉取并监听 dataId="rec-config" 的推荐配置，配置变更实时刷新 {@link RecConfig}，
- * 用于灰度调参与 AB 实验分组下发。与内存实现（InMemoryConfigService）实现同一接口。
+ * <b>数据流程</b>：启动拉取 dataId="rec-config" 的配置 JSON → 解析为 {@link RecConfig}；
+ * 监听配置变更（Listener）实时刷新，供灰度调参与 AB 分组下发。与内存实现（InMemoryConfigService）实现同一接口。
  */
 @Component
 @Profile("prod")

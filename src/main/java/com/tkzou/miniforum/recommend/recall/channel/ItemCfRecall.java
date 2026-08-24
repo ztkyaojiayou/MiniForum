@@ -22,6 +22,8 @@ import java.util.stream.Collectors;
 
 /**
  * ItemCF 召回：用户历史交互过物品的相似物品（"看了 A 的人还看 B"）。
+ * <p>数据流程：FeatureService.userProfile(uid).recentItemIds → 对每历史物品取 ItemCfModel.topSimilar
+ * → 累加相似度（排除已交互）→ 过滤可见 → 降序取 N → RecallHit(source="itemcf")。
  * 使用深度互动构建的协同过滤模型，是弱训练侧核心个性化召回。
  */
 @Component

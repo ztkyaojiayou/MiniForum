@@ -15,9 +15,9 @@ import java.util.stream.Collectors;
 /**
  * ItemCF 模型构建器（弱训练侧，纯 Java）
  * <p>
- * 以"深度互动（转发/评论/收藏/点赞/点击）"构建 用户→物品 隐式反馈矩阵，
- * 计算物品共现相似度 sim(i,j)=co[i][j]/√(N(i)·N(j))（Jaccard 的余弦变体），
- * 每个物品保留 TopK 相似物品。
+ * <b>数据流程</b>：{@code List<BehaviorLog>} → 过滤出深度互动（转发/评论/收藏/点赞/点击）→ 构建 用户→物品
+ * 隐式反馈矩阵 → 计算物品共现相似度 sim(i,j)=co[i][j]/√(N(i)·N(j))（Jaccard 的余弦变体）
+ * → 每个物品保留 TopK 相似 → {@link ItemCfModel}，供召回与相关推荐消费。
  */
 public class ItemCfBuilder {
 

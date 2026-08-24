@@ -16,7 +16,8 @@ import java.util.Map;
 
 /**
  * 话题召回：用户画像中兴趣权重最高的话题（微博兴趣载体）→ 命中这些话题的帖子。
- * 用户无画像时返回空（由热门等路兜底）。
+ * <p>数据流程：FeatureService.userProfile(uid).topTopics(2) → 遍历可见帖，命中话题则按画像话题权重累加得分
+ * → 降序取 N → RecallHit(source="topic")。用户无画像时返回空（由热门等路兜底）。
  */
 @Component
 public class TopicRecall implements RecallChannel {

@@ -12,7 +12,10 @@ import org.springframework.stereotype.Component;
 /**
  * 冷启动服务：实现 ExploreProvider，为新内容提供 Thompson 探索加分。
  * <p>
- * 仅对冷启内容（新发布/低互动）加分；λ 随用户行为量衰减（新用户多探索、老用户少探索）。
+ * <b>数据流程</b>：排序层为每个候选调用 {@link #exploreBonus(userId, postId)} →
+ * 若物品在冷启池（{@code NewItemPool}，新发布或低互动）→ 按用户冷热取探索权重 λ
+ * （冷用户 0.7 / 老用户 0.1）→ λ × {@code NewItemPool.sampleScore}（Thompson Beta 采样）→ 返回加分，
+ * 叠加进排序加权分。池内后验由 {@code ColdStartFeedbackListener} 用行为事件（深度互动/曝光）回灌。
  * 新用户的热门/热搜兜底由排序特征（interact/hot 权重）天然保证，并在 RecommendService 中补充。
  */
 @Component

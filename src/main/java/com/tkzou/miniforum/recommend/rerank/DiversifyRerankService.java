@@ -14,9 +14,11 @@ import java.util.List;
 /**
  * 多样性重排（打散 + MMR）
  * <p>
- * 两步：①硬约束打散——同话题/类目连续条数不超过 categoryMaxCount；
- * ②MMR 贪心重排——每次从剩余候选中选 [λ·rankScore − (1−λ)·与已选集合最大相似度] 最大者，
- * 相似度只与最近 mmrWindow 条比较（滑动窗口）。
+ * <b>数据流程</b>：{@code List<RankedItem>（精排有序列表）} → 贪心选择 topN 个：
+ * ①<b>硬约束打散</b>——同话题/类目连续条数不超过 categoryMaxCount（违反则跳过）；
+ * ②<b>MMR</b>——每次从剩余候选中选 [λ·rankScore − (1−λ)·与已选集合最大相似度] 最大者，
+ * 相似度只与最近 mmrWindow 条比较（滑动窗口）→ {@code List<RankedItem>} 最终下发列表，
+ * 由 {@code RecommendService} 组装响应并记曝光。
  */
 @Component
 public class DiversifyRerankService implements RerankService {

@@ -14,8 +14,11 @@ import java.util.Map;
 /**
  * 召回编排服务
  * <p>
- * 依次运行全部召回通道（Spring 注入的 RecallChannel 实现），合并各路命中后交给融合器，
- * 输出融合后的候选集（供排序层消费）。
+ * <b>数据流程</b>：{@link RecommendContext} → 依次运行全部 {@link RecallChannel}（Spring 注入的 6 路实现：
+ * hot/topic/category/itemcf/newitem/follow，每路返回 {@code List<RecallHit>}）→ 汇总后交给
+ * {@link MergeRecallService#merge} 做 rank 归一化+通道加权+去重 → 输出融合后的 {@link Candidate} 候选集，
+ * 供排序层 {@code RuleRankService} 消费。
+ * 通道权重来自 {@code RecConfig.channelWeight}，可配置。
  */
 @Component
 public class RecallService {

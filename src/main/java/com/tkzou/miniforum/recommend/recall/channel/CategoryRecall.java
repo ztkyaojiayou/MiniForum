@@ -16,6 +16,8 @@ import java.util.Map;
 
 /**
  * 类目召回：用户画像中兴趣权重最高的类目 → 该类目的帖子（话题缺失时的兜底兴趣维度）。
+ * <p>数据流程：FeatureService.userProfile(uid).topCategories(2) → 遍历可见帖按类目匹配取画像权重
+ * → 降序取 N → RecallHit(source="category")。
  */
 @Component
 public class CategoryRecall implements RecallChannel {

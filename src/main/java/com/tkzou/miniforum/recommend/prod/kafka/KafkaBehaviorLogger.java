@@ -20,8 +20,8 @@ import java.util.Properties;
 /**
  * Kafka 行为采集器（生产适配，@Profile("prod") 激活，默认不加载）
  * <p>
- * 生产形态：行为经 KafkaProducer 写入 topic "behavior-log"，供 Flink 实时特征与离线数仓消费。
- * 与内存实现（InMemoryBehaviorLogger）实现同一 {@link BehaviorLogger} 接口，可平滑替换。
+ * <b>数据流程</b>：{@link #log} → Jackson 序列化行为事件 → {@code KafkaProducer} 写入 topic "behavior-log"
+ * → 供 Flink 实时特征与离线数仓消费。与内存实现（InMemoryBehaviorLogger）实现同一 {@link BehaviorLogger} 接口，可平滑替换。
  */
 @Component
 @Profile("prod")

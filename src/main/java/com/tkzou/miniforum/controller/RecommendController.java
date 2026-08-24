@@ -25,9 +25,12 @@ import java.util.List;
  * 推荐接口
  * <p>
  * 需登录（由 AuthInterceptor 拦截 /api/recommend/**）。
- * - GET /feed：个性化推荐流（含推荐理由，服务端自动记录曝光）
- * - GET /related：详情页相关推荐（ItemCF "看过这篇的人还看"）
- * - POST /track：前端点击/负反馈打点
+ * <ul>
+ *   <li>GET /feed → {@code RecommendService.recommend} 完整漏斗（召回→排序→重排→冷启动→下发），
+ *       服务端自动记 EXPOSE，前端切"✨ 推荐"Tab 消费；</li>
+ *   <li>GET /related → {@code RecommendService.related} 详情页 ItemCF 相似帖；</li>
+ *   <li>POST /track → 前端点击/负反馈打点，写入行为日志。</li>
+ * </ul>
  */
 @RestController
 @RequestMapping("/api/recommend")

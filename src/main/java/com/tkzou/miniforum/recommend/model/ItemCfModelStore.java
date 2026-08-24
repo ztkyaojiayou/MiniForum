@@ -8,8 +8,9 @@ import org.springframework.stereotype.Component;
 /**
  * ItemCF 模型存储（启动/行为增长时重建）
  * <p>
- * 弱训练侧的"离线模型"：以行为日志为源构建相似度表并缓存。
- * 行为数量变化时自动重建（对比已构建时的行为条数），保证新反馈尽快进模型。
+ * <b>数据流程</b>：BehaviorLogRepository.findAll()（深度互动子集）→ {@link ItemCfBuilder#build} 构建
+ * 物品共现相似度表 → 缓存为 {@link ItemCfModel}；行为数变化时自动重建（对比已构建时的行为条数），
+ * 保证新反馈尽快进模型。被 {@code ItemCfRecall} 与详情"相关推荐"读取。
  */
 @Component
 public class ItemCfModelStore {

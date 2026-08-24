@@ -14,6 +14,8 @@ import java.util.stream.Collectors;
 
 /**
  * 热门召回：按微博式互动热度分取 TopN，是所有多路召回的"保底路"。
+ * <p>数据流程：PostRepository 可见帖 → FeatureService.itemFeature().hotScore（3·转发+2·评论+1·赞+1.5·收藏+0.02·浏览）
+ * → 降序取 N → RecallHit(source="hot")，交 MergeRecallService 融合。
  */
 @Component
 public class HotRecall implements RecallChannel {

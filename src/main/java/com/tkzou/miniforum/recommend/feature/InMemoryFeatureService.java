@@ -17,7 +17,9 @@ import java.util.List;
 /**
  * 内存特征服务（默认实现）
  * <p>
- * 从仓库/实时特征存储实时计算用户画像、物品特征与实时匹配分。
+ * <b>数据流程</b>：{@link #userProfile} 委托 {@link UserProfileAggregator}（行为日志→兴趣权重，供召回/排序）；
+ * {@link #itemFeature} 聚合 PostRepository 计数 + FollowRepository 粉丝数 + ConfigService 时效（热/排序/重排特征）；
+ * {@link #realtimeMatch} 合并 {@link RealtimeFeatureStore} 的用户话题投影与物品热度爆发（实时特征）。
  * 生产形态：画像/物品特征存 Redis，在线读取（见 prod 适配）；本实现每次现算，数据量小时开销可忽略。
  */
 @Component

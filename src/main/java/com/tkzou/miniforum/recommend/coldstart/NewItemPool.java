@@ -14,9 +14,9 @@ import java.util.stream.Collectors;
 /**
  * 新内容冷启动池（Thompson bandit 的"臂"集合）
  * <p>
- * 池内为冷启内容（新发布或互动过少）。每个 item 维护 [alpha, beta, 待惩罚曝光数]：
+ * <b>数据流程</b>：池内为冷启内容（新发布或互动过少）。每个 item 维护 [alpha, beta, 待惩罚曝光数]：
  * 深度互动 → α+=1；连续 EXPOSE_FAIL_THRESHOLD 次曝光无互动 → β+=1（"曝光无转化"惩罚）。
- * 探索分 = Thompson 采样（见 ColdStartService）。
+ * {@link #sampleScore} 供排序层取 Thompson 采样分（探索加分），后验由 {@code ColdStartFeedbackListener} 回灌。
  */
 @Component
 public class NewItemPool {

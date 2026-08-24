@@ -10,9 +10,10 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * AB 实验服务（分层正交思路）
  * <p>
+ * <b>数据流程</b>：{@code RecommendService} 按 {@link #configFor(expId, uid)} 取配置 → 对照组 A 用全局配置、
+ * 实验组 B 用多样性变体 → 行为日志携带 expId → 离线评估按 expId 归因对比。
  * 分桶：bucket = floorMod(hash(uid:salt), 100)，同一用户同 salt 稳定落同一桶；
  * 不同 layer 用不同 salt 实现"层内互斥、层间正交"（Google Overlapping Experiment）。
- * 实验组 B 默认走"多样性变体"配置（MMR 更分散、兴趣权重略升），用于演示分流后行为差异。
  */
 @Component
 public class AbExperimentService {

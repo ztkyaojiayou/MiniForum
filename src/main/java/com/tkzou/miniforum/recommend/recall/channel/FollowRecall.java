@@ -17,7 +17,8 @@ import java.util.stream.Collectors;
 
 /**
  * 关注召回（二度关系）：我关注的人发布的帖子，以及我关注的人转发过的帖子。
- * 微博"半熟社交"的核心：关注关系是明确订阅，二度转发让大V替用户筛选内容。
+ * <p>数据流程：FollowRepository.findByFollowerId(uid) → followingIds → 过滤"作者在我关注里 或 转发原作者在我关注里"
+ * → 按时间倒序取 N → RecallHit(source="follow")。微博"半熟社交"的核心：关注关系是明确订阅，二度转发让大V替用户筛选内容。
  */
 @Component
 public class FollowRecall implements RecallChannel {

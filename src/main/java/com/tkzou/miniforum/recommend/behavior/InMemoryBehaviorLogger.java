@@ -11,9 +11,9 @@ import java.time.LocalDateTime;
 /**
  * 内存行为采集器（默认实现）
  * <p>
- * 记录行为时：①持久化到 BehaviorLogRepository（JSON 落盘，供画像/评估）；②发布到
- * BehaviorEventQueue（模拟 Kafka），由 RealtimeFeatureWindow 消费生成实时特征。
- * 生产形态见 prod.kafka.KafkaBehaviorLogger（@Profile("prod")，激活 prod 时本实现不加载）。
+ * <b>数据流程</b>：{@link #log(userId, postId, type, scene, expId)} → ①存 {@code BehaviorLogRepository}
+ * （JSON 落盘，作为画像/评估的事实源）；②发布到 {@code BehaviorEventQueue}（模拟 Kafka），
+ * 由实时特征窗口与冷启动反馈消费。生产形态见 prod.kafka.KafkaBehaviorLogger（@Profile("prod")，激活 prod 时本实现不加载）。
  */
 @Component
 @Profile("!prod")

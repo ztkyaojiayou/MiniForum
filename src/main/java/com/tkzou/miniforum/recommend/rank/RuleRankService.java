@@ -29,11 +29,13 @@ import java.util.stream.Collectors;
 /**
  * 规则加权排序（弱训练侧默认排序器）
  * <p>
- * 实现微博式 rankScore：
- * rankScore = (Σ w_f·f + explore) × recency
+ * <b>数据流程</b>：{@code List<Candidate>（融合候选）} → 对每个候选计算特征分构成 featureScores
+ * → 加权求和 rankScore = (Σ w_f·f + explore) × recency → 排序 → {@code List<RankedItem>}（携带特征分+召回路来源+推荐理由），
+ * 供重排层 {@code DiversifyRerankService} 消费。
+ * <p>
  * 特征：interact(互动热度) / quality(互动率) / interest(兴趣匹配) / social(关注关系) /
- *       author(作者权重) / hot(热点) / realtime(实时特征)。
- * 权重来自 RecConfig.rankWeight，微博场景方向性经验值（见 docs/微博推荐调研.md）。
+ *       author(作者权重) / hot(热点) / realtime(实时特征)；权重来自 RecConfig.rankWeight，
+ * 微博场景方向性经验值（见 docs/微博推荐调研.md）。
  */
 @Component
 public class RuleRankService implements RankService {

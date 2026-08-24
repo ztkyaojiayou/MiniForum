@@ -11,9 +11,9 @@ import java.util.function.Consumer;
 /**
  * 行为事件队列（模拟 Kafka）
  * <p>
- * 内存版发布/订阅：BehaviorLogger 写入行为时 publish 广播给所有订阅者
- * （实时特征窗口、实时热搜等近线消费者）。生产形态替换为 KafkaProducer/Consumer。
- * 无缓冲队列语义，事件实时派发，订阅者若落后则自行聚合兜底。
+ * <b>数据流程</b>：{@code InMemoryBehaviorLogger} 写行为时 {@link #publish} 广播给所有订阅者
+ * （实时特征窗口 {@code RealtimeFeatureWindow}、冷启动反馈 {@code ColdStartFeedbackListener} 等近线消费者），
+ * 并记入历史供测试/回放。生产形态替换为 KafkaProducer/Consumer。无缓冲队列语义，事件实时派发。
  */
 @Component
 public class BehaviorEventQueue {

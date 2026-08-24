@@ -19,8 +19,10 @@ import java.util.Set;
 /**
  * 用户画像聚合器
  * <p>
- * 以统一行为日志（BehaviorLog）为唯一事实源，按微博场景信号权重（转发&gt;评论&gt;收藏&gt;点赞&gt;浏览）
- * 聚合用户的话题/类目兴趣（带时间衰减），并输出最近交互序列与活跃度。
+ * <b>数据流程</b>：BehaviorLogRepository.findByUserId(uid)（统一行为时间线）→ 逐条按行为权重
+ * （微博：转发3/评论2/收藏1.5/点赞1/点击1/搜索0.5/浏览0.02）× 兴趣时间衰减(0.7^天数) → 按帖子话题/类目累加
+ * → 归一化 → {@link UserProfile}（topicWeight/categoryWeight/最近交互序列/活跃度），
+ * 供召回（topic/category/itemcf）与排序（interest）消费。
  */
 @Component
 public class UserProfileAggregator {

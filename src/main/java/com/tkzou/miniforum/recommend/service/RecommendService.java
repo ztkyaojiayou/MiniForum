@@ -35,8 +35,13 @@ import java.util.stream.Collectors;
 /**
  * 推荐服务（漏斗编排核心）
  * <p>
- * 编排完整链路：画像 → 多路召回 → 融合 → 规则排序 → 重排(打散/MMR) → 冷启动兜底 → 曝光日志 → 下发。
- * 输出携带推荐理由的 {@link RecommendPostVO}，实现可解释推荐。
+ * <b>数据流程</b>：{@code RecommendContext(uid, scene, size)} → 画像 {@link FeatureService#userProfile}
+ * → {@link RecallService#recall} 多路召回+融合(Candidate) → {@link RuleRankService#rank} 微博式排序(RankedItem+推荐理由)
+ * → {@link DiversifyRerankService#rerank} 打散/MMR(TopN) → 冷启动兜底(新用户补热门) → 逐条记 EXPOSE 行为日志
+ * → 组装带理由的 {@link RecommendPostVO} 下发。
+ * <p>
+ * related：详情页"看过这篇的人还看"，直接读 ItemCF 相似度模型 TopK。
+ * 按 AB 实验分组走不同配置变体（{@code AbExperimentService.configFor}），行为日志携带 expId 便于离线归因。
  */
 @Service
 public class RecommendService {

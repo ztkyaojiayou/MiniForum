@@ -28,8 +28,9 @@ import java.util.stream.Collectors;
 /**
  * 离线评估器
  * <p>
- * 以行为日志做时间切分：训练集构建 ItemCF + 热门信号，为测试用户生成 TopK 排序，
- * 对比测试集真实互动计算 AUC/GAUC/Recall@K/NDCG@K/Coverage/Diversity/Freshness。
+ * <b>数据流程</b>：BehaviorLogRepository（过滤出反馈信号）→ {@link TimeSplitter} 时间切分(前 trainRatio 训练/余测试)
+ * → 训练集构建 ItemCF + 热门信号 → 为测试用户生成 TopK 排序 → 对比测试集真实深度互动，计算
+ * AUC/GAUC/Recall@K/NDCG@K/Coverage/Diversity/Freshness → {@link Metrics}。
  * 离线只做初筛，最终以线上 AB 为准（调研铁律）。
  */
 @Component
