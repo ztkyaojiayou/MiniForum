@@ -16,7 +16,7 @@
 - ✅ **详情相关推荐**：详情页"看过这篇的人还看"（ItemCF 相似帖）
 - ✅ **AB 实验 + 离线评估**：哈希分层分桶；时间切分 + AUC/GAUC/Recall@K/NDCG@K/Coverage/Diversity/Freshness 7 指标
 - ✅ **定时离线评估**：每 30 分钟自动跑一次评估，指标写日志 + 落盘 `data/eval-report.json`（可观察推荐质量随数据积累的变化，让系统"活"起来）
-- ✅ **生产适配**：Kafka / Redis / Nacos 适配代码（`@Profile("prod")` 激活，默认内存实现）
+- ✅ **生产适配**：Kafka / Redis / Nacos / **Flink / MySQL** 适配代码（`-Pprod` 编译 + `@Profile("prod")` 激活，默认内存实现）
 - ✅ **模拟活动**：定时任务持续产生新帖与互动，让系统像真实社区"转起来"
 
 ### 📦 内容发布
@@ -139,11 +139,12 @@ RecConfig（召回权重 / 排序权重 / 冷启比例 / 打散参数 / 时效�
 AbExperimentService：floorMod(hash(uid:salt), 100) 分桶
   → 对照组 A 全局配置 / 实验组 B 多样性变体 → 行为日志带 expId → 离线归因
 
-生产适配（@Profile("prod") 激活，默认内存实现）：
+生产适配（`-Pprod` 编译 src/prod/java，`@Profile("prod")` 运行时激活，默认内存实现）：
   prod.kafka.KafkaBehaviorLogger（行为→Kafka topic behavior-log）
   prod.redis.RedisRealtimeFeatureStore（实时特征→Redis, TTL 60s）
   prod.nacos.NacosConfigService（配置→Nacos rec-config, 监听热更新）
-  prod.flink.FlinkRealtimeWindow（Flink 窗口算子骨架，聚合逻辑与内存版一致）
+  prod.flink.FlinkRealtimeWindow（Flink 实时特征作业：Kafka→滑动窗口→Redis，独立进程）
+  prod.mysql.MySqlDataStore（MySQL 持久化：JSON 快照表 mini_store，替代 JSON 文件）
 ```
 
 ## 技术栈
@@ -180,7 +181,7 @@ my-first-nanobot-server/
 │   │   ├── ab/            #   AB 实验分桶
 │   │   ├── eval/          #   离线评估(时间切分 + 7 指标)
 │   │   ├── domain/        #   管道中间类型
-│   │   └── prod/          #   Kafka/Redis/Nacos 生产适配(@Profile("prod"))
+│   │   └── prod/          #   Kafka/Redis/Nacos/Flink/MySQL 生产适配(@Profile("prod"))
 │   ├── controller/        # REST 控制器（19 个，含 RecommendController）
 │   ├── service/           # 业务逻辑层（含 SimulatedActivityService 模拟活动）
 │   ├── repository/        # 数据访问层（11 个，内存存储）
@@ -220,6 +221,13 @@ mvn clean package && java -jar target/mini-forum-1.0.0.jar
 ```
 
 启动后访问 <http://localhost:8090/>，将自动跳转到登录页。**默认账号**：`admin / admin123`（管理员）。
+
+> **生产构建**：`-Pprod` 会引入 Flink/JDBC/MySQL 依赖并编译 `src/prod/java`（Flink 实时作业 + MySQL 持久化）：
+> ```bash
+> mvn -Pprod clean package   # 生产包（含 Flink 作业 / MySQL 适配）
+> SPRING_PROFILES_ACTIVE=prod java -jar target/mini-forum-1.0.0.jar  # 运行时激活真适配（需 Kafka/Redis/Nacos/MySQL）
+> ```
+> 本地默认（不带 `-Pprod`、不切 prod profile）仍是零中间件、内存 + JSON 文件。
 
 ### 体验推荐系统
 

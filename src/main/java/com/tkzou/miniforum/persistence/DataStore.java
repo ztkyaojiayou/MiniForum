@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -50,8 +51,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *   <li>运行：{@link #saveAll()} 定时保存（默认 30 秒一次）</li>
  *   <li>关闭：{@link #saveAll()} 随 {@link PreDestroy} 触发</li>
  * </ul>
+ * 默认（本地）使用 JSON 文件持久化；生产 profile（prod）由 MySQL 持久化替代（见 recommend.prod.mysql.MySqlDataStore）。
  */
 @Component
+@Profile("!prod")
 public class DataStore implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataStore.class);
