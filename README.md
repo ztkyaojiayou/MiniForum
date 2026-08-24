@@ -97,22 +97,32 @@ GET /api/recommend/feed?page&size      (session: userId)
 
 ### 3. 行为回流链路（数据闭环，推荐越用越准）
 
+**本地模式（默认，全内存模拟 Kafka→Flink→Redis）**
 ```
-用户行为: 点赞/收藏/评论/转发/搜索/关注/浏览   ← 织入现有 service
-        + 曝光(EXPOSE, 服务端自动) + 点击/负反馈(POST /api/recommend/track)
-  │
-  ▼  BehaviorLogger（默认 InMemoryBehaviorLogger；prod: KafkaBehaviorLogger）
-  ├─→ BehaviorLogRepository → data/behavior-log.json   ← 画像/评估的唯一事实源
-  └─→ BehaviorEventQueue（模拟 Kafka）
-        ├─→ RealtimeFeatureWindow（模拟 Flink, 时间窗口聚合）
-        │     └─→ RealtimeFeatureStore（模拟 Redis）
-        │           └─ 下一次排序特征 realtime 生效（用户话题投影 + 物品热度爆发）
-        └─→ ColdStartFeedbackListener
-              └─→ NewItemPool.recordOutcome（Thompson 后验: 点击 α+1 / 曝光无转化 β+1）
+用户行为(赞/藏/评/转/搜/关注/浏览/曝光/点击/负反馈)
+  → BehaviorLogger（InMemoryBehaviorLogger）
+     ├→ BehaviorLogRepository → data/behavior-log.json   ← 画像/评估事实源
+     └→ BehaviorEventQueue（模拟 Kafka）
+          ├→ RealtimeFeatureWindow（模拟 Flink, 每 5s flush）
+          │    └→ RealtimeFeatureStore（模拟 Redis）
+          │         └→ 下次排序特征 realtime（用户话题投影 + 物品热度爆发）
+          └→ ColdStartFeedbackListener
+                └→ NewItemPool.recordOutcome（Thompson 后验: 点击 α+1 / 曝光无转化 β+1）
+  → ItemCfModelStore 按行为数变化自动重建相似度表 → 供 itemcf 召回 + 详情"相关推荐"
+```
 
-离线（行为数变化自动重建）:
-  BehaviorLogRepository → ItemCfBuilder → ItemCfModelStore（物品相似度表）
-      └─ 供 itemcf 召回 + 详情"相关推荐"
+**生产模式（`-Pprod` 编译 + `--spring.profiles.active=prod`，真实中间件）**
+```
+用户行为 → KafkaBehaviorLogger → Kafka topic "behavior-log"（一份行为, 两个独立消费组）
+  ├─▶ [Flink 作业 group=mini-forum-realtime]  ← 近线
+  │      KafkaSource → 滑动窗口(5min/1min) → Redis "realtime:{user|post}:{id}"(TTL 60s)
+  │        └─▶ 在线排序 realtimeMatch 读 Redis（RedisRealtimeFeatureStore）
+  └─▶ [KafkaBehaviorConsumer group=mini-forum-offline]  ← 离线侧（应用内, 500ms poll）
+         ├─▶ BehaviorLogRepository（内存）→ 画像 / ItemCF / 离线评估
+         └─▶ BehaviorEventQueue → ColdStartFeedbackListener → Thompson 后验
+
+持久化：MySqlDataStore 每 30s 把内存各仓库（含行为）快照到 MySQL mini_store，重启 loadAll 恢复；
+       JSON DataStore 在 prod 下禁用（@Profile("!prod")）。
 ```
 
 ### 4. 离线训练与评估链路
@@ -147,6 +157,25 @@ AbExperimentService：floorMod(hash(uid:salt), 100) 分桶
   prod.flink.FlinkRealtimeWindow（Flink 实时特征作业：Kafka→滑动窗口→Redis，独立进程）
   prod.mysql.MySqlDataStore（MySQL 持久化：JSON 快照表 mini_store，替代 JSON 文件）
 ```
+
+### 6. 生产模式闭环审计
+
+| 数据路径 | 落点 | 状态 |
+|---|---|---|
+| 行为采集 → Kafka | KafkaBehaviorLogger | ✅ |
+| Kafka → 近线实时特征(Redis) | Flink 作业（独立消费组 mini-forum-realtime） | ✅ |
+| Kafka → 离线侧行为库 | KafkaBehaviorConsumer（独立消费组 mini-forum-offline） | ✅ |
+| 在线请求读近线特征 | realtimeMatch → RedisRealtimeFeatureStore | ✅ |
+| 在线请求读画像/ItemCF | 内存库（消费者喂 + MySQL 恢复） | ✅ |
+| 行为 → 冷启动反馈 | consumer → BehaviorEventQueue → ColdStartFeedbackListener | ✅ |
+| 持久化 → 重启恢复 | MySqlDataStore mini_store（JSON DataStore 已禁用） | ✅ |
+| 配置 → Nacos | NacosConfigService（内存配置已禁用） | ✅ |
+
+**已知取舍（非致命，落地前需知晓）**：
+1. Flink 暂不算用户 topicClicks（缺帖子维度 join）——prod 下 realtime 特征偏"物品热度爆发"，用户话题投影弱化
+2. 单实例假设：多实例部署时各实例内存库独立、Kafka 消费组分片，画像/ItemCF 不共享
+3. ≤30s 数据丢失窗口：行为先入内存、每 30s 落 MySQL，崩溃丢窗口内数据（可调小 `app.persistence.interval-ms`）
+4. Kafka 自动提交 offset + 崩溃重放可能重复计数（可加幂等去重）
 
 ## 技术栈
 
