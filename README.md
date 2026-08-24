@@ -15,6 +15,7 @@
 - ✅ **冷启动**：新内容 Thompson bandit 探索 + 曝光惩罚；新用户热门兜底
 - ✅ **详情相关推荐**：详情页"看过这篇的人还看"（ItemCF 相似帖）
 - ✅ **AB 实验 + 离线评估**：哈希分层分桶；时间切分 + AUC/GAUC/Recall@K/NDCG@K/Coverage/Diversity/Freshness 7 指标
+- ✅ **定时离线评估**：每 30 分钟自动跑一次评估，指标写日志 + 落盘 `data/eval-report.json`（可观察推荐质量随数据积累的变化，让系统"活"起来）
 - ✅ **生产适配**：Kafka / Redis / Nacos 适配代码（`@Profile("prod")` 激活，默认内存实现）
 - ✅ **模拟活动**：定时任务持续产生新帖与互动，让系统像真实社区"转起来"
 
@@ -123,6 +124,9 @@ behavior-log（过滤曝光/负反馈等非反馈信号）
   → 对比测试集真实深度互动 → Metrics：
      AUC / GAUC / Recall@K / NDCG@K / Coverage / Diversity / Freshness
   → 结论：离线只做初筛，最终以线上 AB 为准
+
+定时调度（OfflineEvalScheduler，默认每 30 分钟自动执行）：
+  行为数不足时跳过 → evaluate() → 指标写日志 + 追加 data/eval-report.json（累积趋势）
 ```
 
 ### 5. 配置 / AB / 生产适配
@@ -253,7 +257,9 @@ python scripts/seed_recsys_data.py
 | `app.data-dir` | `./data` | 数据持久化目录 |
 | `app.persistence.enabled` | `true` | 是否启用 JSON 持久化 |
 | `app.persistence.interval-ms` | `30000` | 定时保存间隔（毫秒） |
-| `app.rec.*` | — | 推荐系统配置（召回/排序权重、冷启比例、打散参数等） |
+| `app.rec.*` | — | 推荐系统配置（召回/排序权重、冷启比例、打散参数、**定时评估**等） |
+| `app.rec.eval-enabled` | `true` | 定时离线评估开关 |
+| `app.rec.eval-interval-ms` | `1800000` | 离线评估间隔（毫秒，默认 30 分钟） |
 | `app.sim.enabled` | `true` | 模拟活动开关 |
 | `app.sim.interval-ms` | `900000` | 模拟活动间隔（毫秒，默认 15 分钟） |
 | `app.sim.posts-per-tick` | `2` | 每轮新帖数 |

@@ -34,6 +34,13 @@ app:
     channel-weight: '{"hot":1.0,"topic":1.0,"category":0.6,"itemcf":1.2,"newitem":0.5,"follow":0.8}'
     # 排序特征权重（interact/quality/interest/social/author/hot/realtime）
     rank-weight: '{"interact":0.30,"quality":0.20,"interest":0.30,"social":0.15,"author":0.10,"hot":0.10,"realtime":0.05}'
+    # 定时离线评估（让推荐系统"活"起来，观察指标随数据积累的变化）
+    eval-enabled: true
+    eval-interval-ms: 1800000      # 评估间隔（毫秒，默认 30 分钟）
+    eval-train-ratio: 0.8          # 时间切分训练比例
+    eval-top-k: 20
+    eval-max-users: 200
+    eval-min-behaviors: 50         # 行为数低于此值跳过评估
   sim:
     # 模拟活动：定时产生少量新帖与互动，让系统像真实社区持续"转起来"（数据量可控）
     enabled: true
