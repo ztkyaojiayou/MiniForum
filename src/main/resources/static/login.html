@@ -154,6 +154,9 @@
             color: var(--hint-text);
         }
         .hint code { background: var(--hint-code-bg); padding: 1px 4px; border-radius: 3px; }
+        .guest-entry { text-align: center; margin-top: 20px; }
+        .guest-entry a { font-size: 17px; color: var(--primary); text-decoration: none; font-weight: 700; }
+        .guest-entry a:hover { text-decoration: underline; opacity: 0.85; }
     </style>
 </head>
 <body>
@@ -193,7 +196,8 @@
         </form>
 
         <div class="error-msg" id="errorMsg"></div>
-        <div class="hint">💡 默认管理员账号：<code>admin</code> / <code>admin123</code>；游客可直接 <a href="/index.html">返回首页逛逛</a> →</div>
+        <div class="hint">💡 默认管理员账号：<code>admin</code> / <code>admin123</code></div>
+        <div class="guest-entry"><a href="/index.html">随便逛逛 →</a></div>
     </div>
 
     <script>
