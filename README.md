@@ -61,6 +61,87 @@
 - ✅ **JSON 文件持久化**（`data/*.json`，定时落盘 + 启动加载，重启不丢）
 - ✅ 全局异常处理、统一响应体、JSR-303 参数校验
 
+## 推荐系统：架构与数据流转链路
+
+### 1. 总体分层（对标生产：离线 / 近线 / 在线）
+
+| 层 | 时效 | 本模块对应 | 职责 |
+|---|---|---|---|
+| **离线层** | 小时 ~ 天 | `recommend/model`、`recommend/eval` | 行为日志 → ItemCF 相似度表；时间切分离线评估 |
+| **近线层** | 秒 ~ 分 | `recommend/stream`、`recommend/feature` | 实时特征窗口聚合（模拟 Kafka → Flink → Redis） |
+| **在线层** | 毫秒 | `recommend/service` + `recall/rank/rerank/coldstart` | 漏斗编排，低延迟下发；配置 / AB 分流 |
+
+### 2. 在线请求链路（一次 `/api/recommend/feed`）
+
+```
+GET /api/recommend/feed?page&size      (session: userId)
+  │
+  ▼  RecommendService.recommend(ctx, username, expId)
+  ├─① 画像      FeatureService.userProfile(uid)
+  │            → 话题/类目兴趣权重(时间衰减) + 最近交互序列 + 活跃度
+  ├─② 召回      RecallService.recall(ctx) → 6 路并行:
+  │             hot(热度分) / topic(兴趣话题) / category(兴趣类目)
+  │             / itemcf(历史相似) / newitem(冷启池) / follow(关注+二度转发)
+  │            └ MergeRecallService: 每路 rank归一化 1/(rank+60)
+  │                 + 通道加权(RecConfig) + 去重 → List<Candidate>
+  ├─③ 排序      RuleRankService.rank(ctx, candidates)
+  │            rankScore = (Σ w_f·f + explore) × 时效衰减(半衰期4h)
+  │            特征: interact·quality·interest·social·author·hot·realtime
+  │            → List<RankedItem>(携带特征分构成 + 推荐理由)
+  ├─④ 重排      DiversifyRerankService.rerank: 同类连续≤2 打散 + MMR → TopN
+  ├─⑤ 冷启动    冷用户热门兜底 + 新内容 explore(Thompson)
+  ├─⑥ 曝光      逐条 BehaviorLogger.log(EXPOSE, scene, expId)
+  └─⑦ 下发      组装 RecommendPostVO(帖子 + reason + sources + score) → PageResult
+```
+
+### 3. 行为回流链路（数据闭环，推荐越用越准）
+
+```
+用户行为: 点赞/收藏/评论/转发/搜索/关注/浏览   ← 织入现有 service
+        + 曝光(EXPOSE, 服务端自动) + 点击/负反馈(POST /api/recommend/track)
+  │
+  ▼  BehaviorLogger（默认 InMemoryBehaviorLogger；prod: KafkaBehaviorLogger）
+  ├─→ BehaviorLogRepository → data/behavior-log.json   ← 画像/评估的唯一事实源
+  └─→ BehaviorEventQueue（模拟 Kafka）
+        ├─→ RealtimeFeatureWindow（模拟 Flink, 时间窗口聚合）
+        │     └─→ RealtimeFeatureStore（模拟 Redis）
+        │           └─ 下一次排序特征 realtime 生效（用户话题投影 + 物品热度爆发）
+        └─→ ColdStartFeedbackListener
+              └─→ NewItemPool.recordOutcome（Thompson 后验: 点击 α+1 / 曝光无转化 β+1）
+
+离线（行为数变化自动重建）:
+  BehaviorLogRepository → ItemCfBuilder → ItemCfModelStore（物品相似度表）
+      └─ 供 itemcf 召回 + 详情"相关推荐"
+```
+
+### 4. 离线训练与评估链路
+
+```
+behavior-log（过滤曝光/负反馈等非反馈信号）
+  → TimeSplitter 时间切分（前 80% 训练 / 后 20% 测试，禁随机切分）
+  → 训练集构建 ItemCF + 热门信号 → 为测试用户生成 TopK 排序
+  → 对比测试集真实深度互动 → Metrics：
+     AUC / GAUC / Recall@K / NDCG@K / Coverage / Diversity / Freshness
+  → 结论：离线只做初筛，最终以线上 AB 为准
+```
+
+### 5. 配置 / AB / 生产适配
+
+```
+RecConfig（召回权重 / 排序权重 / 冷启比例 / 打散参数 / 时效半衰期）
+  ├─ InMemoryConfigService（默认, 加载 application.yml, 运行时热更新）
+  └─ prod.nacos.NacosConfigService（@Profile("prod"), 配置中心下发）
+
+AbExperimentService：floorMod(hash(uid:salt), 100) 分桶
+  → 对照组 A 全局配置 / 实验组 B 多样性变体 → 行为日志带 expId → 离线归因
+
+生产适配（@Profile("prod") 激活，默认内存实现）：
+  prod.kafka.KafkaBehaviorLogger（行为→Kafka topic behavior-log）
+  prod.redis.RedisRealtimeFeatureStore（实时特征→Redis, TTL 60s）
+  prod.nacos.NacosConfigService（配置→Nacos rec-config, 监听热更新）
+  prod.flink.FlinkRealtimeWindow（Flink 窗口算子骨架，聚合逻辑与内存版一致）
+```
+
 ## 技术栈
 
 | 技术 | 说明 |
