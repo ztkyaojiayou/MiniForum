@@ -24,7 +24,10 @@ public class ItemFeature {
     private int favoriteCount;
     private int viewCount;
 
-    /** 互动热度分 = 3·转发 + 2·评论 + 1·点赞 + 1.5·收藏 + 0.02·浏览（微博信号权重） */
+    /** 阅读停留总时长（秒，DWELL 求和；仿抖音"观看时长"） */
+    private double readTimeSec;
+
+    /** 互动热度分 = 3·转发 + 2·评论 + 1·点赞 + 1.5·收藏 + 0.02·浏览 + 0.05·阅读时长（微博信号权重） */
     private double hotScore;
 
     /** 发布时间距今小时数 */
@@ -112,6 +115,14 @@ public class ItemFeature {
 
     public void setHotScore(double hotScore) {
         this.hotScore = hotScore;
+    }
+
+    public double getReadTimeSec() {
+        return readTimeSec;
+    }
+
+    public void setReadTimeSec(double readTimeSec) {
+        this.readTimeSec = readTimeSec;
     }
 
     public double getAgeHours() {

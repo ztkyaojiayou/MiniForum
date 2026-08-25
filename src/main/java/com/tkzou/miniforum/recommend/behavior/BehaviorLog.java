@@ -28,6 +28,9 @@ public class BehaviorLog {
     /** 行为时间 */
     private LocalDateTime timestamp;
 
+    /** 阅读停留时长（秒，仅 DWELL 行为；仿抖音"观看时长/完播"信号） */
+    private Double durationSec;
+
     /** 来源场景：POST（业务动作）/ TRACK（前端上报）/ RECOMMEND_FEED（推荐流曝光）/ RECOMMEND_DETAIL */
     private String scene;
 
@@ -83,6 +86,14 @@ public class BehaviorLog {
 
     public void setTimestamp(LocalDateTime timestamp) {
         this.timestamp = timestamp;
+    }
+
+    public Double getDurationSec() {
+        return durationSec;
+    }
+
+    public void setDurationSec(Double durationSec) {
+        this.durationSec = durationSec;
     }
 
     public String getScene() {

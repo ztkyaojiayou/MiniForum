@@ -19,4 +19,12 @@ public interface BehaviorLogger {
      * @param expId  AB 实验组 ID（可为 null）
      */
     void log(Long userId, Long postId, BehaviorType type, String scene, String expId);
+
+    /**
+     * 记录一次带时长的行为（如 DWELL 阅读停留）。
+     * 默认忽略时长，由具体实现决定是否记录（内存/生产实现会写入 durationSec）。
+     */
+    default void log(Long userId, Long postId, BehaviorType type, String scene, String expId, Double durationSec) {
+        log(userId, postId, type, scene, expId);
+    }
 }

@@ -24,7 +24,7 @@ public class ItemCfBuilder {
     /** 忽略的弱信号（曝光/浏览/搜索/负反馈不构成正反馈） */
     private static boolean isDeepInteraction(BehaviorType type) {
         return type == BehaviorType.REPOST || type == BehaviorType.COMMENT || type == BehaviorType.FAVORITE
-                || type == BehaviorType.LIKE || type == BehaviorType.CLICK;
+                || type == BehaviorType.LIKE || type == BehaviorType.CLICK || type == BehaviorType.DWELL;
     }
 
     /**

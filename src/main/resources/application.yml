@@ -41,6 +41,14 @@ app:
     eval-top-k: 20
     eval-max-users: 200
     eval-min-behaviors: 50         # 行为数低于此值跳过评估
+    # 流量池/赛马（新帖渐进式曝光，Wilson 下界判晋级）
+    traffic-pool:
+      enabled: true
+      base-boost: 0.3              # 探索保底加分（让新帖进入信息流）
+      tier-step: 0.2               # 每晋级一档的额外加分
+      baseline: 0.05               # 互动率基线（低于 Wilson 下界则停止探索）
+      z: 1.96                      # Wilson 置信系数（95%）
+      tiers: '50,500,5000,50000'   # 各档曝光配额（曝光达到后判晋级）
   sim:
     # 模拟活动：定时产生少量新帖与互动，让系统像真实社区持续"转起来"（数据量可控）
     enabled: true

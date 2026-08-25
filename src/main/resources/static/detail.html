@@ -422,6 +422,8 @@
                     document.getElementById('commentsSection').style.display = 'block';
                     loadComments(id);
                     loadRelated(id);
+                    postOpenTime = Date.now();
+                    currentPostId = id;
             } catch (e) {
                 loading.style.display = 'none';
                 article.innerHTML = '<div class="empty">加载失败：' + escapeHtml(e.message) + '</div>';
@@ -735,6 +737,20 @@
         }
 
         let isLoggedIn = false;
+        // 阅读停留时长（仿抖音"观看时长"信号）：详情页打开→离开的秒数，pagehide 上报 DWELL
+        let currentPostId = null;
+        let postOpenTime = 0;
+        window.addEventListener('pagehide', function () {
+            if (!currentPostId || !postOpenTime || !isLoggedIn) return;
+            const durationSec = Math.round((Date.now() - postOpenTime) / 1000);
+            if (durationSec < 1) return;
+            fetch('/api/recommend/track', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ postId: currentPostId, action: 'DWELL', durationSec: durationSec }),
+                keepalive: true
+            });
+        });
         async function checkLogin() {
             try {
                 const res = await fetch('/api/auth/me');

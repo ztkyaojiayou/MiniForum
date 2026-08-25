@@ -1,6 +1,9 @@
 package com.tkzou.miniforum.recommend.feature;
 
 import com.tkzou.miniforum.entity.Post;
+import com.tkzou.miniforum.recommend.behavior.BehaviorLog;
+import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;
+import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 import com.tkzou.miniforum.recommend.config.ConfigService;
 import com.tkzou.miniforum.recommend.config.RecConfig;
 import com.tkzou.miniforum.repository.CommentRepository;
@@ -33,6 +36,7 @@ public class InMemoryFeatureService implements FeatureService {
     private final FavoriteRepository favoriteRepository;
     private final RealtimeFeatureStore realtimeFeatureStore;
     private final ConfigService configService;
+    private final BehaviorLogRepository behaviorLogRepository;
 
     public InMemoryFeatureService(UserProfileAggregator aggregator,
                                   PostRepository postRepository,
@@ -41,7 +45,8 @@ public class InMemoryFeatureService implements FeatureService {
                                   CommentRepository commentRepository,
                                   FavoriteRepository favoriteRepository,
                                   RealtimeFeatureStore realtimeFeatureStore,
-                                  ConfigService configService) {
+                                  ConfigService configService,
+                                  BehaviorLogRepository behaviorLogRepository) {
         this.aggregator = aggregator;
         this.postRepository = postRepository;
         this.followRepository = followRepository;
@@ -50,6 +55,7 @@ public class InMemoryFeatureService implements FeatureService {
         this.favoriteRepository = favoriteRepository;
         this.realtimeFeatureStore = realtimeFeatureStore;
         this.configService = configService;
+        this.behaviorLogRepository = behaviorLogRepository;
     }
 
     @Override
@@ -78,8 +84,14 @@ public class InMemoryFeatureService implements FeatureService {
         f.setFavoriteCount(favorite);
         f.setRepostCount(repost);
         f.setViewCount((int) view);
-        // 微博信号权重：转发>评论>点赞>收藏>浏览
-        f.setHotScore(3.0 * repost + 2.0 * comment + 1.0 * like + 1.5 * favorite + 0.02 * view);
+        // 阅读停留总时长（DWELL 求和，仿抖音"观看时长"）
+        double readTimeSec = behaviorLogRepository.findByPostId(postId).stream()
+                .filter(b -> b.getType() == BehaviorType.DWELL && b.getDurationSec() != null)
+                .mapToDouble(BehaviorLog::getDurationSec)
+                .sum();
+        f.setReadTimeSec(readTimeSec);
+        // 微博信号权重：转发>评论>点赞>收藏>浏览；阅读时长也计入热度
+        f.setHotScore(3.0 * repost + 2.0 * comment + 1.0 * like + 1.5 * favorite + 0.02 * view + 0.05 * readTimeSec);
 
         LocalDateTime now = LocalDateTime.now();
         double ageHours = post.getCreatedAt() == null

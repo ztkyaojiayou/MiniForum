@@ -32,6 +32,11 @@ public class InMemoryBehaviorLogger implements BehaviorLogger {
 
     @Override
     public void log(Long userId, Long postId, BehaviorType type, String scene, String expId) {
+        log(userId, postId, type, scene, expId, null);
+    }
+
+    @Override
+    public void log(Long userId, Long postId, BehaviorType type, String scene, String expId, Double durationSec) {
         if (userId == null) {
             return;
         }
@@ -40,6 +45,7 @@ public class InMemoryBehaviorLogger implements BehaviorLogger {
         behavior.setPostId(postId);
         behavior.setType(type);
         behavior.setTimestamp(LocalDateTime.now());
+        behavior.setDurationSec(durationSec);
         behavior.setScene(scene == null || scene.isBlank() ? "DEFAULT" : scene);
         behavior.setExpId(expId);
         repository.save(behavior);

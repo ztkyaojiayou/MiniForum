@@ -56,6 +56,10 @@ public class UserProfileAggregator {
             if (w <= 0) {
                 continue;
             }
+            // 阅读停留（DWELL）：权重 × 时长系数，停留越久兴趣越强（30s 封顶 3 倍；仿抖音"观看时长"）
+            if (b.getType() == BehaviorType.DWELL && b.getDurationSec() != null) {
+                w *= Math.min(1 + b.getDurationSec() / 10.0, 3.0);
+            }
             Post post = postRepository.findById(b.getPostId()).orElse(null);
             if (post == null || !Post.STATUS_PUBLISHED.equals(post.getStatus()) || post.isDeleted()) {
                 continue;
@@ -106,6 +110,8 @@ public class UserProfileAggregator {
                 return 1.0;
             case CLICK:
                 return 1.0;
+            case DWELL:
+                return 0.05; // 基础权重，时长系数在 build 中叠加
             case SEARCH:
                 return 0.5;
             case VIEW:

@@ -72,7 +72,7 @@ public class RecommendController {
         return ResponseEntity.ok(Result.success(recommendService.related(postId, username)));
     }
 
-    /** 前端打点：点击/负反馈（不感兴趣）等行为上报 */
+    /** 前端打点：点击/负反馈/阅读停留等行为上报 */
     @PostMapping("/track")
     public ResponseEntity<Result<Void>> track(@RequestBody TrackRequest request,
                                               HttpSession session) {
@@ -83,7 +83,15 @@ public class RecommendController {
         } catch (IllegalArgumentException e) {
             type = BehaviorType.CLICK;
         }
-        behaviorLogger.log(userId, request.getPostId(), type, "TRACK", null);
+        // 阅读停留：带时长(≥1s)的 VIEW/DWELL → 记为 DWELL，时长进入行为日志（仿抖音"观看时长"信号）
+        Double duration = request.getDurationSec();
+        if (duration != null && duration < 1.0) {
+            duration = null;
+        }
+        if (type == BehaviorType.VIEW && duration != null) {
+            type = BehaviorType.DWELL;
+        }
+        behaviorLogger.log(userId, request.getPostId(), type, "TRACK", null, duration);
         return ResponseEntity.ok(Result.success("已记录", null));
     }
 }

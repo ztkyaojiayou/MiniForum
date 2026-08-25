@@ -47,6 +47,11 @@ public class KafkaBehaviorLogger implements BehaviorLogger {
 
     @Override
     public void log(Long userId, Long postId, BehaviorType type, String scene, String expId) {
+        log(userId, postId, type, scene, expId, null);
+    }
+
+    @Override
+    public void log(Long userId, Long postId, BehaviorType type, String scene, String expId, Double durationSec) {
         try {
             Map<String, Object> event = new LinkedHashMap<>();
             event.put("userId", userId);
@@ -54,6 +59,7 @@ public class KafkaBehaviorLogger implements BehaviorLogger {
             event.put("type", type.name());
             event.put("scene", scene);
             event.put("expId", expId);
+            event.put("durationSec", durationSec);
             event.put("timestamp", System.currentTimeMillis());
             String json = objectMapper.writeValueAsString(event);
             producer.send(new ProducerRecord<>("behavior-log", String.valueOf(userId), json));

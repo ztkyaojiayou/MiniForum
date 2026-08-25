@@ -2,6 +2,7 @@ package com.tkzou.miniforum.recommend.rank;
 
 import com.tkzou.miniforum.entity.Follow;
 import com.tkzou.miniforum.entity.Post;
+import com.tkzou.miniforum.recommend.coldstart.TrafficPool;
 import com.tkzou.miniforum.recommend.config.ConfigService;
 import com.tkzou.miniforum.recommend.config.RecConfig;
 import com.tkzou.miniforum.recommend.domain.Candidate;
@@ -47,6 +48,7 @@ public class RuleRankService implements RankService {
     private final PostRepository postRepository;
     private final ConfigService configService;
     private final ExploreProvider exploreProvider;
+    private final TrafficPool trafficPool;
 
     public RuleRankService(FeatureService featureService,
                            ItemCfModelStore itemCfModelStore,
@@ -54,7 +56,8 @@ public class RuleRankService implements RankService {
                            FollowRepository followRepository,
                            PostRepository postRepository,
                            ConfigService configService,
-                           ExploreProvider exploreProvider) {
+                           ExploreProvider exploreProvider,
+                           TrafficPool trafficPool) {
         this.featureService = featureService;
         this.itemCfModelStore = itemCfModelStore;
         this.itemCfScorer = itemCfScorer;
@@ -62,6 +65,7 @@ public class RuleRankService implements RankService {
         this.postRepository = postRepository;
         this.configService = configService;
         this.exploreProvider = exploreProvider;
+        this.trafficPool = trafficPool;
     }
 
     @Override
@@ -106,6 +110,8 @@ public class RuleRankService implements RankService {
             }
             double explore = exploreProvider.exploreBonus(ctx.getUserId(), c.getItemId());
             weighted += explore;
+            // 流量池加分：新帖探索保底 + 已验证档位加权（仿抖音赛马）
+            weighted += trafficPool.tierBonus(c.getItemId());
 
             double rankScore = weighted * f.getFreshness();
 

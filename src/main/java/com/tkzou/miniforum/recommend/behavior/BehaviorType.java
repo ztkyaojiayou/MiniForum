@@ -11,6 +11,8 @@ public enum BehaviorType {
     EXPOSE,
     /** 查看详情页（浏览） */
     VIEW,
+    /** 阅读停留（详情页停留时长，前端 pagehide 上报，携带 durationSec；仿抖音"观看时长"） */
+    DWELL,
     /** 点击（从推荐流/相关推荐进入详情） */
     CLICK,
     /** 点赞 */
