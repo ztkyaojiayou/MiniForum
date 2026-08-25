@@ -162,6 +162,19 @@
         .toast.error { background: #ff4d4f; }
         .fade-in { animation: fadeIn .4s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* 粉丝/关注列表弹窗（仿微博，可点击查看） */
+        .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-mask.show { display: flex; }
+        .modal { background: var(--card-bg); border-radius: 12px; padding: 24px; width: 380px; max-width: 90%; max-height: 80vh; overflow-y: auto; }
+        .relation-list { margin-top: 12px; }
+        .relation-item { display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-bottom: 1px solid var(--border-row); cursor: pointer; border-radius: 8px; }
+        .relation-item:hover { background: var(--composer-bg); }
+        .relation-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0; }
+        .relation-name { font-size: 14px; color: var(--text-heading); }
+        .modal-actions { display: flex; justify-content: flex-end; margin-top: 16px; }
+        .btn-cancel { background: var(--composer-bg); color: var(--muted-2); border: 1px solid var(--border); }
+        .my-stats span { cursor: pointer; }
+        .my-stats span:hover { color: var(--primary); }
     </style>
 </head>
 <body>
@@ -235,8 +248,8 @@
         </div>
         <div class="my-stats">
             <span>📝 文章 <b id="statPostCount">-</b></span>
-            <span>👥 粉丝 <b id="statFollowerCount">-</b></span>
-            <span>❤️ 关注 <b id="statFollowingCount">-</b></span>
+            <span onclick="openRelation('followers', ME_ID)" title="查看粉丝">👥 粉丝 <b id="statFollowerCount">-</b></span>
+            <span onclick="openRelation('following', ME_ID)" title="查看关注">❤️ 关注 <b id="statFollowingCount">-</b></span>
         </div>
 
         <!-- 编辑 / 新增表单 -->
@@ -265,6 +278,16 @@
         <div id="pagination" class="pagination"></div>
     </div>
 
+    <!-- 粉丝/关注列表弹窗 -->
+    <div class="modal-mask" id="relationModal">
+        <div class="modal">
+            <h3 id="relationTitle">粉丝</h3>
+            <div class="relation-list" id="relationList"><div class="empty">加载中...</div></div>
+            <div class="modal-actions">
+                <button class="btn btn-cancel" onclick="closeRelation()">关闭</button>
+            </div>
+        </div>
+    </div>
     <div class="toast" id="toast"></div>
 
     <script>
@@ -280,6 +303,36 @@
             toast.textContent = msg;
             toast.className = 'toast show ' + (type || '');
             setTimeout(() => { toast.className = 'toast'; }, 2500);
+        }
+        // ---------- 粉丝/关注列表（仿微博，可点击查看） ----------
+        function openRelation(type, userId) {
+            document.getElementById('relationTitle').textContent = type === 'following' ? '关注' : '粉丝';
+            const box = document.getElementById('relationList');
+            box.innerHTML = '<div class="empty">加载中...</div>';
+            document.getElementById('relationModal').classList.add('show');
+            loadRelation(type, userId);
+        }
+        async function loadRelation(type, userId) {
+            const box = document.getElementById('relationList');
+            try {
+                const list = await request('/api/follows/' + type + '?userId=' + userId);
+                if (!list || list.length === 0) {
+                    box.innerHTML = '<div class="empty">暂无' + (type === 'following' ? '关注' : '粉丝') + '</div>';
+                    return;
+                }
+                box.innerHTML = list.map(function (u) {
+                    const avatar = (u.username || '?').charAt(0).toUpperCase();
+                    return '<div class="relation-item" onclick="location.href=\'/user.html?id=' + u.id + '\'">' +
+                        '<span class="relation-avatar">' + escapeHtml(avatar) + '</span>' +
+                        '<span class="relation-name">' + escapeHtml(u.username) + '</span>' +
+                        '</div>';
+                }).join('');
+            } catch (e) {
+                box.innerHTML = '<div class="empty">加载失败</div>';
+            }
+        }
+        function closeRelation() {
+            document.getElementById('relationModal').classList.remove('show');
         }
         function escapeHtml(str) {
             const div = document.createElement('div');

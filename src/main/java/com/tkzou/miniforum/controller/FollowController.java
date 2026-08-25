@@ -61,17 +61,21 @@ public class FollowController {
         return ResponseEntity.ok(Result.success(Map.of("following", following)));
     }
 
-    /** 我关注的人列表 */
+    /** 我关注的人列表（默认查自己，可用 userId 查他人） */
     @GetMapping("/following")
-    public ResponseEntity<Result<List<UserBriefVO>>> getFollowing(HttpSession session) {
-        Long me = (Long) session.getAttribute("userId");
+    public ResponseEntity<Result<List<UserBriefVO>>> getFollowing(
+            @RequestParam(required = false) Long userId,
+            HttpSession session) {
+        Long me = userId != null ? userId : (Long) session.getAttribute("userId");
         return ResponseEntity.ok(Result.success(followService.getFollowing(me)));
     }
 
-    /** 我的粉丝列表 */
+    /** 我的粉丝列表（默认查自己，可用 userId 查他人） */
     @GetMapping("/followers")
-    public ResponseEntity<Result<List<UserBriefVO>>> getFollowers(HttpSession session) {
-        Long me = (Long) session.getAttribute("userId");
+    public ResponseEntity<Result<List<UserBriefVO>>> getFollowers(
+            @RequestParam(required = false) Long userId,
+            HttpSession session) {
+        Long me = userId != null ? userId : (Long) session.getAttribute("userId");
         return ResponseEntity.ok(Result.success(followService.getFollowers(me)));
     }
 
