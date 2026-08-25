@@ -154,6 +154,8 @@ AbExperimentService：floorMod(hash(uid:salt), 100) 分桶
 生产适配（`-Pprod` 编译 src/prod/java，`@Profile("prod")` 运行时激活，默认内存实现）：
   prod.kafka.KafkaBehaviorLogger（行为→Kafka topic behavior-log）
   prod.kafka.KafkaBehaviorConsumer（Kafka behavior-log→行为库+事件队列，离线侧回灌）
+  prod.kafka.KafkaPostCreatedProducer（发帖→Kafka topic post-created，@Profile("prod")）
+  prod.kafka.KafkaPostCreatedConsumer（post-created→预热流量池，@Profile("prod")）
   prod.redis.RedisRealtimeFeatureStore（实时特征→Redis, TTL 60s）
   prod.redis.RedisFollowRepository（关注关系→Redis Hash+ZSET 索引，@Profile("prod") 高频读写）
   prod.nacos.NacosConfigService（配置→Nacos rec-config, 监听热更新）

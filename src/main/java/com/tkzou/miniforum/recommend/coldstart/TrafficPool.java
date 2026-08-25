@@ -97,6 +97,20 @@ public class TrafficPool {
         maybePromote(b.getPostId(), st);
     }
 
+    /** 帖子创建事件：若为冷启新帖且未跟踪，则从创建起就进入流量池（prod 由 Kafka 消费者触发） */
+    public void notifyCreated(Long postId) {
+        if (!enabled || postId == null) {
+            return;
+        }
+        if (states.containsKey(postId)) {
+            return;
+        }
+        if (!featureService.itemFeature(postId).isInNewPool()) {
+            return;
+        }
+        states.put(postId, new PostState());
+    }
+
     /** 当前档位曝光达标 → Wilson 下界 vs 基线 判定晋级/停止 */
     private void maybePromote(Long postId, PostState st) {
         int[] tiers = tiers();

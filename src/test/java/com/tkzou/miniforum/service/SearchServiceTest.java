@@ -15,6 +15,7 @@ import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
 import com.tkzou.miniforum.recommend.behavior.InMemoryBehaviorLogger;
 import com.tkzou.miniforum.recommend.stream.BehaviorEventQueue;
+import com.tkzou.miniforum.recommend.stream.InMemoryPostCreatedNotifier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -45,7 +46,7 @@ class SearchServiceTest {
         NotificationService notificationService = new NotificationService(notificationRepository);
         BehaviorLogger behaviorLogger = new InMemoryBehaviorLogger(new BehaviorLogRepository(), new BehaviorEventQueue());
         postService = new PostService(postRepository, likeRepository, commentRepository,
-                favoriteRepository, notificationService, userRepository, behaviorLogger);
+                favoriteRepository, notificationService, userRepository, behaviorLogger, new InMemoryPostCreatedNotifier());
         searchService = new SearchService(postService, userRepository, searchRecordRepository, behaviorLogger);
     }
 

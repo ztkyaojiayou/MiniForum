@@ -18,6 +18,8 @@ import com.tkzou.miniforum.repository.PostRepository;
 import com.tkzou.miniforum.repository.UserRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
+import com.tkzou.miniforum.recommend.stream.PostCreatedEvent;
+import com.tkzou.miniforum.recommend.stream.PostCreatedNotifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -80,6 +82,7 @@ public class PostService {
     private final NotificationService notificationService;
     private final UserRepository userRepository;
     private final BehaviorLogger behaviorLogger;
+    private final PostCreatedNotifier postCreatedNotifier;
 
     public PostService(PostRepository postRepository,
                        LikeRepository likeRepository,
@@ -87,7 +90,8 @@ public class PostService {
                        FavoriteRepository favoriteRepository,
                        NotificationService notificationService,
                        UserRepository userRepository,
-                       BehaviorLogger behaviorLogger) {
+                       BehaviorLogger behaviorLogger,
+                       PostCreatedNotifier postCreatedNotifier) {
         this.postRepository = postRepository;
         this.likeRepository = likeRepository;
         this.commentRepository = commentRepository;
@@ -95,6 +99,7 @@ public class PostService {
         this.notificationService = notificationService;
         this.userRepository = userRepository;
         this.behaviorLogger = behaviorLogger;
+        this.postCreatedNotifier = postCreatedNotifier;
     }
 
     /** 发帖（publish=false 时存为草稿） */
@@ -112,8 +117,16 @@ public class PostService {
         Post saved = postRepository.save(post);
         if (Post.STATUS_PUBLISHED.equals(saved.getStatus())) {
             notifyMentions(saved, author, authorId);
+            // 发布"帖子创建"事件（生产经 Kafka 下发下游：搜索索引/feed扇出/内容管道/推荐冷启动）
+            postCreatedNotifier.notify(toPostCreatedEvent(saved));
         }
         return toVO(saved, author);
+    }
+
+    /** 帖子实体 → 创建事件 */
+    private PostCreatedEvent toPostCreatedEvent(Post post) {
+        return new PostCreatedEvent(post.getId(), post.getAuthorId(), post.getAuthor(),
+                post.getTitle(), post.getContent(), post.getCategory(), post.getTopics());
     }
 
     /** 规范化并校验分类：空值兜底为"其他"，非法分类抛异常 */
