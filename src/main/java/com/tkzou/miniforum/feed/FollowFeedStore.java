@@ -31,4 +31,10 @@ public interface FollowFeedStore {
 
     /** 该用户的 inbox 是否已建立（未建立则调用方回退旧查询并触发回填） */
     boolean isBuilt(Long userId);
+
+    /**
+     * 大V分流预留：该作者粉丝数超过阈值时跳过扇出（走拉模式）。
+     * ⚠ 激活前必须先实现读侧 pull 合并（outbox + 读者拉取，见 docs §5/§2.5），否则大V新帖不会进粉丝 inbox。
+     */
+    boolean shouldSkipFanout(Long userId);
 }

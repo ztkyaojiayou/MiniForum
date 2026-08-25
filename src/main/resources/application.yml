@@ -33,6 +33,9 @@ app:
     # 关注流 inbox 封顶条数（推模式每用户 inbox 只保留最近 N 条 postId，超限淘汰最旧）
     feed:
       cap: 500
+      # 大V分流阈值：粉丝数 ≥ 此值时跳过扇出（走拉模式，见 docs §2.5/§11）。
+      # 预留开关，默认 10 万演示永不触发；激活前必须先实现读侧 pull 合并，否则大V新帖不进粉丝 inbox。
+      big-v-fan-threshold: 100000
     # 召回通道权重（hot/topic/category/itemcf/newitem/follow）
     channel-weight: '{"hot":1.0,"topic":1.0,"category":0.6,"itemcf":1.2,"newitem":0.5,"follow":0.8}'
     # 排序特征权重（interact/quality/interest/social/author/hot/realtime）

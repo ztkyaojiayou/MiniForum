@@ -2,6 +2,9 @@ package com.tkzou.miniforum.feed;
 
 import com.tkzou.miniforum.entity.Follow;
 import com.tkzou.miniforum.repository.FollowRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -24,21 +27,43 @@ import java.util.concurrent.ConcurrentSkipListSet;
 @Profile("!prod")
 public class InMemoryFollowFeedStore implements FollowFeedStore {
 
+    private static final Logger log = LoggerFactory.getLogger(InMemoryFollowFeedStore.class);
+
+    /** 大V分流阈值默认值：10 万粉丝，演示数据永不触发（纯预留开关） */
+    static final int DEFAULT_BIG_V_THRESHOLD = 100000;
+
     private final FollowRepository followRepository;
 
     private final int cap;
 
+    /** 大V分流阈值：粉丝数 ≥ 此值时 shouldSkipFanout 返回 true（走拉） */
+    private final int bigVThreshold;
+
     /** userId → inbox（postId 升序；最新 = 最大 id） */
     private final Map<Long, ConcurrentSkipListSet<Long>> inboxes = new ConcurrentHashMap<>();
 
+    /** 便捷构造（测试/默认）：bigVThreshold 用默认 10 万，永不触发 */
+    public InMemoryFollowFeedStore(FollowRepository followRepository, int cap) {
+        this(followRepository, cap, DEFAULT_BIG_V_THRESHOLD);
+    }
+
+    @Autowired
     public InMemoryFollowFeedStore(FollowRepository followRepository,
-                                   @Value("${app.rec.feed.cap:500}") int cap) {
+                                   @Value("${app.rec.feed.cap:500}") int cap,
+                                   @Value("${app.rec.feed.big-v-fan-threshold:100000}") int bigVThreshold) {
         this.followRepository = followRepository;
         this.cap = cap;
+        this.bigVThreshold = bigVThreshold;
     }
 
     @Override
     public void fanout(Long authorId, Long postId) {
+        // 大V分流预留：粉丝超阈值跳过扇出（走拉）。
+        // ⚠ 激活前必须先实现读侧 pull 合并（outbox + 读者拉取，见 docs §5/§2.5），否则大V新帖不会进粉丝 inbox。
+        if (shouldSkipFanout(authorId)) {
+            log.warn("跳过扇出：作者 {} 粉丝数超阈值（走拉，pull 路径待实现）", authorId);
+            return;
+        }
         List<Follow> followers = followRepository.findByFolloweeId(authorId);
         for (Follow f : followers) {
             Long followerId = f.getFollowerId();
@@ -96,6 +121,12 @@ public class InMemoryFollowFeedStore implements FollowFeedStore {
     @Override
     public boolean isBuilt(Long userId) {
         return inboxes.containsKey(userId);
+    }
+
+    @Override
+    public boolean shouldSkipFanout(Long userId) {
+        // 大V分流预留：粉丝数 ≥ 阈值 → 跳过扇出（写放大 O(粉丝数) 爆炸，见 docs §2.5）
+        return followRepository.countByFolloweeId(userId) >= bigVThreshold;
     }
 
     /** 封顶：超过 cap 时移除最旧的（最小 id） */

@@ -110,4 +110,28 @@ class FollowFeedStoreTest {
         store.onFollow(1L, List.of());
         assertTrue(store.isBuilt(1L));
     }
+
+    @Test
+    void shouldSkipFanout_shouldFlipAtThreshold() {
+        InMemoryFollowFeedStore lowThreshold = new InMemoryFollowFeedStore(followRepository, 5, 2);
+        follow(1L, 100L); // 作者 100 有 1 个粉丝 → 低于阈值 2
+        assertFalse(lowThreshold.shouldSkipFanout(100L));
+        follow(2L, 100L); // 2 个粉丝 → 达到阈值 → 跳过
+        assertTrue(lowThreshold.shouldSkipFanout(100L));
+    }
+
+    @Test
+    void shouldSkipFanout_defaultThresholdNeverSkips() {
+        follow(1L, 100L);
+        assertFalse(store.shouldSkipFanout(100L)); // 2 参构造默认阈值 10 万
+    }
+
+    @Test
+    void fanout_shouldSkipForBigV() {
+        InMemoryFollowFeedStore lowThreshold = new InMemoryFollowFeedStore(followRepository, 5, 1);
+        follow(1L, 100L); // 作者 100 有 1 个粉丝 → 达到阈值 1 → 大V
+        lowThreshold.onFollow(1L, List.of()); // 建流
+        lowThreshold.fanout(100L, 200L); // 大V跳过扇出
+        assertTrue(lowThreshold.getInbox(1L, null, 10).isEmpty());
+    }
 }

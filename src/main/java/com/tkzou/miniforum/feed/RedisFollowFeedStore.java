@@ -40,19 +40,29 @@ public class RedisFollowFeedStore implements FollowFeedStore {
     private final FollowRepository followRepository;
     private final JedisPool jedisPool;
     private final int cap;
+    /** 大V分流阈值：粉丝数 ≥ 此值时 shouldSkipFanout 返回 true（走拉，预留） */
+    private final int bigVThreshold;
 
     public RedisFollowFeedStore(FollowRepository followRepository,
                                 @Value("${app.rec.redis.host:localhost}") String host,
                                 @Value("${app.rec.redis.port:6379}") int port,
-                                @Value("${app.rec.feed.cap:500}") int cap) {
+                                @Value("${app.rec.feed.cap:500}") int cap,
+                                @Value("${app.rec.feed.big-v-fan-threshold:100000}") int bigVThreshold) {
         this.followRepository = followRepository;
         this.jedisPool = new JedisPool(host, port);
         this.cap = cap;
-        log.info("Redis 关注流 inbox 初始化完成，{}:{}（inbox 封顶 {} 条）", host, port, cap);
+        this.bigVThreshold = bigVThreshold;
+        log.info("Redis 关注流 inbox 初始化完成，{}:{}（inbox 封顶 {} 条，大V分流阈值 {}）", host, port, cap, bigVThreshold);
     }
 
     @Override
     public void fanout(Long authorId, Long postId) {
+        // 大V分流预留：粉丝超阈值跳过扇出（走拉）。
+        // ⚠ 激活前必须先实现读侧 pull 合并（outbox + 读者拉取，见 docs §5/§2.5），否则大V新帖不会进粉丝 inbox。
+        if (shouldSkipFanout(authorId)) {
+            log.warn("跳过扇出：作者 {} 粉丝数超阈值（走拉，pull 路径待实现）", authorId);
+            return;
+        }
         List<Follow> followers = followRepository.findByFolloweeId(authorId);
         if (followers.isEmpty()) {
             return;
@@ -137,6 +147,12 @@ public class RedisFollowFeedStore implements FollowFeedStore {
         try (Jedis jedis = jedisPool.getResource()) {
             return jedis.exists(builtKey(userId));
         }
+    }
+
+    @Override
+    public boolean shouldSkipFanout(Long userId) {
+        // 大V分流预留：粉丝数 ≥ 阈值 → 跳过扇出（countByFolloweeId 走 ZCARD，O(1)）
+        return followRepository.countByFolloweeId(userId) >= bigVThreshold;
     }
 
     @PreDestroy
