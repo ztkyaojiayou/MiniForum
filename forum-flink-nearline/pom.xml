@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.tkzou</groupId>
+        <artifactId>forum-parent</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>forum-flink-nearline</artifactId>
+    <name>forum-flink-nearline</name>
+    <description>近线层：Flink 实时特征作业（Kafka 行为流 → 滑动窗口 → Redis），独立进程，-Pprod 才构建</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.tkzou</groupId>
+            <artifactId>forum-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.tkzou</groupId>
+            <artifactId>forum-recommend-server</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- Flink 运行时由集群提供（provided），仅编译本作业 -->
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-streaming-java</artifactId>
+            <version>1.17.2</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-clients</artifactId>
+            <version>1.17.2</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-connector-kafka</artifactId>
+            <version>1.17.2</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+        </dependency>
+        <!-- JSON 解析（Flink 作业反序列化 BehaviorLog 用 JavaTimeModule） -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+    </dependencies>
+</project>

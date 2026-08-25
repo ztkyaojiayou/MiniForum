@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.tkzou</groupId>
+        <artifactId>forum-parent</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>forum-recommend-server</artifactId>
+    <name>forum-recommend-server</name>
+    <description>推荐核心：召回/排序/重排/冷启动/画像/行为/AB/配置 + RecommendController + 生产适配(Kafka/Redis/Nacos)</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.tkzou</groupId>
+            <artifactId>forum-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- 推荐 pipeline：spring-context（@Component/@Scheduled）+ Jackson（特征序列化 / 配置解析） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <!-- 生产适配（Kafka/Redis/Nacos）仅编译，默认不连中间件 -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.nacos</groupId>
+            <artifactId>nacos-client</artifactId>
+            <version>2.3.2</version>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>com.tkzou</groupId>
+            <artifactId>forum-core</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
