@@ -3,6 +3,7 @@ package com.tkzou.miniforum.controller;
 import com.tkzou.miniforum.common.Result;
 import com.tkzou.miniforum.dto.CursorPage;
 import com.tkzou.miniforum.dto.PostVO;
+import com.tkzou.miniforum.dto.RecommendUserVO;
 import com.tkzou.miniforum.dto.UserBriefVO;
 import com.tkzou.miniforum.service.FollowService;
 import org.springframework.http.ResponseEntity;
@@ -77,6 +78,15 @@ public class FollowController {
             HttpSession session) {
         Long me = userId != null ? userId : (Long) session.getAttribute("userId");
         return ResponseEntity.ok(Result.success(followService.getFollowers(me)));
+    }
+
+    /** 推荐关注（社交卡）：二度关注中按共同好友数排序推荐用户 */
+    @GetMapping("/recommend")
+    public ResponseEntity<Result<List<RecommendUserVO>>> recommendUsers(
+            @RequestParam(required = false, defaultValue = "3") Integer limit,
+            HttpSession session) {
+        Long me = (Long) session.getAttribute("userId");
+        return ResponseEntity.ok(Result.success(followService.suggestFollows(me, limit)));
     }
 
     /** 关注流（游标分页）：max_id 向下翻历史；since_id 增量刷新（新帖提示） */

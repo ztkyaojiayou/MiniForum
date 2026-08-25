@@ -318,6 +318,18 @@
         }
         .btn:hover { background: var(--primary-hover); }
         .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        /* ---- 推荐关注社交卡（关注流 2/5/8 位插入）+ 三态关注按钮 ---- */
+        .recommend-card { display: flex; align-items: center; gap: 10px; padding: 12px 16px; margin-bottom: 12px; background: var(--composer-bg); border: 1px solid var(--border); border-radius: 12px; }
+        .recommend-card .recommend-avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--primary); color: #fff; font-weight: 700; flex-shrink: 0; }
+        .recommend-card .recommend-info { flex: 1; min-width: 0; }
+        .recommend-card .recommend-name { font-weight: 600; color: var(--text-heading); }
+        .recommend-card .recommend-reason { font-size: 12px; color: var(--muted-2); }
+        .recommend-card .follow-btn { padding: 4px 14px; font-size: 13px; }
+        .follow-btn.following { background: transparent; border: 1px solid var(--border); color: var(--muted-2); }
+        .follow-btn.following .follow-hover { display: none; }
+        .follow-btn.following:hover { border-color: #ff4d4f; color: #ff4d4f; background: rgba(255, 77, 79, 0.06); }
+        .follow-btn.following:hover .follow-text { display: none; }
+        .follow-btn.following:hover .follow-hover { display: inline; }
         /* ---- 帖子列表（微博式信息流） ---- */
         .feed-title { display: flex; align-items: center; gap: 8px; margin: 8px 0 16px; color: var(--text-heading); font-size: 18px; font-weight: 700; }
         .feed-refresh {
@@ -889,6 +901,8 @@
                     followCursor = data.nextMaxId || null;
                     followHasMore = !!data.hasMore;
                 }
+                // 首页（reset）插入推荐关注社交卡（第 2/5/8 位），加载更多不重复插
+                if (reset) await insertRecommendCards();
                 // "加载更多"按钮：仅关注流且还有更早时展示
                 paginationBox.innerHTML = '';
                 if (followHasMore) {
@@ -903,6 +917,60 @@
                 paginationBox.innerHTML = '';
             } finally {
                 loading.style.display = 'none';
+            }
+        }
+        /** 关注流首页插入推荐关注社交卡（第 2/5/8 位 = 0 基下标 1/4/7） */
+        async function insertRecommendCards() {
+            if (feedType !== 'follow') return; // 防 async 竞态：用户可能已切 Tab
+            const list = document.getElementById('postList');
+            const children = list.children;
+            if (!children || children.length === 0) return;
+            let recs = [];
+            try {
+                recs = await request('/api/follows/recommend?limit=3') || [];
+            } catch (e) { return; }
+            if (!recs.length) return;
+            // 先保存目标槽位引用再逐个 insertBefore（list.children 是 live 集合，直接按索引插会漂移）
+            const slots = [1, 4, 7];
+            const refs = slots.map(function (s) { return children[s]; });
+            recs.forEach(function (u, i) {
+                const slot = slots[i];
+                if (slot === undefined) return;
+                const card = document.createElement('div');
+                card.className = 'recommend-card';
+                const avatarChar = (u.avatar || u.username || '?').charAt(0).toUpperCase();
+                card.innerHTML =
+                    '<a class="recommend-avatar" href="/user.html?id=' + u.id + '">' + escapeHtml(avatarChar) + '</a>' +
+                    '<div class="recommend-info">' +
+                        '<a class="recommend-name" href="/user.html?id=' + u.id + '">' + escapeHtml(u.username) + '</a>' +
+                        '<div class="recommend-reason">' + escapeHtml(u.reason || '') + '</div>' +
+                    '</div>' +
+                    '<button class="btn follow-btn" onclick="toggleRecommendFollow(' + u.id + ', this)">➕ 关注</button>';
+                const ref = refs[i];
+                if (ref && ref.parentNode === list) {
+                    list.insertBefore(card, ref);
+                } else {
+                    list.appendChild(card);
+                }
+            });
+        }
+        /** 社交卡关注按钮三态切换（参照 user.html toggleFollow，按 userId 独立，不整页刷新） */
+        async function toggleRecommendFollow(userId, btn) {
+            const following = btn.classList.contains('following');
+            try {
+                if (following) {
+                    await request('/api/follows/' + userId, { method: 'DELETE' });
+                    showToast('已取消关注', 'success');
+                } else {
+                    await request('/api/follows/' + userId, { method: 'POST' });
+                    showToast('✅ 关注成功', 'success');
+                }
+                btn.className = 'btn follow-btn' + (!following ? ' following' : '');
+                btn.innerHTML = !following
+                    ? '<span class="follow-text">✔️ 已关注</span><span class="follow-hover">取消关注</span>'
+                    : '➕ 关注';
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
             }
         }
         function renderPagination(total, totalPages) {

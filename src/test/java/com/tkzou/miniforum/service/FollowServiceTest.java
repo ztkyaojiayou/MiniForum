@@ -3,6 +3,7 @@ package com.tkzou.miniforum.service;
 import com.tkzou.miniforum.dto.CursorPage;
 import com.tkzou.miniforum.dto.PostCreateDTO;
 import com.tkzou.miniforum.dto.PostVO;
+import com.tkzou.miniforum.dto.RecommendUserVO;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.feed.FollowFeedStore;
 import com.tkzou.miniforum.feed.InMemoryFollowFeedStore;
@@ -228,5 +229,89 @@ class FollowServiceTest {
         assertEquals(1, since.size()); // 建流后增量，返回全部比 sinceId=0 新的帖
         assertEquals("bob 帖", since.get(0).getTitle());
         assertTrue(followFeedStore.isBuilt(followerId));
+    }
+
+    // ---------- 推荐关注（社交卡） ----------
+
+    @Test
+    void suggestFollows_shouldReturnSecondDegreeByCommonCount() {
+        Long me = 1L, bob = 2L, carol = 3L, dave = 4L;
+        createUser("alice", me);
+        createUser("bob", bob);
+        createUser("carol", carol);
+        createUser("dave", dave);
+        followService.follow(me, bob, "alice");
+        followService.follow(me, carol, "alice");
+        followService.follow(bob, dave, "bob");
+        followService.follow(carol, dave, "carol"); // dave 被 bob、carol 共同关注
+
+        List<RecommendUserVO> recs = followService.suggestFollows(me, 10);
+        assertEquals(1, recs.size());
+        assertEquals(dave, recs.get(0).getId());
+        assertEquals(2, recs.get(0).getCommonFollowCount());
+        assertEquals("2 位你关注的人关注了 TA", recs.get(0).getReason());
+        assertFalse(recs.get(0).isFollowed());
+    }
+
+    @Test
+    void suggestFollows_shouldExcludeSelfAndAlreadyFollowed() {
+        Long me = 1L, bob = 2L, carol = 3L;
+        createUser("alice", me);
+        createUser("bob", bob);
+        createUser("carol", carol);
+        followService.follow(me, bob, "alice");
+        followService.follow(bob, me, "bob");     // bob 关注 alice（自己）→ 排除
+        followService.follow(bob, carol, "bob");  // bob 关注 carol → 推荐
+        List<RecommendUserVO> recs = followService.suggestFollows(me, 10);
+        assertEquals(1, recs.size());
+        assertEquals(carol, recs.get(0).getId());
+    }
+
+    @Test
+    void suggestFollows_shouldReturnEmptyWhenNotFollowingAnyone() {
+        Long me = 1L;
+        createUser("alice", me);
+        assertTrue(followService.suggestFollows(me, 10).isEmpty());
+    }
+
+    @Test
+    void suggestFollows_shouldOrderByCommonCountDesc() {
+        Long me = 1L, bob = 2L, carol = 3L, dave = 4L, eve = 5L;
+        createUser("alice", me);
+        createUser("bob", bob);
+        createUser("carol", carol);
+        createUser("dave", dave);
+        createUser("eve", eve);
+        followService.follow(me, bob, "alice");
+        followService.follow(me, carol, "alice");
+        followService.follow(bob, dave, "bob");
+        followService.follow(bob, eve, "bob");
+        followService.follow(carol, eve, "carol"); // eve 共同 2 > dave 共同 1
+
+        List<RecommendUserVO> recs = followService.suggestFollows(me, 10);
+        assertEquals(2, recs.size());
+        assertEquals(eve, recs.get(0).getId());
+        assertEquals(dave, recs.get(1).getId());
+    }
+
+    @Test
+    void suggestFollows_shouldTransmitProfileFieldsAndClampLimit() {
+        Long me = 1L, bob = 2L, daveId = 4L;
+        createUser("alice", me);
+        createUser("bob", bob);
+        User dave = new User();
+        dave.setId(daveId);
+        dave.setUsername("dave");
+        dave.setNickname("戴夫");
+        dave.setAvatar("👨");
+        userRepository.save(dave);
+        followService.follow(me, bob, "alice");
+        followService.follow(bob, daveId, "bob");
+
+        List<RecommendUserVO> recs = followService.suggestFollows(me, 9999); // limit 超范围 → clamp，不抛异常
+        assertEquals(1, recs.size());
+        assertEquals(daveId, recs.get(0).getId());
+        assertEquals("戴夫", recs.get(0).getNickname());
+        assertEquals("👨", recs.get(0).getAvatar());
     }
 }

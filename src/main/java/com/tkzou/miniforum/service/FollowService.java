@@ -2,6 +2,7 @@ package com.tkzou.miniforum.service;
 
 import com.tkzou.miniforum.dto.CursorPage;
 import com.tkzou.miniforum.dto.PostVO;
+import com.tkzou.miniforum.dto.RecommendUserVO;
 import com.tkzou.miniforum.dto.UserBriefVO;
 import com.tkzou.miniforum.entity.Follow;
 import com.tkzou.miniforum.entity.Notification;
@@ -24,7 +25,9 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -144,6 +147,51 @@ public class FollowService {
         return followRepository.findByFollowerId(userId).stream()
                 .map(Follow::getFolloweeId)
                 .collect(Collectors.toSet());
+    }
+
+    /** 二度遍历关注者的数量上限（防关注数大时 N+1 扫描失控） */
+    private static final int MAX_SECOND_DEGREE_SCAN = 50;
+
+    /**
+     * 推荐关注（社交卡"你关注的人关注了 X"）：二度关注中按共同好友数排序推荐用户。
+     * <p>
+     * 复杂度 O(关注数 × 平均二度关注数)（N+1 查询），演示级可接受；二度遍历封顶 {@link #MAX_SECOND_DEGREE_SCAN}。
+     */
+    public List<RecommendUserVO> suggestFollows(Long userId, int limit) {
+        int safeLimit = Math.min(Math.max(limit, 1), 20);
+        Set<Long> followingIds = getFollowingIds(userId);
+        if (followingIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        // 二度遍历：最多取最近 MAX_SECOND_DEGREE_SCAN 个关注者，按共同好友数累计
+        List<Long> scanPool = followRepository.findByFollowerId(userId).stream()
+                .map(Follow::getFolloweeId)
+                .limit(MAX_SECOND_DEGREE_SCAN)
+                .collect(Collectors.toList());
+        Map<Long, Integer> commonCount = new HashMap<>();
+        for (Long followeeId : scanPool) {
+            for (Follow f : followRepository.findByFollowerId(followeeId)) {
+                Long candidateId = f.getFolloweeId();
+                // 过滤：自己、已关注的人
+                if (candidateId.equals(userId) || followingIds.contains(candidateId)) {
+                    continue;
+                }
+                commonCount.merge(candidateId, 1, Integer::sum);
+            }
+        }
+        // 过滤用户不存在 + 共同好友数降序（id 升序兜底，保证确定性）+ 截断
+        return commonCount.entrySet().stream()
+                .filter(e -> userRepository.findById(e.getKey()).isPresent())
+                .sorted(Comparator.<Map.Entry<Long, Integer>>comparingInt(Map.Entry::getValue)
+                        .reversed()
+                        .thenComparing(Comparator.comparing(Map.Entry::getKey)))
+                .limit(safeLimit)
+                .map(e -> {
+                    User u = userRepository.findById(e.getKey()).orElseThrow();
+                    return new RecommendUserVO(u.getId(), u.getUsername(), u.getNickname(), u.getAvatar(),
+                            e.getValue(), e.getValue() + " 位你关注的人关注了 TA", false);
+                })
+                .collect(Collectors.toList());
     }
 
     /**
