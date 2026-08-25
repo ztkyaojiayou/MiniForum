@@ -1,97 +1,43 @@
 package com.tkzou.miniforum.repository;
 
 import com.tkzou.miniforum.entity.Follow;
-import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 /**
- * 内存存储的关注关系仓库
- * 使用 ConcurrentHashMap 保证线程安全
+ * 关注关系仓库接口
+ * <p>
+ * 生产级关注关系常用 Redis 承载高频读写（isFollowing 判断、关注/粉丝列表、关注流 fanout）。
+ * 默认使用内存实现（{@link InMemoryFollowRepository}，@Profile("!prod")），
+ * 生产 profile 使用 Redis 实现（{@link RedisFollowRepository}，@Profile("prod")）。
  */
-@Repository
-public class FollowRepository {
+public interface FollowRepository {
 
-    private final Map<Long, Follow> storage = new ConcurrentHashMap<>();
+    Follow save(Follow follow);
 
-    public Follow save(Follow follow) {
-        if (follow.getId() == null) {
-            follow.setId(Follow.nextId());
-        }
-        storage.put(follow.getId(), follow);
-        return follow;
-    }
+    Optional<Follow> findByFollowerAndFollowee(Long followerId, Long followeeId);
 
-    public Optional<Follow> findByFollowerAndFollowee(Long followerId, Long followeeId) {
-        return storage.values().stream()
-                .filter(f -> f.getFollowerId().equals(followerId) && f.getFolloweeId().equals(followeeId))
-                .findFirst();
-    }
+    boolean exists(Long followerId, Long followeeId);
 
-    public boolean exists(Long followerId, Long followeeId) {
-        return findByFollowerAndFollowee(followerId, followeeId).isPresent();
-    }
-
-    public void delete(Follow follow) {
-        storage.remove(follow.getId());
-    }
+    void delete(Follow follow);
 
     /** 我关注的人（按关注时间倒序） */
-    public List<Follow> findByFollowerId(Long followerId) {
-        return storage.values().stream()
-                .filter(f -> f.getFollowerId().equals(followerId))
-                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
-                .collect(Collectors.toList());
-    }
+    List<Follow> findByFollowerId(Long followerId);
 
     /** 我的粉丝（按关注时间倒序） */
-    public List<Follow> findByFolloweeId(Long followeeId) {
-        return storage.values().stream()
-                .filter(f -> f.getFolloweeId().equals(followeeId))
-                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
-                .collect(Collectors.toList());
-    }
+    List<Follow> findByFolloweeId(Long followeeId);
 
-    /** 我关注的人数 */
-    public long countByFollowerId(Long followerId) {
-        return storage.values().stream()
-                .filter(f -> f.getFollowerId().equals(followerId))
-                .count();
-    }
+    long countByFollowerId(Long followerId);
 
-    /** 我的粉丝数 */
-    public long countByFolloweeId(Long followeeId) {
-        return storage.values().stream()
-                .filter(f -> f.getFolloweeId().equals(followeeId))
-                .count();
-    }
+    long countByFolloweeId(Long followeeId);
 
     /** 删除用户相关的全部关注关系（用户被删除时级联清理） */
-    public void deleteByUserId(Long userId) {
-        storage.entrySet().removeIf(e ->
-                e.getValue().getFollowerId().equals(userId) || e.getValue().getFolloweeId().equals(userId));
-    }
+    void deleteByUserId(Long userId);
 
     /** 导出全部关注关系（用于持久化，按 ID 升序） */
-    public List<Follow> exportAll() {
-        return storage.values().stream()
-                .sorted((a, b) -> Long.compare(a.getId(), b.getId()))
-                .collect(Collectors.toList());
-    }
+    List<Follow> exportAll();
 
     /** 清空并批量导入（用于从持久化数据恢复） */
-    public void importAll(List<Follow> follows) {
-        storage.clear();
-        if (follows != null) {
-            for (Follow f : follows) {
-                if (f != null && f.getId() != null) {
-                    storage.put(f.getId(), f);
-                }
-            }
-        }
-    }
+    void importAll(List<Follow> follows);
 }

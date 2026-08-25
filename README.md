@@ -155,6 +155,7 @@ AbExperimentService：floorMod(hash(uid:salt), 100) 分桶
   prod.kafka.KafkaBehaviorLogger（行为→Kafka topic behavior-log）
   prod.kafka.KafkaBehaviorConsumer（Kafka behavior-log→行为库+事件队列，离线侧回灌）
   prod.redis.RedisRealtimeFeatureStore（实时特征→Redis, TTL 60s）
+  prod.redis.RedisFollowRepository（关注关系→Redis Hash+ZSET 索引，@Profile("prod") 高频读写）
   prod.nacos.NacosConfigService（配置→Nacos rec-config, 监听热更新）
   prod.flink.FlinkRealtimeWindow（Flink 实时特征作业：Kafka→滑动窗口→Redis，独立进程）
   prod.mysql.MySqlDataStore（MySQL 持久化：JSON 快照表 mini_store，替代 JSON 文件）

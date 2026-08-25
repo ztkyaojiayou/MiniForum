@@ -8,6 +8,7 @@ import com.tkzou.miniforum.exception.ResourceNotFoundException;
 import com.tkzou.miniforum.repository.CommentRepository;
 import com.tkzou.miniforum.repository.FavoriteRepository;
 import com.tkzou.miniforum.repository.FollowRepository;
+import com.tkzou.miniforum.repository.InMemoryFollowRepository;
 import com.tkzou.miniforum.repository.LikeRepository;
 import com.tkzou.miniforum.repository.NotificationRepository;
 import com.tkzou.miniforum.repository.PostRepository;
@@ -37,7 +38,7 @@ class UserServiceTest {
     void setUp() {
         UserRepository userRepository = new UserRepository();
         PostRepository postRepository = new PostRepository();
-        FollowRepository followRepository = new FollowRepository();
+        FollowRepository followRepository = new InMemoryFollowRepository();
         LikeRepository likeRepository = new LikeRepository();
         CommentRepository commentRepository = new CommentRepository();
         NotificationRepository notificationRepository = new NotificationRepository();
