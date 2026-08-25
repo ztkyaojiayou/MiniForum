@@ -570,6 +570,8 @@ public class PostService {
         repost.setOriginalAuthorId(original.getAuthorId());
         repost.setOriginalAuthor(original.getAuthor());
         Post saved = postRepository.save(repost);
+        // 转发也是一条新发布的帖子：发布事件（扇出到转发者粉丝的关注流 inbox，与发帖一致）
+        postCreatedNotifier.notify(toPostCreatedEvent(saved));
         behaviorLogger.log(actorId, saved.getId(), BehaviorType.REPOST, "POST", null);
         // 通知原帖作者（转发自己的帖子不通知）
         String brief = originalTitle.isBlank() && original.getContent() != null

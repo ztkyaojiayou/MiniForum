@@ -4,8 +4,10 @@ import com.tkzou.miniforum.dto.PostCreateDTO;
 import com.tkzou.miniforum.dto.PostVO;
 import com.tkzou.miniforum.dto.SearchResultVO;
 import com.tkzou.miniforum.entity.User;
+import com.tkzou.miniforum.feed.InMemoryFollowFeedStore;
 import com.tkzou.miniforum.repository.CommentRepository;
 import com.tkzou.miniforum.repository.FavoriteRepository;
+import com.tkzou.miniforum.repository.InMemoryFollowRepository;
 import com.tkzou.miniforum.repository.LikeRepository;
 import com.tkzou.miniforum.repository.NotificationRepository;
 import com.tkzou.miniforum.repository.PostRepository;
@@ -46,7 +48,8 @@ class SearchServiceTest {
         NotificationService notificationService = new NotificationService(notificationRepository);
         BehaviorLogger behaviorLogger = new InMemoryBehaviorLogger(new BehaviorLogRepository(), new BehaviorEventQueue());
         postService = new PostService(postRepository, likeRepository, commentRepository,
-                favoriteRepository, notificationService, userRepository, behaviorLogger, new InMemoryPostCreatedNotifier());
+                favoriteRepository, notificationService, userRepository, behaviorLogger,
+                new InMemoryPostCreatedNotifier(new InMemoryFollowFeedStore(new InMemoryFollowRepository(), 500)));
         searchService = new SearchService(postService, userRepository, searchRecordRepository, behaviorLogger);
     }
 

@@ -5,6 +5,7 @@ import com.tkzou.miniforum.dto.UserUpdateDTO;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.exception.DuplicateUsernameException;
 import com.tkzou.miniforum.exception.ResourceNotFoundException;
+import com.tkzou.miniforum.feed.InMemoryFollowFeedStore;
 import com.tkzou.miniforum.repository.CommentRepository;
 import com.tkzou.miniforum.repository.FavoriteRepository;
 import com.tkzou.miniforum.repository.FollowRepository;
@@ -46,7 +47,8 @@ class UserServiceTest {
         NotificationService notificationService = new NotificationService(notificationRepository);
         BehaviorLogger behaviorLogger = new InMemoryBehaviorLogger(new BehaviorLogRepository(), new BehaviorEventQueue());
         FollowService followService = new FollowService(followRepository, userRepository, postRepository,
-                likeRepository, commentRepository, favoriteRepository, notificationService, behaviorLogger);
+                likeRepository, commentRepository, favoriteRepository, notificationService, behaviorLogger,
+                new InMemoryFollowFeedStore(followRepository, 500), 500);
         userService = new UserService(userRepository, postRepository, followService);
     }
 
