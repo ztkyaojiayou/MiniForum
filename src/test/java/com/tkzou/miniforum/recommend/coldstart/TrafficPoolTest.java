@@ -23,9 +23,9 @@ class TrafficPoolTest {
     @Test
     void wilsonLower_zeroAndPerfect() {
         assertEquals(0.0, TrafficPool.wilsonLower(0.0, 10, 1.96), 1e-9);
-        // 全成功时下界高（但小样本仍不会到 1，保留不确定性）
+        // 全成功时下界较高（但小样本仍显著低于 1，保留不确定性）
         double perfect = TrafficPool.wilsonLower(1.0, 10, 1.96);
-        assertTrue(perfect > 0.9);
+        assertTrue(perfect > 0.6);
         assertTrue(perfect < 1.0);
     }
 
