@@ -320,6 +320,11 @@
         .btn:disabled { opacity: 0.6; cursor: not-allowed; }
         /* ---- 帖子列表（微博式信息流） ---- */
         .feed-title { display: flex; align-items: center; gap: 8px; margin: 8px 0 16px; color: var(--text-heading); font-size: 18px; font-weight: 700; }
+        .feed-refresh {
+            margin-left: auto; border: none; background: none; cursor: pointer;
+            font-size: 16px; color: var(--muted); transition: transform .3s;
+        }
+        .feed-refresh:hover { color: var(--primary); transform: rotate(180deg); }
         .feed-tabs { display: flex; gap: 8px; }
         .feed-tab {
             border: 1px solid var(--border); background: var(--card-bg); color: var(--muted-2);
@@ -572,6 +577,7 @@
                 <button class="feed-tab" id="tabHot" onclick="switchFeed('hot')">🏆 热门</button>
                 <button class="feed-tab" id="tabRecommend" onclick="switchFeed('recommend')">✨ 推荐</button>
             </div>
+            <button class="feed-refresh" onclick="refreshFeed()" title="刷新信息流">🔄</button>
         </div>
         <div id="userResult"></div>
         <div id="loading" class="loading">加载中...</div>
@@ -1263,6 +1269,14 @@
             document.getElementById('newPostBar').style.display = 'none';
             currentPage = 1;
             loadPosts(1);
+        }
+        // 手动刷新：回到当前 feed 第一页 + 刷新右栏热搜/热门
+        function refreshFeed() {
+            currentPage = 1;
+            document.getElementById('newPostBar').style.display = 'none';
+            loadPosts(1);
+            loadHotSearches();
+            loadHotPosts();
         }
 
         // ---------- 登录校验（游客模式：可浏览热门/最新，弱化登录入口） ----------
