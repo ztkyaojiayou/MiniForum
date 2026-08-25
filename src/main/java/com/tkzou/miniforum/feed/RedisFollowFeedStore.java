@@ -80,12 +80,31 @@ public class RedisFollowFeedStore implements FollowFeedStore {
     }
 
     @Override
-    public List<Long> getInbox(Long userId, int maxCount) {
+    public List<Long> getInbox(Long userId, Long maxId, int maxCount) {
         try (Jedis jedis = jedisPool.getResource()) {
             if (!jedis.exists(builtKey(userId))) {
                 return List.of();
             }
-            Set<String> members = jedis.zrevrange(inboxKey(userId), 0, maxCount - 1); // 最新（最大 score）在前
+            String key = inboxKey(userId);
+            Set<String> members = maxId == null
+                    ? jedis.zrevrange(key, 0, maxCount - 1)                           // 最新（最大 score）在前
+                    : jedis.zrevrangeByScore(key, "(" + maxId, "-inf", 0, maxCount);  // 上限开区间，下一页不重复
+            List<Long> result = new ArrayList<>();
+            for (String m : members) {
+                result.add(Long.parseLong(m));
+            }
+            return result;
+        }
+    }
+
+    @Override
+    public List<Long> getInboxAfter(Long userId, Long sinceId, int maxCount) {
+        try (Jedis jedis = jedisPool.getResource()) {
+            if (!jedis.exists(builtKey(userId)) || sinceId == null) {
+                return List.of();
+            }
+            // 下限开区间（严格 > sinceId），最新在前，用于增量刷新
+            Set<String> members = jedis.zrevrangeByScore(inboxKey(userId), "+inf", "(" + sinceId, 0, maxCount);
             List<Long> result = new ArrayList<>();
             for (String m : members) {
                 result.add(Long.parseLong(m));

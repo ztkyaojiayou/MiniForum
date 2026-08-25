@@ -1,6 +1,6 @@
 package com.tkzou.miniforum.service;
 
-import com.tkzou.miniforum.dto.PageResult;
+import com.tkzou.miniforum.dto.CursorPage;
 import com.tkzou.miniforum.dto.PostVO;
 import com.tkzou.miniforum.dto.UserBriefVO;
 import com.tkzou.miniforum.entity.Follow;
@@ -147,48 +147,54 @@ public class FollowService {
     }
 
     /**
-     * 关注流：我关注的人发布的帖子（不含自己，分页，最新在前）
+     * 关注流（向下游标）：我关注的人发布的帖子，最新在前，返回一页 + 下一页游标。
      * <p>
-     * 推模式 inbox：已建流用户读自己的 inbox（O(1)）；未建流用户首次读取回退旧的全表查询
-     * 并触发回填建流（用当前完整关注集合的近期帖子）。
+     * 推模式 inbox：未建流用户首次读取先用当前完整关注集合的近期帖回填建流；之后读自己的 inbox（O(1)）。
+     * postId 单调递增 = 天然时间序，游标边界与展示顺序一致（inbox 内 postId 降序）。
+     * 注意：inbox 按 feed.cap 封顶，首读即应用封顶（最多最近 N 条）。
      */
-    public PageResult<PostVO> getFollowFeed(Long userId, int page, int size, String username) {
-        int safePage = Math.max(page, 1);
+    public CursorPage<PostVO> getFollowFeed(Long userId, Long maxId, int size, String username) {
         int safeSize = Math.min(Math.max(size, 1), 100);
         Set<Long> followingIds = getFollowingIds(userId);
-        List<Post> all;
         if (followingIds.isEmpty()) {
-            all = new ArrayList<>();
-        } else if (!followFeedStore.isBuilt(userId)) {
-            // 首次读取：回退旧查询（结果完整），并触发回填建流
-            all = fullScanFollowFeed(followingIds);
-            followFeedStore.onFollow(userId, collectRecentFromFollowees(followingIds));
-        } else {
-            // 推模式：读 inbox → 回源 → 过滤（可见 + 作者仍在关注中，取关/删帖读取兜底）
-            List<Long> inboxIds = followFeedStore.getInbox(userId, feedCap);
-            all = resolveFromInbox(inboxIds, followingIds);
+            return new CursorPage<>(new ArrayList<>(), null, false);
         }
-
-        long total = all.size();
-        int fromIndex = Math.min((safePage - 1) * safeSize, (int) total);
-        int toIndex = Math.min(fromIndex + safeSize, (int) total);
-        List<PostVO> records = all.isEmpty() ? new ArrayList<>()
-                : all.subList(fromIndex, toIndex).stream()
-                        .map(p -> toPostVO(p, username))
-                        .collect(Collectors.toList());
-        return new PageResult<>(records, total, safePage, safeSize);
+        // 首次读取：触发回填建流（用当前完整关注集合）
+        if (!followFeedStore.isBuilt(userId)) {
+            followFeedStore.onFollow(userId, collectRecentFromFollowees(followingIds));
+        }
+        // 整窗取 inbox（≤ feedCap），过滤后再算游标与 hasMore，杜绝过滤导致的漏帖/假翻页
+        List<Long> inboxIds = followFeedStore.getInbox(userId, maxId, feedCap);
+        List<Post> resolved = resolveFromInbox(inboxIds, followingIds);
+        boolean hasMore = resolved.size() > safeSize;
+        List<Post> pagePosts = resolved.size() > safeSize ? resolved.subList(0, safeSize) : resolved;
+        Long nextMaxId = pagePosts.isEmpty() ? null : pagePosts.get(pagePosts.size() - 1).getId();
+        List<PostVO> records = pagePosts.stream()
+                .map(p -> toPostVO(p, username))
+                .collect(Collectors.toList());
+        return new CursorPage<>(records, nextMaxId, hasMore);
     }
 
-    /** 回退路径：全表扫描过滤关注作者的帖子（旧实现，仅在首次建流前兜底） */
-    private List<Post> fullScanFollowFeed(Set<Long> followingIds) {
-        return postRepository.findAll().stream()
-                .filter(p -> Post.STATUS_PUBLISHED.equals(p.getStatus()))
-                .filter(p -> !p.isDeleted())
-                .filter(p -> p.getAuthorId() != null && followingIds.contains(p.getAuthorId()))
+    /**
+     * 关注流增量刷新（since）：返回比 sinceId 更新的关注动态（最新在前）。
+     * 未建流时同样先回填建流（前端登录后即开始轮询，用户可能从未打开关注 Tab）。
+     */
+    public List<PostVO> getFollowFeedSince(Long userId, Long sinceId, int size, String username) {
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        Set<Long> followingIds = getFollowingIds(userId);
+        if (followingIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        if (!followFeedStore.isBuilt(userId)) {
+            followFeedStore.onFollow(userId, collectRecentFromFollowees(followingIds));
+        }
+        List<Long> inboxIds = followFeedStore.getInboxAfter(userId, sinceId, safeSize);
+        return resolveFromInbox(inboxIds, followingIds).stream()
+                .map(p -> toPostVO(p, username))
                 .collect(Collectors.toList());
     }
 
-    /** 从 inbox 的 postId 列表回源帖子并过滤：公开可见 + 作者仍在关注中（取关/删帖读取兜底），按发布时间倒序 */
+    /** 从 inbox 的 postId 列表回源帖子并过滤：公开可见 + 作者仍在关注中（取关/删帖读取兜底）。保持 inbox 的 postId 降序 */
     private List<Post> resolveFromInbox(List<Long> inboxIds, Set<Long> followingIds) {
         return inboxIds.stream()
                 .map(postRepository::findById)
@@ -196,7 +202,6 @@ public class FollowService {
                 .map(Optional::get)
                 .filter(this::isVisiblePost)
                 .filter(p -> p.getAuthorId() != null && followingIds.contains(p.getAuthorId()))
-                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
                 .collect(Collectors.toList());
     }
 

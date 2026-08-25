@@ -761,6 +761,10 @@
         let isLoggedIn = false;
         let lastNewestId = 0;      // 已看到的最新帖子 ID（新微博轮询基准）
         let highlightAfterId = 0;  // 刷新后需高亮的帖子 ID 基准
+        // 关注流游标分页状态（独立于 latest 的 lastNewestId，避免跨 Tab 污染）
+        let followCursor = null;       // 下一页游标（页内最小 postId）
+        let followHasMore = false;     // 是否还有更早的帖子（控制"加载更多"）
+        let lastFollowNewestId = 0;    // 关注流已见最新帖 ID（since 增量轮询基准）
         async function loadPosts(page) {
             if (page) currentPage = page;
             const list = document.getElementById('postList');
@@ -774,11 +778,6 @@
                     total = posts.length;
                     totalPages = 1;
                     renderUserResults(searchRes ? searchRes.users : []);
-                } else if (feedType === 'follow') {
-                    const data = await request('/api/follows/feed?page=' + currentPage + '&size=' + PAGE_SIZE);
-                    posts = data.records || [];
-                    total = data.total;
-                    totalPages = data.totalPages;
                 } else if (feedType === 'hot') {
                     posts = await request(POST_API + '/hot?limit=' + PAGE_SIZE) || [];
                     total = posts.length;
@@ -812,12 +811,32 @@
                     else if (feedType === 'recommend') emptyMsg = '还没有推荐内容，去发帖/互动一下吧～';
                     list.innerHTML = '<div class="empty">' + emptyMsg + '</div>';
                 } else {
-                    posts.forEach((p, i) => {
-                        const div = document.createElement('div');
-                        div.className = 'post fade-in' + (highlightAfterId && p.id > highlightAfterId ? ' new-post' : '');
-                        div.style.animationDelay = (i * 0.05) + 's';
-                        const avatarChar = (p.author || '?').charAt(0).toUpperCase();
-                        div.innerHTML = `
+                    appendPostCards(posts, false);
+                    // 记录已见最新帖 ID，并清除本次高亮标记
+                    if (posts && posts.length) {
+                        const newest = Math.max.apply(null, posts.map(function (x) { return x.id; }));
+                        lastNewestId = Math.max(lastNewestId, newest);
+                    }
+                    highlightAfterId = 0;
+                }
+                renderPagination(total, totalPages);
+            } catch (e) {
+                list.innerHTML = '<div class="empty">加载失败：' + escapeHtml(e.message) + '</div>';
+                document.getElementById('pagination').innerHTML = '';
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+        /** 渲染帖子卡片列表：append=true 追加，否则先清空（关注流 load-more 与各 feed 共用） */
+        function appendPostCards(posts, append) {
+            const list = document.getElementById('postList');
+            if (!append) list.innerHTML = '';
+            posts.forEach((p, i) => {
+                const div = document.createElement('div');
+                div.className = 'post fade-in' + (highlightAfterId && p.id > highlightAfterId ? ' new-post' : '');
+                div.style.animationDelay = (i * 0.05) + 's';
+                const avatarChar = (p.author || '?').charAt(0).toUpperCase();
+                div.innerHTML = `
                             <div class="post-header">
                                 <a class="avatar-link" href="/user.html?id=${p.authorId}" title="${escapeHtml(p.author)}"><div class="avatar">${escapeHtml(avatarChar)}</div></a>
                                 <div>
@@ -841,19 +860,47 @@
                                     ${feedType === 'recommend' ? '<button class="dislike-btn" onclick="dislikePost(' + p.id + ', this)" title="不感兴趣">🙅</button>' : ''}
                                 </div>
                             </div>`;
-                        list.appendChild(div);
-                    });
-                    // 记录已见最新帖 ID，并清除本次高亮标记
-                    if (posts && posts.length) {
-                        const newest = Math.max.apply(null, posts.map(function (x) { return x.id; }));
-                        lastNewestId = Math.max(lastNewestId, newest);
-                    }
-                    highlightAfterId = 0;
+                list.appendChild(div);
+            });
+            highlightAfterId = 0;
+        }
+        /** 关注流游标加载：reset=true 回到第一页，否则用 followCursor 加载更早一页 */
+        async function loadFollowFeed(reset) {
+            if (reset) {
+                followCursor = null;
+                followHasMore = false;
+            }
+            const list = document.getElementById('postList');
+            const loading = document.getElementById('loading');
+            const paginationBox = document.getElementById('pagination');
+            loading.style.display = 'block';
+            try {
+                let url = '/api/follows/feed?size=' + PAGE_SIZE;
+                if (followCursor) url += '&max_id=' + followCursor;
+                const data = await request(url);
+                const posts = data.records || [];
+                if (reset) list.innerHTML = '';
+                if (!posts || posts.length === 0) {
+                    if (reset) list.innerHTML = '<div class="empty">你还没有关注任何人，快去关注感兴趣的博主吧～</div>';
+                } else {
+                    appendPostCards(posts, !reset);
+                    const newest = Math.max.apply(null, posts.map(function (x) { return x.id; }));
+                    lastFollowNewestId = Math.max(lastFollowNewestId, newest);
+                    followCursor = data.nextMaxId || null;
+                    followHasMore = !!data.hasMore;
                 }
-                renderPagination(total, totalPages);
+                // "加载更多"按钮：仅关注流且还有更早时展示
+                paginationBox.innerHTML = '';
+                if (followHasMore) {
+                    const btn = document.createElement('button');
+                    btn.className = 'page-btn';
+                    btn.textContent = '加载更多 ⬇';
+                    btn.onclick = function () { loadFollowFeed(false); };
+                    paginationBox.appendChild(btn);
+                }
             } catch (e) {
                 list.innerHTML = '<div class="empty">加载失败：' + escapeHtml(e.message) + '</div>';
-                document.getElementById('pagination').innerHTML = '';
+                paginationBox.innerHTML = '';
             } finally {
                 loading.style.display = 'none';
             }
@@ -1040,6 +1087,14 @@
             document.getElementById('searchInput').value = '';
             document.getElementById('clearSearchBtn').style.display = 'none';
             updateTabActive();
+            if (type === 'follow') {
+                // 关注流：游标分页 + 独立新帖基准（since 轮询）
+                followCursor = null;
+                followHasMore = false;
+                lastFollowNewestId = 0;
+                loadFollowFeed(true);
+                return;
+            }
             currentPage = 1;
             loadPosts(1);
         }
@@ -1251,30 +1306,52 @@
         // ---------- 新微博提示条（仿微博：增量刷新不打断） ----------
         async function checkNewPosts() {
             try {
-                if (feedType !== 'latest') return;
-                const data = await request(POST_API + '?page=1&size=1');
-                const newest = data && data.records && data.records[0];
-                if (!newest || newest.id <= lastNewestId) return;
-                // 统计新微博条数
-                const countData = await request(POST_API + '?page=1&size=50');
-                let n = 0;
-                (countData.records || []).forEach(function (p) { if (p.id > lastNewestId) n++; });
-                const bar = document.getElementById('newPostBar');
-                bar.innerHTML = '有 <b>' + n + '</b> 条新微博，点击查看';
-                bar.style.display = 'block';
+                if (feedType === 'latest') {
+                    const data = await request(POST_API + '?page=1&size=1');
+                    const newest = data && data.records && data.records[0];
+                    if (!newest || newest.id <= lastNewestId) return;
+                    // 统计新微博条数
+                    const countData = await request(POST_API + '?page=1&size=50');
+                    let n = 0;
+                    (countData.records || []).forEach(function (p) { if (p.id > lastNewestId) n++; });
+                    const bar = document.getElementById('newPostBar');
+                    bar.innerHTML = '有 <b>' + n + '</b> 条新微博，点击查看';
+                    bar.style.display = 'block';
+                } else if (feedType === 'follow') {
+                    // 关注流增量：since_id = 已见最新帖 id（严格大于，天然不重不漏）
+                    if (lastFollowNewestId <= 0) return;
+                    const data = await request('/api/follows/feed?since_id=' + lastFollowNewestId + '&size=50');
+                    const posts = data.records || [];
+                    if (!posts.length) return;
+                    const bar = document.getElementById('newPostBar');
+                    // 命中 50 上限时条数可能被截断，退化为不带数字的文案
+                    bar.innerHTML = posts.length >= 50
+                        ? '有新的关注动态，点击查看'
+                        : '有 <b>' + posts.length + '</b> 条新关注动态，点击查看';
+                    bar.style.display = 'block';
+                }
             } catch (e) {}
         }
         async function loadNewPosts() {
-            highlightAfterId = lastNewestId;
             document.getElementById('newPostBar').style.display = 'none';
+            if (feedType === 'follow') {
+                highlightAfterId = lastFollowNewestId;
+                loadFollowFeed(true);
+                return;
+            }
+            highlightAfterId = lastNewestId;
             currentPage = 1;
             loadPosts(1);
         }
         // 手动刷新：回到当前 feed 第一页 + 刷新右栏热搜/热门
         function refreshFeed() {
-            currentPage = 1;
             document.getElementById('newPostBar').style.display = 'none';
-            loadPosts(1);
+            if (feedType === 'follow') {
+                loadFollowFeed(true);
+            } else {
+                currentPage = 1;
+                loadPosts(1);
+            }
             loadHotSearches();
             loadHotPosts();
         }

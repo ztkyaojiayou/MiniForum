@@ -16,8 +16,15 @@ public interface FollowFeedStore {
     /** 扇出：作者发帖后，把 postId 写入该作者所有粉丝的 inbox */
     void fanout(Long authorId, Long postId);
 
-    /** 读取用户 inbox 的最新 postId 列表（最新在前，最多 maxCount 条；含封顶） */
-    List<Long> getInbox(Long userId, int maxCount);
+    /**
+     * 向下游标读取：用户 inbox 的最新 postId 列表（最新在前，postId 严格 &lt; maxId，
+     * 最多 maxCount 条；maxId 为 null 表示从最新开始）。
+     * postId 单调递增即天然时间序，游标边界与展示顺序一致。
+     */
+    List<Long> getInbox(Long userId, Long maxId, int maxCount);
+
+    /** 增量读取：最新在前，postId 严格 &gt; sinceId（用于 since 增量刷新 / 新帖提示） */
+    List<Long> getInboxAfter(Long userId, Long sinceId, int maxCount);
 
     /** 关注回填：把一批 postId 补写进 follower 的 inbox（关注新作者/首次建流时用） */
     void onFollow(Long followerId, List<Long> recentPostIds);

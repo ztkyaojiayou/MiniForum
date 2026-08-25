@@ -1,7 +1,7 @@
 package com.tkzou.miniforum.controller;
 
 import com.tkzou.miniforum.common.Result;
-import com.tkzou.miniforum.dto.PageResult;
+import com.tkzou.miniforum.dto.CursorPage;
 import com.tkzou.miniforum.dto.PostVO;
 import com.tkzou.miniforum.dto.UserBriefVO;
 import com.tkzou.miniforum.service.FollowService;
@@ -79,14 +79,19 @@ public class FollowController {
         return ResponseEntity.ok(Result.success(followService.getFollowers(me)));
     }
 
-    /** 关注流：我关注的人发布的帖子（分页，最新在前） */
+    /** 关注流（游标分页）：max_id 向下翻历史；since_id 增量刷新（新帖提示） */
     @GetMapping("/feed")
-    public ResponseEntity<Result<PageResult<PostVO>>> getFollowFeed(
-            @RequestParam(required = false, defaultValue = "1") Integer page,
+    public ResponseEntity<Result<CursorPage<PostVO>>> getFollowFeed(
+            @RequestParam(value = "max_id", required = false) Long maxId,
+            @RequestParam(value = "since_id", required = false) Long sinceId,
             @RequestParam(required = false, defaultValue = "10") Integer size,
             HttpSession session) {
         Long me = (Long) session.getAttribute("userId");
         String username = (String) session.getAttribute("username");
-        return ResponseEntity.ok(Result.success(followService.getFollowFeed(me, page, size, username)));
+        if (sinceId != null) {
+            List<PostVO> since = followService.getFollowFeedSince(me, sinceId, size, username);
+            return ResponseEntity.ok(Result.success(new CursorPage<>(since, null, false)));
+        }
+        return ResponseEntity.ok(Result.success(followService.getFollowFeed(me, maxId, size, username)));
     }
 }

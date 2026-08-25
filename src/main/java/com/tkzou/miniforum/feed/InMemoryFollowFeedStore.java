@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
@@ -51,13 +52,31 @@ public class InMemoryFollowFeedStore implements FollowFeedStore {
     }
 
     @Override
-    public List<Long> getInbox(Long userId, int maxCount) {
+    public List<Long> getInbox(Long userId, Long maxId, int maxCount) {
         ConcurrentSkipListSet<Long> inbox = inboxes.get(userId);
         if (inbox == null) {
             return List.of();
         }
+        // maxId 为 null 从头取；否则严格小于 maxId（开区间），保证下一页不重复不丢帖
+        NavigableSet<Long> window = maxId == null ? inbox : inbox.headSet(maxId, false);
         List<Long> result = new ArrayList<>();
-        Iterator<Long> it = inbox.descendingIterator(); // 最新（最大 id）在前
+        Iterator<Long> it = window.descendingIterator(); // 最新（最大 id）在前
+        while (it.hasNext() && result.size() < maxCount) {
+            result.add(it.next());
+        }
+        return result;
+    }
+
+    @Override
+    public List<Long> getInboxAfter(Long userId, Long sinceId, int maxCount) {
+        ConcurrentSkipListSet<Long> inbox = inboxes.get(userId);
+        if (inbox == null || sinceId == null) {
+            return List.of();
+        }
+        // 严格大于 sinceId（开区间），最新在前，用于增量刷新
+        NavigableSet<Long> window = inbox.tailSet(sinceId, false);
+        List<Long> result = new ArrayList<>();
+        Iterator<Long> it = window.descendingIterator();
         while (it.hasNext() && result.size() < maxCount) {
             result.add(it.next());
         }

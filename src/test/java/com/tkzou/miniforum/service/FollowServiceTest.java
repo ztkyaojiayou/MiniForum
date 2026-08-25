@@ -1,6 +1,6 @@
 package com.tkzou.miniforum.service;
 
-import com.tkzou.miniforum.dto.PageResult;
+import com.tkzou.miniforum.dto.CursorPage;
 import com.tkzou.miniforum.dto.PostCreateDTO;
 import com.tkzou.miniforum.dto.PostVO;
 import com.tkzou.miniforum.entity.User;
@@ -8,7 +8,6 @@ import com.tkzou.miniforum.feed.FollowFeedStore;
 import com.tkzou.miniforum.feed.InMemoryFollowFeedStore;
 import com.tkzou.miniforum.repository.CommentRepository;
 import com.tkzou.miniforum.repository.FavoriteRepository;
-import com.tkzou.miniforum.repository.FollowRepository;
 import com.tkzou.miniforum.repository.InMemoryFollowRepository;
 import com.tkzou.miniforum.repository.LikeRepository;
 import com.tkzou.miniforum.repository.NotificationRepository;
@@ -23,13 +22,18 @@ import com.tkzou.miniforum.recommend.stream.PostCreatedNotifier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 关注流推模式闭环单元测试
+ * 关注流推模式 + 游标分页闭环单元测试
  * <p>
- * 覆盖：首次读取回退+建流 / 建流后新帖 fanout 进 inbox / 关注回填 / 取关读取兜底 / 无关注空流。
+ * 覆盖：首读建流 / 建流后 fanout / 关注回填 / 取关读取兜底 / 空流 / 游标翻页不丢不重 / since 增量刷新。
  */
 class FollowServiceTest {
 
@@ -77,19 +81,27 @@ class FollowServiceTest {
     }
 
     @Test
-    void getFollowFeed_shouldFallbackAndBuildOnFirstRead() {
+    void getFollowFeed_shouldBuildOnFirstReadAndReturnCursorPage() {
         Long followerId = 1L;
         Long bobId = 2L;
         createUser("alice", followerId);
         createUser("bob", bobId);
         followService.follow(followerId, bobId, "alice");
-        postService.createPost(dto("bob 的帖子", "内容"), "bob", bobId);
+        PostVO post = postService.createPost(dto("bob 的帖子", "内容"), "bob", bobId);
 
-        PageResult<PostVO> feed = followService.getFollowFeed(followerId, 1, 10, "alice");
-        assertEquals(1, feed.getTotal());
+        CursorPage<PostVO> feed = followService.getFollowFeed(followerId, null, 10, "alice");
+        assertEquals(1, feed.getRecords().size());
         assertEquals("bob 的帖子", feed.getRecords().get(0).getTitle());
+        assertEquals(post.getId(), feed.getNextMaxId());
+        assertFalse(feed.isHasMore());
         // 首次读取后 inbox 已建流
         assertTrue(followFeedStore.isBuilt(followerId));
+
+        // 再从末位游标取：无更早帖 → 空
+        CursorPage<PostVO> next = followService.getFollowFeed(followerId, post.getId(), 10, "alice");
+        assertTrue(next.getRecords().isEmpty());
+        assertNull(next.getNextMaxId());
+        assertFalse(next.isHasMore());
     }
 
     @Test
@@ -100,11 +112,11 @@ class FollowServiceTest {
         createUser("bob", bobId);
         followService.follow(followerId, bobId, "alice");
         postService.createPost(dto("旧帖", "内容"), "bob", bobId);
-        followService.getFollowFeed(followerId, 1, 10, "alice"); // 建流
+        followService.getFollowFeed(followerId, null, 10, "alice"); // 建流
 
         postService.createPost(dto("新帖", "内容2"), "bob", bobId); // 建流后 fanout 生效
-        PageResult<PostVO> feed = followService.getFollowFeed(followerId, 1, 10, "alice");
-        assertEquals(2, feed.getTotal());
+        CursorPage<PostVO> feed = followService.getFollowFeed(followerId, null, 10, "alice");
+        assertEquals(2, feed.getRecords().size());
         assertEquals("新帖", feed.getRecords().get(0).getTitle()); // 最新在前
     }
 
@@ -118,12 +130,12 @@ class FollowServiceTest {
         createUser("carol", carolId);
         followService.follow(followerId, bobId, "alice");
         postService.createPost(dto("bob 帖", "内容"), "bob", bobId);
-        followService.getFollowFeed(followerId, 1, 10, "alice"); // 建流
+        followService.getFollowFeed(followerId, null, 10, "alice"); // 建流
 
         postService.createPost(dto("carol 旧帖", "内容"), "carol", carolId);
         followService.follow(followerId, carolId, "alice"); // inbox 已建 → 回填 carol 近期帖
-        PageResult<PostVO> feed = followService.getFollowFeed(followerId, 1, 10, "alice");
-        assertEquals(2, feed.getTotal()); // bob 帖 + carol 旧帖
+        CursorPage<PostVO> feed = followService.getFollowFeed(followerId, null, 10, "alice");
+        assertEquals(2, feed.getRecords().size()); // bob 帖 + carol 旧帖
     }
 
     @Test
@@ -134,19 +146,87 @@ class FollowServiceTest {
         createUser("bob", bobId);
         followService.follow(followerId, bobId, "alice");
         postService.createPost(dto("bob 的帖子", "内容"), "bob", bobId);
-        followService.getFollowFeed(followerId, 1, 10, "alice"); // 建流
+        followService.getFollowFeed(followerId, null, 10, "alice"); // 建流
 
         followService.unfollow(followerId, bobId);
-        PageResult<PostVO> feed = followService.getFollowFeed(followerId, 1, 10, "alice");
-        assertEquals(0, feed.getTotal()); // 读取兜底过滤掉取关作者
+        CursorPage<PostVO> feed = followService.getFollowFeed(followerId, null, 10, "alice");
+        assertTrue(feed.getRecords().isEmpty()); // 读取兜底过滤掉取关作者
+        assertFalse(feed.isHasMore());
     }
 
     @Test
     void getFollowFeed_shouldReturnEmptyWhenNotFollowingAnyone() {
         Long followerId = 1L;
         createUser("alice", followerId);
-        PageResult<PostVO> feed = followService.getFollowFeed(followerId, 1, 10, "alice");
-        assertEquals(0, feed.getTotal());
+        CursorPage<PostVO> feed = followService.getFollowFeed(followerId, null, 10, "alice");
         assertTrue(feed.getRecords().isEmpty());
+        assertNull(feed.getNextMaxId());
+        assertFalse(feed.isHasMore());
+    }
+
+    @Test
+    void getFollowFeed_shouldPageWithCursorWithoutDupOrMiss() {
+        // 多作者 + 部分取关：过滤后 hasMore/游标仍正确，不丢不重（游标"过滤后计算"回归）
+        Long followerId = 1L;
+        Long bobId = 2L;
+        Long carolId = 3L;
+        createUser("alice", followerId);
+        createUser("bob", bobId);
+        createUser("carol", carolId);
+        followService.follow(followerId, bobId, "alice");
+        followService.follow(followerId, carolId, "alice");
+        postService.createPost(dto("bob1", "内容"), "bob", bobId);
+        postService.createPost(dto("bob2", "内容"), "bob", bobId);
+        postService.createPost(dto("bob3", "内容"), "bob", bobId);
+        postService.createPost(dto("carol1", "内容"), "carol", carolId);
+        postService.createPost(dto("carol2", "内容"), "carol", carolId);
+        followService.getFollowFeed(followerId, null, 10, "alice"); // 建流
+
+        // 取关 carol → 读取时过滤掉 carol 的帖，但 bob 的 3 帖应完整可翻
+        followService.unfollow(followerId, carolId);
+
+        CursorPage<PostVO> page1 = followService.getFollowFeed(followerId, null, 2, "alice");
+        assertEquals(List.of("bob3", "bob2"),
+                page1.getRecords().stream().map(PostVO::getTitle).collect(Collectors.toList()));
+        assertTrue(page1.isHasMore());
+        assertTrue(page1.getNextMaxId() != null);
+
+        CursorPage<PostVO> page2 = followService.getFollowFeed(followerId, page1.getNextMaxId(), 2, "alice");
+        assertEquals(List.of("bob1"),
+                page2.getRecords().stream().map(PostVO::getTitle).collect(Collectors.toList()));
+        assertFalse(page2.isHasMore()); // 末页：hasMore=false 是停止信号
+        assertTrue(page2.getNextMaxId() != null); // 末页仍有 lastId 游标（仅当页空才为 null）
+    }
+
+    @Test
+    void getFollowFeedSince_shouldReturnNewPostsAfterSinceId() {
+        Long followerId = 1L;
+        Long bobId = 2L;
+        createUser("alice", followerId);
+        createUser("bob", bobId);
+        followService.follow(followerId, bobId, "alice");
+        PostVO old = postService.createPost(dto("旧帖", "内容"), "bob", bobId);
+        followService.getFollowFeed(followerId, null, 10, "alice"); // 建流
+
+        postService.createPost(dto("新帖", "内容2"), "bob", bobId); // 建流后 fanout 生效
+        List<PostVO> since = followService.getFollowFeedSince(followerId, old.getId(), 10, "alice");
+        assertEquals(1, since.size());
+        assertEquals("新帖", since.get(0).getTitle()); // 不含 == sinceId 的旧帖
+    }
+
+    @Test
+    void getFollowFeedSince_shouldBuildFirstWhenNeverOpened() {
+        // 用户从未打开关注 Tab（未建流）就轮询 since：应先建流再增量
+        Long followerId = 1L;
+        Long bobId = 2L;
+        createUser("alice", followerId);
+        createUser("bob", bobId);
+        followService.follow(followerId, bobId, "alice");
+        PostVO post = postService.createPost(dto("bob 帖", "内容"), "bob", bobId);
+
+        List<PostVO> since = followService.getFollowFeedSince(followerId, 0L, 10, "alice");
+        assertEquals(1, since.size()); // 建流后增量，返回全部比 sinceId=0 新的帖
+        assertEquals("bob 帖", since.get(0).getTitle());
+        assertTrue(followFeedStore.isBuilt(followerId));
     }
 }
