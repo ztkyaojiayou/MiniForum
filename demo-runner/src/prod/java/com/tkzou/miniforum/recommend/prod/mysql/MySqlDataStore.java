@@ -1,28 +1,16 @@
 package com.tkzou.miniforum.recommend.prod.mysql;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tkzou.miniforum.entity.Comment;
 import com.tkzou.miniforum.entity.Conversation;
-import com.tkzou.miniforum.entity.Favorite;
-import com.tkzou.miniforum.entity.Follow;
-import com.tkzou.miniforum.entity.Like;
 import com.tkzou.miniforum.entity.Message;
 import com.tkzou.miniforum.entity.Notification;
-import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.entity.SearchRecord;
-import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLog;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;
-import com.tkzou.miniforum.repository.CommentRepository;
 import com.tkzou.miniforum.repository.ConversationRepository;
-import com.tkzou.miniforum.repository.FavoriteRepository;
-import com.tkzou.miniforum.repository.FollowRepository;
-import com.tkzou.miniforum.repository.LikeRepository;
 import com.tkzou.miniforum.repository.MessageRepository;
 import com.tkzou.miniforum.repository.NotificationRepository;
-import com.tkzou.miniforum.repository.PostRepository;
 import com.tkzou.miniforum.repository.SearchRecordRepository;
-import com.tkzou.miniforum.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -43,10 +31,10 @@ import java.util.function.Function;
 /**
  * MySQL 持久化（生产适配，@Profile("prod") 激活，替代 JSON 文件 DataStore）
  * <p>
- * <b>数据流程</b>：启动时建表 mini_store(store_key, payload) 并从 MySQL 恢复各仓库；
- * 运行时每 30 秒/关闭时将各仓库 exportAll() 序列化为 JSON blob upsert 到 mini_store。
- * 采用"JSON 快照"粒度持久化，复用既有仓库的 exportAll/importAll 接口，避免为每个实体维护独立表。
- * 生产如需按实体查询，可在此之上扩展为规范化表。
+ * <b>数据流程</b>：启动时建表 mini_store(store_key, payload) 并从 MySQL 恢复<b>尚未行级化</b>的仓库；
+ * 运行时每 30 秒/关闭时将它们的 exportAll() 序列化为 JSON blob upsert 到 mini_store。
+ * <b>已行级化的仓库</b>（posts/users/comments/likes/follows/favorites）由各自的 MySql*Repository
+ * （@PostConstruct 建表 + 行级读写）自管，不再走本快照——对齐"MySQL=事实/主存储"（docs/数据存储矩阵.md）。
  * <p>
  * 启用：构建 `-Pprod` + 运行 `--spring.profiles.active=prod` + 配置 spring.datasource.url/username/password。
  */
@@ -59,13 +47,8 @@ public class MySqlDataStore implements ApplicationRunner {
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
 
-    private final UserRepository userRepository;
-    private final PostRepository postRepository;
-    private final CommentRepository commentRepository;
-    private final LikeRepository likeRepository;
-    private final FollowRepository followRepository;
+    // 已行级化的仓库（posts/users/comments/likes/follows/favorites）由各自的 MySql*Repository 自管，此处不再持有
     private final NotificationRepository notificationRepository;
-    private final FavoriteRepository favoriteRepository;
     private final SearchRecordRepository searchRecordRepository;
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
@@ -76,26 +59,14 @@ public class MySqlDataStore implements ApplicationRunner {
 
     public MySqlDataStore(JdbcTemplate jdbcTemplate,
                           ObjectMapper objectMapper,
-                          UserRepository userRepository,
-                          PostRepository postRepository,
-                          CommentRepository commentRepository,
-                          LikeRepository likeRepository,
-                          FollowRepository followRepository,
                           NotificationRepository notificationRepository,
-                          FavoriteRepository favoriteRepository,
                           SearchRecordRepository searchRecordRepository,
                           ConversationRepository conversationRepository,
                           MessageRepository messageRepository,
                           BehaviorLogRepository behaviorLogRepository) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
-        this.userRepository = userRepository;
-        this.postRepository = postRepository;
-        this.commentRepository = commentRepository;
-        this.likeRepository = likeRepository;
-        this.followRepository = followRepository;
         this.notificationRepository = notificationRepository;
-        this.favoriteRepository = favoriteRepository;
         this.searchRecordRepository = searchRecordRepository;
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
@@ -123,13 +94,8 @@ public class MySqlDataStore implements ApplicationRunner {
         if (!loaded.get()) {
             return;
         }
-        save("users", userRepository.exportAll());
-        save("posts", postRepository.exportAll());
-        save("comments", commentRepository.exportAll());
-        save("likes", likeRepository.exportAll());
-        save("follows", followRepository.exportAll());
+        // 已行级化的仓库（posts/users/comments/likes/follows/favorites）由各自 MySql*Repository 自管，不再快照
         save("notifications", notificationRepository.exportAll());
-        save("favorites", favoriteRepository.exportAll());
         save("search-records", searchRecordRepository.exportAll());
         save("conversations", conversationRepository.exportAll());
         save("messages", messageRepository.exportAll());
@@ -150,14 +116,9 @@ public class MySqlDataStore implements ApplicationRunner {
 
     /** 全量加载：从 mini_store 恢复各仓库，并复位 ID 生成器 */
     public synchronized void loadAll() {
-        load("users", User.class, userRepository::importAll, User::getId, User::resetIdGenerator);
-        load("posts", Post.class, postRepository::importAll, Post::getId, Post::resetIdGenerator);
-        load("comments", Comment.class, commentRepository::importAll, Comment::getId, Comment::resetIdGenerator);
-        load("likes", Like.class, likeRepository::importAll, Like::getId, Like::resetIdGenerator);
-        load("follows", Follow.class, followRepository::importAll, Follow::getId, Follow::resetIdGenerator);
+        // 已行级化的仓库由各自 MySql*Repository 启动即读行级表，不再从 mini_store 恢复
         load("notifications", Notification.class, notificationRepository::importAll,
                 Notification::getId, Notification::resetIdGenerator);
-        load("favorites", Favorite.class, favoriteRepository::importAll, Favorite::getId, Favorite::resetIdGenerator);
         load("search-records", SearchRecord.class, searchRecordRepository::importAll,
                 SearchRecord::getId, SearchRecord::resetIdGenerator);
         load("conversations", Conversation.class, conversationRepository::importAll,
