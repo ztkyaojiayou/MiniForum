@@ -1,93 +1,34 @@
 package com.tkzou.miniforum.repository;
 
 import com.tkzou.miniforum.entity.Comment;
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
-import com.tkzou.miniforum.util.EntityIdProvider;
-import com.tkzou.miniforum.util.IdProvider;
-import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * 内存存储的评论仓库
- * 使用 ConcurrentHashMap 保证线程安全
+ * 评论仓库接口
+ * <p>
+ * 双实现：内存 {@link InMemoryCommentRepository}（@Profile("!prod")，演示）/
+ * MySQL {@code MySqlCommentRepository}（@Profile("prod")，demo-runner/src/prod，行级表 comments）。
  */
-@Repository
-public class CommentRepository {
-    /** ID 生成器：Spring 注入（演示=实体生成器 / 生产=Snowflake），测试无 Spring 时用默认实体生成器 */
-    @Autowired(required = false)
-    private IdProvider idProvider = new EntityIdProvider();
+public interface CommentRepository {
 
+    Comment save(Comment comment);
 
-    private final Map<Long, Comment> storage = new ConcurrentHashMap<>();
+    Optional<Comment> findById(Long id);
 
-    public Comment save(Comment comment) {
-        if (comment.getId() == null) {
-            comment.setId(idProvider.next("Comment"));
-        }
-        storage.put(comment.getId(), comment);
-        return comment;
-    }
+    List<Comment> findByPostId(Long postId);
 
-    public Optional<Comment> findById(Long id) {
-        return Optional.ofNullable(storage.get(id));
-    }
+    long countByPostId(Long postId);
 
-    /** 按时间正序返回某帖子的全部评论（早的在前） */
-    public List<Comment> findByPostId(Long postId) {
-        return storage.values().stream()
-                .filter(c -> c.getPostId().equals(postId))
-                .sorted((a, b) -> a.getCreatedAt().compareTo(b.getCreatedAt()))
-                .collect(Collectors.toList());
-    }
+    void deleteById(Long id);
 
-    public long countByPostId(Long postId) {
-        return storage.values().stream()
-                .filter(c -> c.getPostId().equals(postId))
-                .count();
-    }
+    void deleteByPostId(Long postId);
 
-    public void deleteById(Long id) {
-        storage.remove(id);
-    }
+    List<Comment> findAll();
 
-    /** 删除某帖子下的全部评论（帖子被删除时级联清理） */
-    public void deleteByPostId(Long postId) {
-        storage.entrySet().removeIf(e -> e.getValue().getPostId().equals(postId));
-    }
+    long count();
 
-    /** 按时间倒序返回全部评论（最新在前） */
-    public List<Comment> findAll() {
-        return storage.values().stream()
-                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
-                .collect(Collectors.toList());
-    }
+    List<Comment> exportAll();
 
-    /** 评论总数 */
-    public long count() {
-        return storage.size();
-    }
-
-    /** 导出全部评论（用于持久化，按 ID 升序） */
-    public List<Comment> exportAll() {
-        return storage.values().stream()
-                .sorted((a, b) -> Long.compare(a.getId(), b.getId()))
-                .collect(Collectors.toList());
-    }
-
-    /** 清空并批量导入（用于从持久化数据恢复） */
-    public void importAll(List<Comment> comments) {
-        storage.clear();
-        if (comments != null) {
-            for (Comment c : comments) {
-                if (c != null && c.getId() != null) {
-                    storage.put(c.getId(), c);
-                }
-            }
-        }
-    }
+    void importAll(List<Comment> comments);
 }

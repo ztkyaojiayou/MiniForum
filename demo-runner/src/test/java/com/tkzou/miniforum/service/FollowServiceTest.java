@@ -32,6 +32,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.tkzou.miniforum.repository.InMemoryCommentRepository;
+import com.tkzou.miniforum.repository.InMemoryFavoriteRepository;
+import com.tkzou.miniforum.repository.InMemoryLikeRepository;
+import com.tkzou.miniforum.repository.InMemoryPostRepository;
+import com.tkzou.miniforum.repository.InMemoryUserRepository;
 
 /**
  * 关注流推模式 + 游标分页闭环单元测试
@@ -49,13 +54,13 @@ class FollowServiceTest {
 
     @BeforeEach
     void setUp() {
-        postRepository = new PostRepository();
+        postRepository = new InMemoryPostRepository();
         followRepository = new InMemoryFollowRepository();
-        userRepository = new UserRepository();
+        userRepository = new InMemoryUserRepository();
         followFeedStore = new InMemoryFollowFeedStore(followRepository, 500);
-        LikeRepository likeRepository = new LikeRepository();
-        CommentRepository commentRepository = new CommentRepository();
-        FavoriteRepository favoriteRepository = new FavoriteRepository();
+        LikeRepository likeRepository = new InMemoryLikeRepository();
+        CommentRepository commentRepository = new InMemoryCommentRepository();
+        FavoriteRepository favoriteRepository = new InMemoryFavoriteRepository();
         NotificationRepository notificationRepository = new NotificationRepository();
         NotificationService notificationService = new NotificationService(notificationRepository);
         BehaviorLogger behaviorLogger = new InMemoryBehaviorLogger(new BehaviorLogRepository(), new BehaviorEventQueue());

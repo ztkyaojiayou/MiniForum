@@ -16,6 +16,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.tkzou.miniforum.repository.InMemoryUserRepository;
 
 /**
  * 站内私信服务单元测试：会话创建 / 消息收发 / 未读数 / 已读标记 / 自禁与用户校验
@@ -28,7 +29,7 @@ class MessageServiceTest {
 
     @BeforeEach
     void setUp() {
-        userRepository = new UserRepository();
+        userRepository = new InMemoryUserRepository();
         ConversationRepository conversationRepository = new ConversationRepository();
         messageRepository = new MessageRepository();
         messageService = new MessageService(conversationRepository, messageRepository, userRepository);

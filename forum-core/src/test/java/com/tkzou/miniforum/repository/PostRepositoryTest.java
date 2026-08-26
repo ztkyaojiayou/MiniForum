@@ -21,7 +21,7 @@ class PostRepositoryTest {
 
     @BeforeEach
     void setUp() {
-        repository = new PostRepository();
+        repository = new InMemoryPostRepository();
     }
 
     private Post savePost(Long authorId, String title, LocalDateTime createdAt) {

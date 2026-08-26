@@ -27,6 +27,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.tkzou.miniforum.repository.InMemoryCommentRepository;
+import com.tkzou.miniforum.repository.InMemoryFavoriteRepository;
+import com.tkzou.miniforum.repository.InMemoryLikeRepository;
+import com.tkzou.miniforum.repository.InMemoryPostRepository;
+import com.tkzou.miniforum.repository.InMemoryUserRepository;
 
 /**
  * 综合搜索服务单元测试：帖子（标题/内容/标签/话题）+ 用户（用户名/昵称）
@@ -40,12 +45,12 @@ class SearchServiceTest {
 
     @BeforeEach
     void setUp() {
-        PostRepository postRepository = new PostRepository();
-        LikeRepository likeRepository = new LikeRepository();
-        CommentRepository commentRepository = new CommentRepository();
-        FavoriteRepository favoriteRepository = new FavoriteRepository();
+        PostRepository postRepository = new InMemoryPostRepository();
+        LikeRepository likeRepository = new InMemoryLikeRepository();
+        CommentRepository commentRepository = new InMemoryCommentRepository();
+        FavoriteRepository favoriteRepository = new InMemoryFavoriteRepository();
         NotificationRepository notificationRepository = new NotificationRepository();
-        userRepository = new UserRepository();
+        userRepository = new InMemoryUserRepository();
         searchRecordRepository = new SearchRecordRepository();
         NotificationService notificationService = new NotificationService(notificationRepository);
         BehaviorLogger behaviorLogger = new InMemoryBehaviorLogger(new BehaviorLogRepository(), new BehaviorEventQueue());

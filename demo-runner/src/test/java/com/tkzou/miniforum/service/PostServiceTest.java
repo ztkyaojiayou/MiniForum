@@ -30,6 +30,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.tkzou.miniforum.repository.InMemoryCommentRepository;
+import com.tkzou.miniforum.repository.InMemoryFavoriteRepository;
+import com.tkzou.miniforum.repository.InMemoryLikeRepository;
+import com.tkzou.miniforum.repository.InMemoryPostRepository;
+import com.tkzou.miniforum.repository.InMemoryUserRepository;
 
 /**
  * 帖子服务单元测试：覆盖话题提取 / @提及通知 / 转发 / 分类筛选 / 点赞通知
@@ -43,12 +48,12 @@ class PostServiceTest {
 
     @BeforeEach
     void setUp() {
-        postRepository = new PostRepository();
-        LikeRepository likeRepository = new LikeRepository();
-        CommentRepository commentRepository = new CommentRepository();
-        FavoriteRepository favoriteRepository = new FavoriteRepository();
+        postRepository = new InMemoryPostRepository();
+        LikeRepository likeRepository = new InMemoryLikeRepository();
+        CommentRepository commentRepository = new InMemoryCommentRepository();
+        FavoriteRepository favoriteRepository = new InMemoryFavoriteRepository();
         notificationRepository = new NotificationRepository();
-        userRepository = new UserRepository();
+        userRepository = new InMemoryUserRepository();
         NotificationService notificationService = new NotificationService(notificationRepository);
         BehaviorLogger behaviorLogger = new InMemoryBehaviorLogger(new BehaviorLogRepository(), new BehaviorEventQueue());
         PostAssembler postAssembler = new PostAssembler(postRepository, likeRepository, commentRepository, favoriteRepository);
