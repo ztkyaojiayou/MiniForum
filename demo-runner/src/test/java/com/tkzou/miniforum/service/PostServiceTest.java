@@ -35,6 +35,7 @@ import com.tkzou.miniforum.repository.InMemoryFavoriteRepository;
 import com.tkzou.miniforum.repository.InMemoryLikeRepository;
 import com.tkzou.miniforum.repository.InMemoryPostRepository;
 import com.tkzou.miniforum.repository.InMemoryUserRepository;
+import com.tkzou.miniforum.recommend.stream.PostCreatedEventBus;
 
 /**
  * 帖子服务单元测试：覆盖话题提取 / @提及通知 / 转发 / 分类筛选 / 点赞通知
@@ -59,7 +60,7 @@ class PostServiceTest {
         PostAssembler postAssembler = new PostAssembler(postRepository, likeRepository, commentRepository, favoriteRepository);
         postService = new PostService(postRepository, likeRepository, commentRepository,
                 favoriteRepository, notificationService, userRepository, behaviorLogger,
-                new InMemoryOutboxStore(new InMemoryPostCreatedNotifier(new InMemoryFollowFeedStore(new InMemoryFollowRepository(), 500))),
+                new InMemoryOutboxStore(new InMemoryPostCreatedNotifier(new PostCreatedEventBus())),
                 postAssembler);
     }
 

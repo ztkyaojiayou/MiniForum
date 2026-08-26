@@ -1,7 +1,7 @@
 package com.tkzou.miniforum.recommend.prod.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tkzou.miniforum.feed.FollowFeedStore;
+import com.tkzou.miniforum.recommend.stream.PostCreatedEventBus;
 import com.tkzou.miniforum.recommend.coldstart.TrafficPool;
 import com.tkzou.miniforum.recommend.stream.PostCreatedEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -36,7 +36,7 @@ public class KafkaPostCreatedConsumer {
     private static final Logger log = LoggerFactory.getLogger(KafkaPostCreatedConsumer.class);
 
     private final TrafficPool trafficPool;
-    private final FollowFeedStore followFeedStore;
+    private final PostCreatedEventBus eventBus;
     private final ObjectMapper objectMapper;
 
     @Value("${app.rec.kafka.bootstrap-servers:localhost:9092}")
@@ -46,10 +46,10 @@ public class KafkaPostCreatedConsumer {
     private KafkaConsumer<String, String> consumer;
     private Thread thread;
 
-    public KafkaPostCreatedConsumer(TrafficPool trafficPool, FollowFeedStore followFeedStore,
+    public KafkaPostCreatedConsumer(TrafficPool trafficPool, PostCreatedEventBus eventBus,
                                     ObjectMapper objectMapper) {
         this.trafficPool = trafficPool;
-        this.followFeedStore = followFeedStore;
+        this.eventBus = eventBus;
         this.objectMapper = objectMapper;
     }
 
@@ -78,8 +78,8 @@ public class KafkaPostCreatedConsumer {
                     try {
                         PostCreatedEvent event = objectMapper.readValue(record.value(), PostCreatedEvent.class);
                         trafficPool.notifyCreated(event.getPostId());
-                        // 扇出：新帖写入作者所有粉丝的 Redis 关注流 inbox（异步，避免发帖请求被拖慢）
-                        followFeedStore.fanout(event.getAuthorId(), event.getPostId());
+                        // 广播到进程内事件总线：扇出/搜索索引/内容管道等订阅者异步消费（避免发帖请求被拖慢）
+                        eventBus.publish(event);
                     } catch (Exception e) {
                         log.warn("解析帖子创建事件失败：{}", e.getMessage());
                     }

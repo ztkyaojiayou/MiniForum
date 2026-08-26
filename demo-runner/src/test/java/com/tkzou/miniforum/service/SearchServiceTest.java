@@ -32,6 +32,7 @@ import com.tkzou.miniforum.repository.InMemoryFavoriteRepository;
 import com.tkzou.miniforum.repository.InMemoryLikeRepository;
 import com.tkzou.miniforum.repository.InMemoryPostRepository;
 import com.tkzou.miniforum.repository.InMemoryUserRepository;
+import com.tkzou.miniforum.recommend.stream.PostCreatedEventBus;
 
 /**
  * 综合搜索服务单元测试：帖子（标题/内容/标签/话题）+ 用户（用户名/昵称）
@@ -57,7 +58,7 @@ class SearchServiceTest {
         PostAssembler postAssembler = new PostAssembler(postRepository, likeRepository, commentRepository, favoriteRepository);
         postService = new PostService(postRepository, likeRepository, commentRepository,
                 favoriteRepository, notificationService, userRepository, behaviorLogger,
-                new InMemoryOutboxStore(new InMemoryPostCreatedNotifier(new InMemoryFollowFeedStore(new InMemoryFollowRepository(), 500))),
+                new InMemoryOutboxStore(new InMemoryPostCreatedNotifier(new PostCreatedEventBus())),
                 postAssembler);
         searchService = new SearchService(postService, userRepository, searchRecordRepository, behaviorLogger);
     }
