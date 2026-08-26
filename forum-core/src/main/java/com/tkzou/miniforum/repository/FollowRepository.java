@@ -10,7 +10,7 @@ import java.util.Optional;
  * <p>
  * 生产级关注关系常用 Redis 承载高频读写（isFollowing 判断、关注/粉丝列表、关注流 fanout）。
  * 默认使用内存实现（{@link InMemoryFollowRepository}，@Profile("!prod")），
- * 生产 profile 使用 Redis 实现（{@link RedisFollowRepository}，@Profile("prod")）。
+ * 生产 profile 使用 Redis 实现（{@link MySqlFollowRepository}（demo-runner/src/prod，@Profile("prod")）。
  */
 public interface FollowRepository {
 

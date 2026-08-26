@@ -16,7 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 /**
  * 内存关注关系仓库（默认实现，@Profile("!prod")）
  * <p>
- * 使用 ConcurrentHashMap 保证线程安全；生产 profile 由 {@link RedisFollowRepository} 替代。
+ * 使用 ConcurrentHashMap 保证线程安全；生产 profile 由 MySQL 事实 + Redis 缓存的 MySqlFollowRepository 替代。
  */
 @Repository
 @Profile("!prod")

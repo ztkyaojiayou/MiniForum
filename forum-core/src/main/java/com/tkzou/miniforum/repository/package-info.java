@@ -10,8 +10,8 @@
  *   <li>{@link com.tkzou.miniforum.repository.PostRepository} 额外维护<b>按作者分桶二级索引</b>
  *       （authorId → SortedSet，createdAt 倒序），使 findByAuthorId 从全表扫描降为 O(K)；
  *       save/deleteById/importAll 三处同步维护索引；</li>
- *   <li>{@link com.tkzou.miniforum.repository.RedisFollowRepository}（@Profile("prod")）把关注关系
- *       落到 Redis（following/followers ZSET + rel Hash + index String），支撑高频关注流查询；</li>
+ *   <li>生产关注关系（@Profile("prod")）为 <b>MySQL user_follow 事实表 + Redis following/followers ZSET 缓存</b>
+ *       （MySqlFollowRepository，demo-runner/src/prod），写双写、计数走 ZCARD，支撑高频关注流查询；</li>
  *   <li>exportAll/importAll 供持久化（DataStore JSON 快照 / MySqlDataStore）批量落盘与恢复。</li>
  * </ul>
  *
