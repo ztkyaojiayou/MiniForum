@@ -23,6 +23,8 @@ import com.tkzou.miniforum.recommend.stream.OutboxStore;
 import com.tkzou.miniforum.recommend.stream.PostCreatedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.tkzou.miniforum.search.SearchIndex;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +33,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -86,6 +89,9 @@ public class PostService {
     private final OutboxStore outboxStore;
     /** 帖子视图装配（共享域，admin 与 recommend 共用） */
     private final PostAssembler postAssembler;
+    /** 帖子倒排索引（事件驱动；测试/未装配为 null → 搜索回退全表扫） */
+    @Autowired(required = false)
+    private SearchIndex searchIndex;
 
     public PostService(PostRepository postRepository,
                        LikeRepository likeRepository,
@@ -424,7 +430,12 @@ public class PostService {
             return new ArrayList<>();
         }
         String kw = keyword.trim().toLowerCase();
-        return postRepository.findAll().stream()
+        // 倒排索引候选（懒建全量 + 发帖事件增量）；无索引（测试/未装配）回退全表扫
+        java.util.stream.Stream<Post> posts = searchIndex != null
+                ? searchIndex.search(kw).stream()
+                        .map(postRepository::findById).filter(Optional::isPresent).map(Optional::get)
+                : postRepository.findAll().stream();
+        return posts
                 .filter(this::isVisible)
                 .filter(p -> matchesKeyword(p, kw))
                 .sorted((a, b) -> {

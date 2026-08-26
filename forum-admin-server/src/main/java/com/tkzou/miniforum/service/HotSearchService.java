@@ -6,6 +6,8 @@ import com.tkzou.miniforum.entity.SearchRecord;
 import com.tkzou.miniforum.repository.CommentRepository;
 import com.tkzou.miniforum.repository.PostRepository;
 import com.tkzou.miniforum.repository.SearchRecordRepository;
+import com.tkzou.miniforum.recommend.stream.HeatAggregator;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -35,6 +37,9 @@ public class HotSearchService {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final SearchRecordRepository searchRecordRepository;
+    /** 行为热度聚合器（事件驱动；测试/未装配为 null → 不并入行为信号） */
+    @Autowired(required = false)
+    private HeatAggregator heatAggregator;
 
     public HotSearchService(PostRepository postRepository,
                             CommentRepository commentRepository,
@@ -56,6 +61,14 @@ public class HotSearchService {
             double[] v = cur.computeIfAbsent(r.getKeyword(), k -> new double[]{0, 0});
             v[0] += r.getCount() * SEARCH_KEYWORD_WEIGHT;
             v[1] += r.getCount();
+        }
+        // 行为事件热度（消费者化补充信号：VIEW/LIKE/COMMENT/REPOST 等经 HeatAggregator 增量聚合）
+        if (heatAggregator != null) {
+            heatAggregator.snapshot().forEach((tag, v) -> {
+                double[] curV = cur.computeIfAbsent(tag, k -> new double[]{0, 0});
+                curV[0] += v[0];
+                curV[1] += v[1];
+            });
         }
         // 组装 VO 并按热度降序、帖子数降序排序
         List<HotSearchVO> result = new ArrayList<>();
