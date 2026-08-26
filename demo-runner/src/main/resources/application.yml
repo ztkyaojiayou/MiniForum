@@ -21,6 +21,10 @@ app:
     poll-ms: 1000
     batch-size: 100
   rec:
+    # ClickHouse 行为日志（生产）：近线 Kafka Engine 摄入 + 离线分析读取
+    clickhouse:
+      host: localhost
+      port: 8123
     # 推荐系统配置（与 recommend.config.RecConfig 对应，可在运行时经 ConfigService 更新）
     final-top-n: 20
     merge-top-n: 200

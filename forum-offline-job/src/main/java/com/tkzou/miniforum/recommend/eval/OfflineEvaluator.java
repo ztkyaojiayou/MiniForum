@@ -8,9 +8,11 @@ import com.tkzou.miniforum.recommend.config.ConfigService;
 import com.tkzou.miniforum.recommend.feature.FeatureService;
 import com.tkzou.miniforum.recommend.model.ItemCfBuilder;
 import com.tkzou.miniforum.recommend.model.ItemCfModel;
+import com.tkzou.miniforum.recommend.prod.clickhouse.ClickHouseBehaviorStore;
 import com.tkzou.miniforum.repository.PostRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -42,6 +44,9 @@ public class OfflineEvaluator {
     private final PostRepository postRepository;
     private final FeatureService featureService;
     private final ConfigService configService;
+    /** 生产：从 ClickHouse 读行为全量（数仓，Kafka Engine 摄入）；演示为 null → 内存仓库 */
+    @Autowired(required = false)
+    private ClickHouseBehaviorStore clickHouseBehaviorStore;
 
     public OfflineEvaluator(BehaviorLogRepository behaviorLogRepository,
                             PostRepository postRepository,
@@ -55,7 +60,10 @@ public class OfflineEvaluator {
 
     public Metrics evaluate(double trainRatio, int topK, int maxUsers) {
         // 离线评估只处理"反馈信号"行为（曝光/负反馈不计入 train/test）
-        List<BehaviorLog> signalBehaviors = behaviorLogRepository.findAll().stream()
+        List<BehaviorLog> allBehaviors = clickHouseBehaviorStore != null
+                ? clickHouseBehaviorStore.findAll()            // 生产：数仓全量
+                : behaviorLogRepository.findAll();             // 演示：内存
+        List<BehaviorLog> signalBehaviors = allBehaviors.stream()
                 .filter(OfflineEvaluator::isFeedbackSignal)
                 .collect(Collectors.toList());
         TrainTestSplit split = TimeSplitter.splitByTime(signalBehaviors, trainRatio);

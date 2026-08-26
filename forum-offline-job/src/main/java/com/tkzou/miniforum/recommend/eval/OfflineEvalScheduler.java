@@ -3,8 +3,10 @@ package com.tkzou.miniforum.recommend.eval;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;
+import com.tkzou.miniforum.recommend.prod.clickhouse.ClickHouseBehaviorStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -37,6 +39,9 @@ public class OfflineEvalScheduler {
     private final OfflineEvaluator evaluator;
     private final BehaviorLogRepository behaviorLogRepository;
     private final ObjectMapper objectMapper;
+    /** 生产：从 ClickHouse 数仓读行为量；演示为 null → 内存仓库 */
+    @Autowired(required = false)
+    private ClickHouseBehaviorStore clickHouseBehaviorStore;
 
     @Value("${app.data-dir:./data}")
     private String dataDir;
@@ -70,7 +75,9 @@ public class OfflineEvalScheduler {
         if (!enabled) {
             return;
         }
-        long behaviorCount = behaviorLogRepository.count();
+        long behaviorCount = clickHouseBehaviorStore != null
+                ? clickHouseBehaviorStore.count()      // 生产：数仓全量
+                : behaviorLogRepository.count();        // 演示：内存
         if (behaviorCount < minBehaviors) {
             log.info("【离线评估】跳过：行为数据不足（{} 条 < {}）", behaviorCount, minBehaviors);
             return;

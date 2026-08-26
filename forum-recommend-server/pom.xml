@@ -46,6 +46,13 @@
             <version>2.3.2</version>
             <optional>true</optional>
         </dependency>
+        <!-- ClickHouse 行为日志读取（@prod 适配仅编译；运行时由 offline-job / demo-runner 提供） -->
+        <dependency>
+            <groupId>com.clickhouse</groupId>
+            <artifactId>clickhouse-jdbc</artifactId>
+            <version>0.4.6</version>
+            <optional>true</optional>
+        </dependency>
 
         <dependency>
             <groupId>com.tkzou</groupId>
