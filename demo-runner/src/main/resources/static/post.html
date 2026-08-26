@@ -260,6 +260,7 @@
         }
 
         // 发布文章（标题必填，可带分类/标签）
+        let _publishKey = null; // 发帖幂等 key：首次点击生成，成功后清空，失败保留供重试（防双击/重试发重）
         async function publishPost() {
             const title = document.getElementById('postTitle').value.trim();
             const content = document.getElementById('postContent').value.trim();
@@ -268,12 +269,14 @@
             const tags = parseTags(document.getElementById('postTags').value);
             const btn = document.getElementById('publishBtn');
             btn.disabled = true;
+            if (!_publishKey) _publishKey = crypto.randomUUID();
             try {
                 await request(API, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'Idempotency-Key': _publishKey },
                     body: JSON.stringify({ title, content, tags, category: document.getElementById('postCategory').value, publish: true })
                 });
+                _publishKey = null;
                 showToast('✅ 发布成功');
                 document.getElementById('postTitle').value = '';
                 document.getElementById('postContent').value = '';

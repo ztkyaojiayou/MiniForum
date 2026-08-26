@@ -13,6 +13,13 @@ app:
     enabled: true
     # 定时保存间隔（毫秒）
     interval-ms: 30000
+  # 发帖幂等（Idempotency-Key）TTL：同一 key 在窗口内防重复发帖，过期后可重新提交
+  idempotency:
+    ttl-ms: 300000
+  # 发帖事件 Outbox（生产）：Relayer 轮询间隔与批量（MySQL post_outbox → Kafka）
+  outbox:
+    poll-ms: 1000
+    batch-size: 100
   rec:
     # 推荐系统配置（与 recommend.config.RecConfig 对应，可在运行时经 ConfigService 更新）
     final-top-n: 20

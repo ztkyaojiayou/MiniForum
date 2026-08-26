@@ -62,7 +62,8 @@
         </plugins>
     </build>
 
-    <!-- 生产 profile：引入 JDBC/MySQL 并编译 src/prod/java 的 MySqlDataStore（默认构建不含，保持轻量零中间件） -->
+    <!-- 生产 profile：引入 JDBC/MySQL + Kafka/Redis 运行时依赖，并编译 src/prod/java
+         （MySqlDataStore 持久化 + MySqlOutboxStore 事件必达；kafka-clients/jedis 为运行时必需，非 optional） -->
     <profiles>
         <profile>
             <id>prod</id>
@@ -75,6 +76,16 @@
                     <groupId>com.mysql</groupId>
                     <artifactId>mysql-connector-j</artifactId>
                     <scope>runtime</scope>
+                </dependency>
+                <!-- prod 运行时：KafkaPostCreatedProducer/Consumer（kafka-clients）与 RedisFollowFeedStore 等（jedis），
+                     上游模块里是 optional 不传递，这里显式补上 -->
+                <dependency>
+                    <groupId>org.apache.kafka</groupId>
+                    <artifactId>kafka-clients</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>redis.clients</groupId>
+                    <artifactId>jedis</artifactId>
                 </dependency>
             </dependencies>
             <build>

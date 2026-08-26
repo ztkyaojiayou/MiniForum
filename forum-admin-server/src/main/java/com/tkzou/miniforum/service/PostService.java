@@ -19,8 +19,8 @@ import com.tkzou.miniforum.repository.PostRepository;
 import com.tkzou.miniforum.repository.UserRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
+import com.tkzou.miniforum.recommend.stream.OutboxStore;
 import com.tkzou.miniforum.recommend.stream.PostCreatedEvent;
-import com.tkzou.miniforum.recommend.stream.PostCreatedNotifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -82,7 +82,8 @@ public class PostService {
     private final NotificationService notificationService;
     private final UserRepository userRepository;
     private final BehaviorLogger behaviorLogger;
-    private final PostCreatedNotifier postCreatedNotifier;
+    /** 发帖事件 Outbox（演示同步发布 / 生产落表+Relayer 必达） */
+    private final OutboxStore outboxStore;
     /** 帖子视图装配（共享域，admin 与 recommend 共用） */
     private final PostAssembler postAssembler;
 
@@ -93,7 +94,7 @@ public class PostService {
                        NotificationService notificationService,
                        UserRepository userRepository,
                        BehaviorLogger behaviorLogger,
-                       PostCreatedNotifier postCreatedNotifier,
+                       OutboxStore outboxStore,
                        PostAssembler postAssembler) {
         this.postRepository = postRepository;
         this.likeRepository = likeRepository;
@@ -102,7 +103,7 @@ public class PostService {
         this.notificationService = notificationService;
         this.userRepository = userRepository;
         this.behaviorLogger = behaviorLogger;
-        this.postCreatedNotifier = postCreatedNotifier;
+        this.outboxStore = outboxStore;
         this.postAssembler = postAssembler;
     }
 
@@ -121,8 +122,8 @@ public class PostService {
         Post saved = postRepository.save(post);
         if (Post.STATUS_PUBLISHED.equals(saved.getStatus())) {
             notifyMentions(saved, author, authorId);
-            // 发布"帖子创建"事件（生产经 Kafka 下发下游：搜索索引/feed扇出/内容管道/推荐冷启动）
-            postCreatedNotifier.notify(toPostCreatedEvent(saved));
+            // 发帖事件入 Outbox（演示同步发布；生产落表 + Relayer 必达 Kafka：fanout/冷启/搜索）
+            outboxStore.enqueue(toPostCreatedEvent(saved));
         }
         return toVO(saved, author);
     }
@@ -573,8 +574,8 @@ public class PostService {
         repost.setOriginalAuthorId(original.getAuthorId());
         repost.setOriginalAuthor(original.getAuthor());
         Post saved = postRepository.save(repost);
-        // 转发也是一条新发布的帖子：发布事件（扇出到转发者粉丝的关注流 inbox，与发帖一致）
-        postCreatedNotifier.notify(toPostCreatedEvent(saved));
+        // 转发也是一条新发布的帖子：事件入 Outbox（与发帖一致，扇出到转发者粉丝的关注流 inbox）
+        outboxStore.enqueue(toPostCreatedEvent(saved));
         behaviorLogger.log(actorId, saved.getId(), BehaviorType.REPOST, "POST", null);
         // 通知原帖作者（转发自己的帖子不通知）
         String brief = originalTitle.isBlank() && original.getContent() != null
@@ -623,5 +624,10 @@ public class PostService {
     /** 转换为视图对象（委托共享域 {@link PostAssembler}，与推荐侧共用同一装配逻辑） */
     public PostVO toVO(Post post, String username) {
         return postAssembler.toVO(post, username);
+    }
+
+    /** 按 id 获取帖子视图（不增加阅读量、不记浏览行为——供幂等返回等只读场景） */
+    public PostVO getPostVOQuietly(Long id, String username) {
+        return toVO(getPostOrThrow(id), username);
     }
 }

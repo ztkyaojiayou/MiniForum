@@ -741,17 +741,20 @@
                 countEl.textContent = '';
             }
         }
+        let _publishKey = null; // 发帖幂等 key：首次点击生成，成功后清空，失败保留供重试（防双击/重试发重）
         async function publishPost() {
             const content = document.getElementById('postContent').value.trim();
             if (!content) { showToast('❌ 内容不能为空', 'error'); return; }
             const btn = document.getElementById('publishBtn');
             btn.disabled = true;
+            if (!_publishKey) _publishKey = crypto.randomUUID();
             try {
                 await request(POST_API, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'Idempotency-Key': _publishKey },
                     body: JSON.stringify({ content, publish: true })
                 });
+                _publishKey = null;
                 showToast('✅ 发布成功', 'success');
                 document.getElementById('postContent').value = '';
                 loadPosts();

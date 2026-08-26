@@ -19,8 +19,9 @@ import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
 import com.tkzou.miniforum.recommend.behavior.InMemoryBehaviorLogger;
 import com.tkzou.miniforum.recommend.stream.BehaviorEventQueue;
+import com.tkzou.miniforum.recommend.stream.InMemoryOutboxStore;
 import com.tkzou.miniforum.recommend.stream.InMemoryPostCreatedNotifier;
-import com.tkzou.miniforum.recommend.stream.PostCreatedNotifier;
+import com.tkzou.miniforum.recommend.stream.OutboxStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -58,10 +59,10 @@ class FollowServiceTest {
         NotificationRepository notificationRepository = new NotificationRepository();
         NotificationService notificationService = new NotificationService(notificationRepository);
         BehaviorLogger behaviorLogger = new InMemoryBehaviorLogger(new BehaviorLogRepository(), new BehaviorEventQueue());
-        PostCreatedNotifier notifier = new InMemoryPostCreatedNotifier(followFeedStore);
+        OutboxStore outboxStore = new InMemoryOutboxStore(new InMemoryPostCreatedNotifier(followFeedStore));
         PostAssembler postAssembler = new PostAssembler(postRepository, likeRepository, commentRepository, favoriteRepository);
         postService = new PostService(postRepository, likeRepository, commentRepository,
-                favoriteRepository, notificationService, userRepository, behaviorLogger, notifier, postAssembler);
+                favoriteRepository, notificationService, userRepository, behaviorLogger, outboxStore, postAssembler);
         followService = new FollowService(followRepository, userRepository, postRepository,
                 likeRepository, commentRepository, favoriteRepository, notificationService, behaviorLogger,
                 followFeedStore, 500);

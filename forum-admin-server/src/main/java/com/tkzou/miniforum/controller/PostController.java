@@ -4,6 +4,8 @@ import com.tkzou.miniforum.common.Result;
 import com.tkzou.miniforum.dto.PageResult;
 import com.tkzou.miniforum.dto.PostCreateDTO;
 import com.tkzou.miniforum.dto.PostVO;
+import com.tkzou.miniforum.exception.BusinessException;
+import com.tkzou.miniforum.idempotency.IdempotencyStore;
 import com.tkzou.miniforum.service.PostService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,6 +24,7 @@ import javax.servlet.http.HttpSession;
 import javax.validation.Valid;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * 帖子接口（/api/posts）
@@ -28,25 +32,48 @@ import java.util.Map;
  * 发帖/列表（分页+标签/分类/话题筛选）/详情/搜索/热门/我的/草稿/编辑/删除/回收站/点赞/转发。
  * 纯内存存储（可 JSON 持久化），不依赖任何第三方中间件。
  * 写操作需登录（发帖/点赞/转发/删除等，AuthInterceptor 拦截 /api/posts/**）；游客可浏览读路径（列表/详情/热门/搜索）。
- * 发帖入口 → {@code PostService.createPost} → 事件发布（PostCreatedNotifier，见 service 包）。
+ * 发帖入口 → {@code PostService.createPost} → 事件入 Outbox（演示同步 / 生产必达 Kafka，见 service 包）。
+ * 发帖支持 {@code Idempotency-Key} 请求头防重复提交（见 idempotency 包）。
  */
 @RestController
 @RequestMapping("/api/posts")
 public class PostController {
 
     private final PostService postService;
+    private final IdempotencyStore idempotencyStore;
 
-    public PostController(PostService postService) {
+    public PostController(PostService postService, IdempotencyStore idempotencyStore) {
         this.postService = postService;
+        this.idempotencyStore = idempotencyStore;
     }
 
-    /** 发帖（body 中 publish=false 时存为草稿） */
+    /** 发帖（body 中 publish=false 时存为草稿；带 Idempotency-Key 时幂等防重复） */
     @PostMapping
     public ResponseEntity<Result<PostVO>> createPost(@Valid @RequestBody PostCreateDTO dto,
+                                                     @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
                                                      HttpSession session) {
         String author = (String) session.getAttribute("username");
         Long authorId = (Long) session.getAttribute("userId");
-        PostVO created = postService.createPost(dto, author, authorId);
+        PostVO created;
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            // 幂等：同 key 已发过 → 返回首次结果（不增加阅读量）；已在处理 → 拒绝重复提交
+            Optional<Long> existing = idempotencyStore.getCompleted(idempotencyKey);
+            if (existing.isPresent()) {
+                return ResponseEntity.ok(Result.success("发帖成功", postService.getPostVOQuietly(existing.get(), author)));
+            }
+            if (!idempotencyStore.acquire(idempotencyKey)) {
+                throw new BusinessException("正在提交，请勿重复操作");
+            }
+            try {
+                created = postService.createPost(dto, author, authorId);
+            } catch (Exception e) {
+                idempotencyStore.release(idempotencyKey);
+                throw e;
+            }
+            idempotencyStore.complete(idempotencyKey, created.getId());
+        } else {
+            created = postService.createPost(dto, author, authorId);
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(Result.success("发帖成功", created));
     }
 
