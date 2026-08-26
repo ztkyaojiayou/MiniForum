@@ -40,6 +40,9 @@ public class BehaviorLogRepository {
 
     /** 某用户全部行为（时间升序，供画像聚合与评估） */
     public List<BehaviorLog> findByUserId(Long userId) {
+        if (userId == null) {
+            return List.of(); // 防御：null userId（如未登录/异常入参）不 NPE，返回空
+        }
         return storage.values().stream()
                 .filter(b -> userId.equals(b.getUserId()))
                 .sorted(Comparator.comparing(BehaviorLog::getTimestamp))

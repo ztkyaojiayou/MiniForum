@@ -4,6 +4,7 @@ import com.tkzou.miniforum.common.Result;
 import com.tkzou.miniforum.dto.PageResult;
 import com.tkzou.miniforum.dto.RecommendPostVO;
 import com.tkzou.miniforum.dto.TrackRequest;
+import com.tkzou.miniforum.exception.UnauthorizedException;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 import com.tkzou.miniforum.recommend.domain.RecommendContext;
@@ -24,12 +25,13 @@ import java.util.List;
 /**
  * 推荐接口
  * <p>
- * 需登录（由 AuthInterceptor 拦截 /api/recommend/**）。
+ * AuthInterceptor 对 GET /api/recommend/** 放行游客（详情页"相关推荐"游客可看），
+ * 但 <b>个性化推荐流 feed 需登录</b>（内部以 userId 为 null 守卫，返回 401）。
  * <ul>
  *   <li>GET /feed → {@code RecommendService.recommend} 完整漏斗（召回→排序→重排→冷启动→下发），
- *       服务端自动记 EXPOSE，前端切"✨ 推荐"Tab 消费；</li>
- *   <li>GET /related → {@code RecommendService.related} 详情页 ItemCF 相似帖；</li>
- *   <li>POST /track → 前端点击/负反馈打点，写入行为日志。</li>
+ *       服务端自动记 EXPOSE，前端切"✨ 推荐"Tab 消费；<b>需登录</b>；</li>
+ *   <li>GET /related → {@code RecommendService.related} 详情页 ItemCF 相似帖；游客可看；</li>
+ *   <li>POST /track → 前端点击/负反馈打点（写操作，拦截器要求登录）。</li>
  * </ul>
  */
 @RestController
@@ -44,7 +46,7 @@ public class RecommendController {
         this.behaviorLogger = behaviorLogger;
     }
 
-    /** 个性化推荐流 */
+    /** 个性化推荐流（需登录：个性化依赖 userId，游客/会话过期返回 401） */
     @GetMapping("/feed")
     public ResponseEntity<Result<PageResult<RecommendPostVO>>> feed(
             @RequestParam(required = false, defaultValue = "1") Integer page,
@@ -52,6 +54,11 @@ public class RecommendController {
             HttpSession session) {
         Long userId = (Long) session.getAttribute("userId");
         String username = (String) session.getAttribute("username");
+        if (userId == null) {
+            // AuthInterceptor 对 /api/recommend 的 GET 放行游客（related 详情页游客可看），
+            // 但 feed 是强个性化接口，必须登录，否则下游画像/行为查询会收到 null userId
+            throw new UnauthorizedException("请先登录");
+        }
         int safePage = Math.max(page, 1);
         int safeSize = Math.min(Math.max(size, 1), 20);
         // 一次多取便于分页切片（每次请求重新计算，弱一致性，学习项目可接受）
