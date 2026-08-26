@@ -19,6 +19,12 @@ import java.util.stream.Collectors;
  * → RecallHit(source="newitem")。与冷启动池配合（Thompson 探索分在排序阶段注入）。
  */
 @Component
+/**
+ * 新内容召回（source=newitem）
+ * <p>
+ * 取冷启动新内容（{@code ItemFeature.isInNewPool()}）的可见帖，保证"新帖有露出机会"，
+ * 与冷启动探索（Thompson/流量池）配合解决新内容冷启动。按新鲜度/热度降序。
+ */
 public class NewItemRecall implements RecallChannel {
 
     private final PostRepository postRepository;

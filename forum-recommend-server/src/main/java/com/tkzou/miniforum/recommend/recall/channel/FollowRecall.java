@@ -21,6 +21,12 @@ import java.util.stream.Collectors;
  * → 按时间倒序取 N → RecallHit(source="follow")。微博"半熟社交"的核心：关注关系是明确订阅，二度转发让大V替用户筛选内容。
  */
 @Component
+/**
+ * 关注召回（source=follow）
+ * <p>
+ * 二度关系召回：取"我关注的人发的帖"或"我关注的人<b>转发过</b>的帖"（originalAuthorId 在我关注集合），
+ * 按新鲜度降序。等于让关注的人替用户做了一轮内容筛选（社交信号），是社交推荐的核心路。
+ */
 public class FollowRecall implements RecallChannel {
 
     private final FollowRepository followRepository;

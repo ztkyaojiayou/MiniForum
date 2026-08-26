@@ -18,6 +18,13 @@ import java.util.stream.Collectors;
  * → 降序取 N → RecallHit(source="hot")，交 MergeRecallService 融合。
  */
 @Component
+/**
+ * 热门召回（source=hot）
+ * <p>
+ * 全站可见帖按微博式互动热度分（3·转发 + 2·评论 + 1·赞 + 1.5·收藏 + 0.02·浏览）降序取 TopK，
+ * 热度取自 {@code FeatureService.itemFeature(postId).getHotScore()}。
+ * 冷用户热门兜底（ColdStartService）走同一热度口径。
+ */
 public class HotRecall implements RecallChannel {
 
     private final PostRepository postRepository;

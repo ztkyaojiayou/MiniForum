@@ -20,6 +20,12 @@ import java.util.Map;
  * → 降序取 N → RecallHit(source="topic")。用户无画像时返回空（由热门等路兜底）。
  */
 @Component
+/**
+ * 话题召回（source=topic）
+ * <p>
+ * 用画像兴趣话题权重（UserProfile.topicWeight）匹配帖子话题，取"兴趣话题重叠"的可见帖，
+ * 按兴趣权重降序。核心是"兴趣 → 内容"的话题级匹配，与类目召回互补。
+ */
 public class TopicRecall implements RecallChannel {
 
     private final FeatureService featureService;

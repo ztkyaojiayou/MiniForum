@@ -28,6 +28,13 @@ import java.util.Map;
  * 纯内存存储（可 JSON 持久化），不依赖任何第三方中间件。
  * 发帖与查看均需登录（由 AuthInterceptor 拦截 /api/posts/**）。
  */
+/**
+ * 帖子接口（/api/posts）
+ * <p>
+ * 发帖/列表（分页+标签/分类/话题筛选）/详情/搜索/热门/我的/草稿/编辑/删除/回收站/点赞/转发。
+ * 写操作需登录（发帖/点赞/转发/删除等）；游客可浏览读路径（列表/详情/热门/搜索）。
+ * 发帖入口 → {@code PostService.createPost} → 事件发布（PostCreatedNotifier，见 service 包）。
+ */
 @RestController
 @RequestMapping("/api/posts")
 public class PostController {

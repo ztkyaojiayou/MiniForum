@@ -32,6 +32,12 @@ import java.util.List;
 /**
  * 用户管理 REST 接口
  */
+/**
+ * 用户接口（/api/users）
+ * <p>
+ * 用户 CRUD（管理端，仅 admin）/ 资料查询与修改 / 改密 / 个人主页帖子。
+ * 游客可看用户主页与资料读路径；写操作（注册/改密/改资料）需登录，账号管理仅 admin。
+ */
 @RestController
 @RequestMapping("/api/users")
 public class UserController {

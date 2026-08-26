@@ -20,6 +20,12 @@ import java.util.Map;
  * → 降序取 N → RecallHit(source="category")。
  */
 @Component
+/**
+ * 类目召回（source=category）
+ * <p>
+ * 用画像兴趣类目权重（UserProfile.categoryWeight）匹配帖子分类，取"兴趣类目"的可见帖，
+ * 按兴趣权重降序。与话题召回同属"兴趣匹配"路，一个按类目一个按话题。
+ */
 public class CategoryRecall implements RecallChannel {
 
     private final FeatureService featureService;

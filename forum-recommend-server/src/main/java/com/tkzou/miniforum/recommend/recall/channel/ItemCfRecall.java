@@ -27,6 +27,12 @@ import java.util.stream.Collectors;
  * 使用深度互动构建的协同过滤模型，是弱训练侧核心个性化召回。
  */
 @Component
+/**
+ * ItemCF 相似召回（source=itemcf）
+ * <p>
+ * 从用户历史交互物品出发，取 ItemCF 相似度模型（{@code ItemCfModelStore}）的 TopK 相似物，
+ * 过滤可见后输出。是"协同过滤"召回路，与兴趣（话题/类目）和热度互补。
+ */
 public class ItemCfRecall implements RecallChannel {
 
     private final ItemCfModelStore itemCfModelStore;
