@@ -2,7 +2,6 @@ package com.tkzou.miniforum.recommend.prod.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tkzou.miniforum.recommend.stream.PostCreatedEventBus;
-import com.tkzou.miniforum.recommend.coldstart.TrafficPool;
 import com.tkzou.miniforum.recommend.stream.PostCreatedEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -25,7 +24,7 @@ import java.util.Properties;
  * Kafka 帖子创建事件消费者（生产适配，@Profile("prod") 激活）
  * <p>
  * <b>数据流程</b>：订阅 topic "post-created"（由 {@code KafkaPostCreatedProducer} 写入）→ 后台线程轮询消费
- * → 反序列化为 {@link PostCreatedEvent} → 预热 {@link TrafficPool}（新帖从创建即进入流量池跟踪）。
+ * → 反序列化为 {@link PostCreatedEvent} → 广播到事件总线（冷启流量池/扇出/搜索索引等订阅者消费）。
  * 其余下游（搜索索引 / feed 扇出 / 内容管道）可按需在此扩展订阅。
  * 生产启用：-Pprod 构建 + spring.profiles.active=prod + 配置 app.rec.kafka.bootstrap-servers。
  */
@@ -35,7 +34,6 @@ public class KafkaPostCreatedConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaPostCreatedConsumer.class);
 
-    private final TrafficPool trafficPool;
     private final PostCreatedEventBus eventBus;
     private final ObjectMapper objectMapper;
 
@@ -46,9 +44,8 @@ public class KafkaPostCreatedConsumer {
     private KafkaConsumer<String, String> consumer;
     private Thread thread;
 
-    public KafkaPostCreatedConsumer(TrafficPool trafficPool, PostCreatedEventBus eventBus,
+    public KafkaPostCreatedConsumer(PostCreatedEventBus eventBus,
                                     ObjectMapper objectMapper) {
-        this.trafficPool = trafficPool;
         this.eventBus = eventBus;
         this.objectMapper = objectMapper;
     }
@@ -77,8 +74,7 @@ public class KafkaPostCreatedConsumer {
                 for (ConsumerRecord<String, String> record : records) {
                     try {
                         PostCreatedEvent event = objectMapper.readValue(record.value(), PostCreatedEvent.class);
-                        trafficPool.notifyCreated(event.getPostId());
-                        // 广播到进程内事件总线：扇出/搜索索引/内容管道等订阅者异步消费（避免发帖请求被拖慢）
+                        // 广播到进程内事件总线：扇出/冷启流量池/搜索索引/内容管道等订阅者异步消费（避免发帖请求被拖慢）
                         eventBus.publish(event);
                     } catch (Exception e) {
                         log.warn("解析帖子创建事件失败：{}", e.getMessage());
