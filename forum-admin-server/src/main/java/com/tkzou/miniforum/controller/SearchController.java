@@ -12,9 +12,10 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.servlet.http.HttpSession;
 
 /**
- * 综合搜索接口（帖子 + 用户）
+ * 综合搜索接口（/api/search，游客可看）
  * <p>
- * 需登录（由 AuthInterceptor 拦截 /api/search/**）。
+ * 关键词同时搜帖子（标题/内容/标签/话题）与用户（用户名/昵称），
+ * 搜索词计入热搜（SearchService 内部打点行为日志）。当前为实时全表扫（数据量小够用）。
  */
 @RestController
 @RequestMapping("/api/search")

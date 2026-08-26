@@ -14,10 +14,9 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * 随机决策转盘接口
+ * 随机决策转盘接口（/api/decide，无需登录）
  * <p>
- * 传入若干选项，随机选择一个作为结果，并统计每个选项被选中的概率。
- * 纯内存实现，不依赖任何第三方中间件。
+ * 提供选项集合 → 随机返回一个，并统计每个选项被选中的概率；纯内存实现，趣味功能。
  */
 @RestController
 @RequestMapping("/api/decide")

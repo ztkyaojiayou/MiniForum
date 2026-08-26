@@ -10,10 +10,9 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * 随机灵感便签接口
+ * 随机灵感便签接口（/api/quotes，无需登录）
  * <p>
- * 内置一句名言库，每次调用随机返回一条，附带作者与分类。
- * 纯内存实现，不依赖任何第三方中间件。
+ * 内置名言库随机返回一条（附带作者与分类），纯内存实现，趣味功能。
  */
 @RestController
 @RequestMapping("/api/quotes")

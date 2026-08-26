@@ -18,9 +18,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 站内私信接口（会话 + 消息，HTTP 轮询，无 WebSocket）
+ * 站内私信接口（/api/messages，需登录）
  * <p>
- * 需登录（由 AuthInterceptor 拦截 /api/messages/**）。
+ * 双人会话列表、发送消息、会话消息、未读数。前端 HTTP 轮询刷新（非 WebSocket，零中间件）。
  */
 @RestController
 @RequestMapping("/api/messages")

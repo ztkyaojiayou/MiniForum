@@ -30,9 +30,6 @@ import javax.validation.Valid;
 import java.util.List;
 
 /**
- * 用户管理 REST 接口
- */
-/**
  * 用户接口（/api/users）
  * <p>
  * 用户 CRUD（管理端，仅 admin）/ 资料查询与修改 / 改密 / 个人主页帖子。

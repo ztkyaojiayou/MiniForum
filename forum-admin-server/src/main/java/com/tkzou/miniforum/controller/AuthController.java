@@ -17,12 +17,7 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
 
 /**
- * 登录认证接口
- * <p>
- * /api/auth/** 为公开路径（WebConfig 不拦截），注册/登录均可匿名访问。
- */
-/**
- * 认证接口（/api/auth，公开）
+ * 认证接口（/api/auth，公开路径，WebConfig 不拦截）
  * <p>
  * 注册（自动登录）/ 登录（写 Session）/ 退出 / 当前用户查询。
  * Session 认证：登录成功把 userId/username 写入 session，供 AuthInterceptor 与各 Controller 读取。

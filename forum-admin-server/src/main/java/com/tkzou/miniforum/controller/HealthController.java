@@ -13,10 +13,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 健康检测接口
+ * 健康检测接口（/api/health，无需登录，供监控探测）
  * <p>
- * 用于监控服务运行状态，返回服务、JVM 内存、运行时长等信息。
- * 该接口无需登录即可访问。
+ * /ping 简单存活检查；/ 详细检查（内存/系统/JVM 信息）。
  */
 @RestController
 @RequestMapping("/api/health")

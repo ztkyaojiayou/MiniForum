@@ -17,9 +17,9 @@ import javax.servlet.http.HttpSession;
 import java.util.Map;
 
 /**
- * 收藏接口
+ * 收藏接口（/api/favorites，需登录）
  * <p>
- * 全部需要登录（由 AuthInterceptor 拦截 /api/favorites/**）。
+ * 收藏/取消收藏某帖、我的收藏列表。收藏行为同时进入行为日志（推荐信号之一）。
  */
 @RestController
 @RequestMapping("/api/favorites")

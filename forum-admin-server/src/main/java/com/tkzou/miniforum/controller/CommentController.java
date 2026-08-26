@@ -19,10 +19,10 @@ import javax.validation.Valid;
 import java.util.List;
 
 /**
- * 评论接口
+ * 评论接口（挂 /api/posts/{postId}/comments + /api/comments）
  * <p>
- * 发表/查看评论挂在帖子下（/api/posts/{postId}/comments，受登录拦截），
- * 删除评论独立路径 /api/comments/{commentId}。
+ * 发表/查看（热度/时间排序）/删除评论、楼中楼回复（parentId）、评论点赞。
+ * 写操作（发表/删除/点赞）需登录；游客可浏览评论。
  */
 @RestController
 public class CommentController {

@@ -20,12 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 关注 / 粉丝接口
- * <p>
- * 全部需要登录（由 AuthInterceptor 拦截 /api/follows/**）。
- */
-/**
- * 关注/粉丝接口（/api/follows，全部需登录）
+ * 关注/粉丝接口（/api/follows，全部需登录，AuthInterceptor 拦截 /api/follows/**）
  * <p>
  * 关注/取关/状态/关注列表/粉丝列表/关注流（游标分页 max_id/since_id）/推荐关注（社交卡）。
  * 关注流读取走推模式 inbox（feed.FollowFeedStore）；推荐关注 = 二度关系按共同好友数排序。

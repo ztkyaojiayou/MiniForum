@@ -12,7 +12,10 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * 热搜榜接口
+ * 热搜接口（/api/hot，游客可看）
+ * <p>
+ * 热搜榜：按标签聚合热度（阅读×1 + 点赞×2 + 评论×3，近 30 天时间衰减），
+ * 带 爆/沸/热/新 等级；另提供热门帖子排行（首页右栏）。
  */
 @RestController
 @RequestMapping("/api/hot")

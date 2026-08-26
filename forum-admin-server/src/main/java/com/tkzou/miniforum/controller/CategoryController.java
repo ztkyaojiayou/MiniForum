@@ -11,7 +11,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * 帖子分类接口
+ * 分类接口（/api/categories，游客可看）
+ * <p>
+ * 返回固定 12 类 + 各分类已发布帖子数（"全部动态"虚拟分类置顶），供左栏分类导航。
  */
 @RestController
 @RequestMapping("/api/categories")

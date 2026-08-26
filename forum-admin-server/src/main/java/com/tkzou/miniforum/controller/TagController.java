@@ -11,7 +11,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * 标签 / 话题接口：返回所有标签、话题及其帖子数
+ * 标签/话题接口（/api/tags，游客可看）
+ * <p>
+ * 标签列表（含帖子数）、话题榜（#话题#）、按标签/话题筛选帖子。
  */
 @RestController
 @RequestMapping("/api/tags")

@@ -10,9 +10,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 /**
- * 数据看板接口
+ * 数据看板接口（/api/dashboard，需登录，AuthInterceptor 拦截 /api/dashboard/**）
  * <p>
- * 返回系统核心统计指标（需登录，由 AuthInterceptor 拦截 /api/dashboard/**）。
+ * 系统统计：用户/帖子/评论/点赞数 + 今日新增，供运营看板与首页角标。
  */
 @RestController
 @RequestMapping("/api/dashboard")

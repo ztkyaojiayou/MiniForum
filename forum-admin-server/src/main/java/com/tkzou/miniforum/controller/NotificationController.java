@@ -15,9 +15,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 消息通知接口
+ * 通知中心接口（/api/notifications，需登录）
  * <p>
- * 全部需要登录（由 AuthInterceptor 拦截 /api/notifications/**）。
+ * 被点赞/评论/关注/转发/@提及的通知列表、未读数、单条已读/全部已读。
+ * 通知由业务 service（点赞/评论/关注/转发/@提及）触发写入，前端轮询未读数。
  */
 @RestController
 @RequestMapping("/api/notifications")
