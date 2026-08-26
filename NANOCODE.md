@@ -13,19 +13,23 @@ mini-forum 是一个基于 Spring Boot 的轻量级微博/论坛系统，使用�
 - 数据存储：内存 + JSON 文件（`data/` 目录）
 - Python 脚本用于数据灌入与验证
 
-## 项目结构
+## 项目结构（Maven 多模块）
 
 ```
-src/main/java/com/tkzou/miniforum/
-  MiniForumApplication.java       # 启动类（含 @EnableScheduling）
-
-src/main/resources/
-  application.yml                 # 端口 8090
-  banner.txt
-  static/                         # 静态页面（前端页面）
-    index.html  hot.html  login.html  message.html
-    my.html  notification.html  post.html  quote.html
-    user.html  detail.html  wheel.html
+pom.xml                       # 父 POM（forum-parent，聚合 6 模块）
+forum-core/                   # 共享域：实体/仓库/DTO/feed/行为日志/事件接口/PostAssembler
+forum-admin-server/           # 主业务：帖子/用户/评论/关注/feed/搜索/热搜/通知/私信
+forum-recommend-server/       # 推荐核心：召回/排序/重排/冷启动/画像/AB/配置 + 生产适配
+forum-offline-job/            # 离线层：离线评估 + OfflineJobApplication
+forum-flink-nearline/         # 近线层：Flink 实时特征作业（-Pprod 才构建）
+demo-runner/                  # 演示启动器：聚合 admin+recommend 单进程
+  src/main/resources/
+    application.yml           # 端口 8090
+    banner.txt
+    static/                   # 静态页面（前端页面）
+      index.html  hot.html  login.html  message.html
+      my.html  notification.html  post.html  quote.html
+      user.html  detail.html  wheel.html
 
 scripts/
   start.bat / start.sh / stop.bat / restart.bat   # 启停脚本

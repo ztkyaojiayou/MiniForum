@@ -6,7 +6,7 @@ rem   scripts\start.bat --build  先 mvn package 再运行
 setlocal
 cd /d "%~dp0\.."
 
-set JAR=target\mini-forum-1.0.0.jar
+set JAR=demo-runner\target\demo-runner-1.0.0.jar
 
 if not exist "%JAR%" (
     echo [MiniForum] 未找到 %JAR%，先执行构建...

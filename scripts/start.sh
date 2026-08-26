@@ -6,7 +6,7 @@
 set -e
 cd "$(dirname "$0")/.."
 
-JAR="target/mini-forum-1.0.0.jar"
+JAR="demo-runner/target/demo-runner-1.0.0.jar"
 
 if [ ! -f "$JAR" ]; then
     echo "[MiniForum] 未找到 $JAR，先执行构建..."

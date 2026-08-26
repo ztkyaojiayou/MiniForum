@@ -192,7 +192,7 @@ AbExperimentService：floorMod(hash(uid:salt), 100) 分桶
 | Spring Validation | 参数校验 |
 | 推荐算法（弱训练侧） | ItemCF（共现余弦）、规则加权排序、Thompson sampling，纯 Java 手写 |
 | 中间件形态 | Kafka / Flink / Redis / Nacos 以「接口 + 内存实现默认 + `@Profile("prod")` 适配」三件套落地 |
-| Maven | 构建工具 |
+| Maven | 构建工具，**多模块聚合**（forum-core / forum-admin-server / forum-recommend-server / forum-offline-job / forum-flink-nearline / demo-runner） |
 | JSON 文件持久化 | 内存存储（`ConcurrentHashMap`）+ `data/*.json` 落盘 |
 
 **零第三方中间件**：无数据库、无 Redis、无消息队列、无 WebSocket —— 全部功能基于纯 Java 实现。
@@ -200,43 +200,36 @@ AbExperimentService：floorMod(hash(uid:salt), 100) 分桶
 ## 项目结构
 
 ```
-my-first-nanobot-server/
-├── src/main/java/com/tkzou/miniforum/
-│   ├── recommend/         # ★ 推荐子系统（feature 式，业务侧全链路）
-│   │   ├── service/       #   RecommendService 漏斗编排核心
-│   │   ├── recall/        #   6 路召回(热门/话题/类目/ItemCF/新内容/关注) + 融合
-│   │   ├── rank/          #   微博式排序(RuleRankService)
-│   │   ├── rerank/        #   MMR 打散重排
-│   │   ├── coldstart/     #   Thompson bandit 冷启动 / 新内容池
-│   │   ├── feature/       #   用户画像 / 物品特征 / 实时特征
-│   │   ├── behavior/      #   统一行为日志(实体/仓库/采集器)
-│   │   ├── stream/        #   事件队列(模拟Kafka) + 实时窗口(模拟Flink) + 存储(模拟Redis)
-│   │   ├── model/         #   ItemCF 构建/模型/打分/存储
-│   │   ├── config/        #   RecConfig 配置中心
-│   │   ├── ab/            #   AB 实验分桶
-│   │   ├── eval/          #   离线评估(时间切分 + 7 指标)
-│   │   ├── domain/        #   管道中间类型
-│   │   └── prod/          #   Kafka/Redis/Nacos/Flink/MySQL 生产适配(@Profile("prod"))
-│   ├── controller/        # REST 控制器（19 个，含 RecommendController）
-│   ├── service/           # 业务逻辑层（含 SimulatedActivityService 模拟活动）
-│   ├── repository/        # 数据访问层（11 个，内存存储）
-│   ├── entity/            # 实体类（11 个）
-│   ├── dto/               # 请求/响应 DTO（20 个）
-│   ├── persistence/       # JSON 持久化（DataStore）
-│   ├── config/            # 登录拦截器 + Web 配置
-│   ├── exception/         # 全局异常处理
-│   ├── util/              # 密码加密工具
-│   └── MiniForumApplication.java     # 启动类
-├── src/main/resources/
-│   ├── static/            # 11 个原生静态页面
-│   ├── application.yml    # 配置文件
-├── data/                  # 运行时 JSON 数据（自动生成，gitignore）
-├── docs/                  # 需求规划 / API 文档 / 推荐系统方案
-├── scripts/               # 辅助脚本（seed_users / seed_posts / seed_recsys_data 造数等）
+my-first-nanobot-server/                  # Maven 多模块（父 POM forum-parent，聚合 6 模块）
+├── forum-core/              # ★ 共享域（纯库，无 main）
+│   └── src/main/java/com/tkzou/miniforum/
+│       ├── entity/ repository/ dto/ common/ exception/ util/    # 数据层与基础件
+│       ├── feed/            #   关注流 inbox（FollowFeedStore 接口 + 内存/Redis 实现）
+│       └── recommend/       #   behavior(行为日志) + stream(事件接口) 共享件
+│       └── dto/PostAssembler.java   # 帖子视图装配（admin 与 recommend 共用，破依赖环）
+├── forum-admin-server/      # ★ 主业务：帖子/用户/评论/关注/feed/搜索/热搜/通知/私信
+│   └── src/main/java/com/tkzou/miniforum/{controller, service, config, exception}
+├── forum-recommend-server/  # ★ 推荐核心：召回/排序/重排/冷启动/画像/AB/配置 + 生产适配
+│   └── src/main/java/com/tkzou/miniforum/recommend/
+│       ├── recall/ rank/ rerank/ coldstart/ feature/ model/     # 推荐管道
+│       ├── config/ ab/ domain/ service/ stream/                 # 配置/AB/编排/事件
+│       └── prod/            #   Kafka/Redis/Nacos 生产适配(@Profile("prod"))
+├── forum-offline-job/       # 离线层：离线评估（OfflineEvalScheduler）+ OfflineJobApplication
+├── forum-flink-nearline/    # 近线层：Flink 实时特征作业（-Pprod 才构建，独立进程）
+├── demo-runner/             # ★ 演示启动器：聚合 admin+recommend 单进程
+│   ├── src/main/java/.../MiniForumApplication.java   # 启动类（扫描 com.tkzou.miniforum）
+│   ├── src/main/java/.../persistence/DataStore.java  # JSON 持久化
+│   ├── src/main/java/.../controller/RecommendController.java  # 推荐 web 装配
+│   └── src/main/resources/static/  # 11 个原生静态页面 + application.yml
+├── data/                    # 运行时 JSON 数据（自动生成，gitignore）
+├── docs/                    # 需求规划 / API 文档 / 推荐系统方案
+├── scripts/                 # 辅助脚本（启停 + seed_users / seed_posts / seed_recsys_data 造数）
 ├── Dockerfile
-├── pom.xml
+├── pom.xml                  # 父 POM（forum-parent）
 └── README.md
 ```
+
+> 模块依赖（无环）：`forum-core` ← `forum-admin-server` / `forum-recommend-server` / `forum-offline-job` / `forum-flink-nearline`；`demo-runner` 聚合 admin + recommend 运行演示；`forum-offline-job` 依赖 recommend；`forum-flink-nearline` 依赖 core + recommend。
 
 ## 快速开始
 
@@ -248,19 +241,19 @@ my-first-nanobot-server/
 ### 运行方式
 
 ```bash
-# 方式一：Maven 直接运行（注意 JAVA_HOME 需指向 JDK17）
-JAVA_HOME='D:\devSoftWare\jdk17\jdk-17.0.19+10' mvn spring-boot:run
+# 方式一：Maven 直接运行（root 是父 POM 聚合器，需指定 demo-runner 模块）
+JAVA_HOME='D:\devSoftWare\jdk17\jdk-17.0.19+10' mvn -pl demo-runner spring-boot:run
 
 # 方式二：打包运行
-mvn clean package && java -jar target/mini-forum-1.0.0.jar
+mvn clean package && java -jar demo-runner/target/demo-runner-1.0.0.jar
 ```
 
 启动后访问 <http://localhost:8090/>，将自动跳转到登录页。**默认账号**：`admin / admin123`（管理员）。
 
-> **生产构建**：`-Pprod` 会引入 Flink/JDBC/MySQL 依赖并编译 `src/prod/java`（Flink 实时作业 + MySQL 持久化）：
+> **生产构建**：`-Pprod` 会追加 `forum-flink-nearline` 模块（Flink 实时特征作业），并编译 `demo-runner` 的 `src/prod/java`（MySqlDataStore MySQL 持久化）：
 > ```bash
 > mvn -Pprod clean package   # 生产包（含 Flink 作业 / MySQL 适配）
-> SPRING_PROFILES_ACTIVE=prod java -jar target/mini-forum-1.0.0.jar  # 运行时激活真适配（需 Kafka/Redis/Nacos/MySQL）
+> SPRING_PROFILES_ACTIVE=prod java -jar demo-runner/target/demo-runner-1.0.0.jar  # 运行时激活真适配（需 Kafka/Redis/Nacos/MySQL）
 > ```
 > 本地默认（不带 `-Pprod`、不切 prod profile）仍是零中间件、内存 + JSON 文件。
 
@@ -354,7 +347,7 @@ python scripts/seed_recsys_data.py
 JAVA_HOME='D:\devSoftWare\jdk17\jdk-17.0.19+10' mvn test
 ```
 
-共 **43 个测试**（覆盖用户 / 密码 / 帖子 / 搜索 / 私信 + 推荐系统 19 个，含端到端集成测试）。
+共 **87 个测试**（分布在各模块：forum-core 24 / forum-admin-server 14 / forum-recommend-server 16 / forum-offline-job 6 / demo-runner 27，含端到端集成测试）。
 
 ## 推荐系统（深度参考）
 
