@@ -9,6 +9,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import com.tkzou.miniforum.util.EntityIdProvider;
+import com.tkzou.miniforum.util.IdProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * 内存关注关系仓库（默认实现，@Profile("!prod")）
@@ -18,13 +21,17 @@ import java.util.stream.Collectors;
 @Repository
 @Profile("!prod")
 public class InMemoryFollowRepository implements FollowRepository {
+    /** ID 生成器：Spring 注入（演示=实体生成器 / 生产=Snowflake），测试无 Spring 时用默认实体生成器 */
+    @Autowired(required = false)
+    private IdProvider idProvider = new EntityIdProvider();
+
 
     private final Map<Long, Follow> storage = new ConcurrentHashMap<>();
 
     @Override
     public Follow save(Follow follow) {
         if (follow.getId() == null) {
-            follow.setId(Follow.nextId());
+            follow.setId(idProvider.next("Follow"));
         }
         storage.put(follow.getId(), follow);
         return follow;

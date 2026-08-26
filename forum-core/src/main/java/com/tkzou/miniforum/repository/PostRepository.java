@@ -1,6 +1,9 @@
 package com.tkzou.miniforum.repository;
 
 import com.tkzou.miniforum.entity.Post;
+import com.tkzou.miniforum.util.EntityIdProvider;
+import com.tkzou.miniforum.util.IdProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -23,6 +26,10 @@ import java.util.stream.Collectors;
 @Repository
 public class PostRepository {
 
+    /** ID 生成器：Spring 注入（演示=实体生成器 / 生产=Snowflake），测试无 Spring 时用默认实体生成器 */
+    @Autowired(required = false)
+    private IdProvider idProvider = new EntityIdProvider();
+
     private final Map<Long, Post> storage = new ConcurrentHashMap<>();
 
     /**
@@ -42,7 +49,7 @@ public class PostRepository {
 
     public Post save(Post post) {
         if (post.getId() == null) {
-            post.setId(Post.nextId());
+            post.setId(idProvider.next("Post"));
         }
         storage.put(post.getId(), post);
         Long authorId = post.getAuthorId();

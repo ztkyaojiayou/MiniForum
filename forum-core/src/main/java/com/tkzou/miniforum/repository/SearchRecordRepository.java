@@ -9,6 +9,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import com.tkzou.miniforum.util.EntityIdProvider;
+import com.tkzou.miniforum.util.IdProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * 内存存储的搜索词记录仓库
@@ -16,6 +19,10 @@ import java.util.stream.Collectors;
  */
 @Repository
 public class SearchRecordRepository {
+    /** ID 生成器：Spring 注入（演示=实体生成器 / 生产=Snowflake），测试无 Spring 时用默认实体生成器 */
+    @Autowired(required = false)
+    private IdProvider idProvider = new EntityIdProvider();
+
 
     private final Map<Long, SearchRecord> storage = new ConcurrentHashMap<>();
 
@@ -28,7 +35,7 @@ public class SearchRecordRepository {
 
     public SearchRecord save(SearchRecord record) {
         if (record.getId() == null) {
-            record.setId(SearchRecord.nextId());
+            record.setId(idProvider.next("SearchRecord"));
         }
         storage.put(record.getId(), record);
         return record;

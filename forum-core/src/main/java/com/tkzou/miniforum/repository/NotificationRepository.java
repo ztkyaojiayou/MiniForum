@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import com.tkzou.miniforum.util.EntityIdProvider;
+import com.tkzou.miniforum.util.IdProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * 内存存储的消息通知仓库
@@ -14,12 +17,16 @@ import java.util.stream.Collectors;
  */
 @Repository
 public class NotificationRepository {
+    /** ID 生成器：Spring 注入（演示=实体生成器 / 生产=Snowflake），测试无 Spring 时用默认实体生成器 */
+    @Autowired(required = false)
+    private IdProvider idProvider = new EntityIdProvider();
+
 
     private final Map<Long, Notification> storage = new ConcurrentHashMap<>();
 
     public Notification save(Notification notification) {
         if (notification.getId() == null) {
-            notification.setId(Notification.nextId());
+            notification.setId(idProvider.next("Notification"));
         }
         storage.put(notification.getId(), notification);
         return notification;

@@ -8,6 +8,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import com.tkzou.miniforum.util.EntityIdProvider;
+import com.tkzou.miniforum.util.IdProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * 内存存储的私信消息仓库
@@ -15,12 +18,16 @@ import java.util.stream.Collectors;
  */
 @Repository
 public class MessageRepository {
+    /** ID 生成器：Spring 注入（演示=实体生成器 / 生产=Snowflake），测试无 Spring 时用默认实体生成器 */
+    @Autowired(required = false)
+    private IdProvider idProvider = new EntityIdProvider();
+
 
     private final Map<Long, Message> storage = new ConcurrentHashMap<>();
 
     public Message save(Message message) {
         if (message.getId() == null) {
-            message.setId(Message.nextId());
+            message.setId(idProvider.next("Message"));
         }
         storage.put(message.getId(), message);
         return message;

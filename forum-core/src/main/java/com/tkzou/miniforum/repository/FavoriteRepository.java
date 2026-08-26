@@ -8,6 +8,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import com.tkzou.miniforum.util.EntityIdProvider;
+import com.tkzou.miniforum.util.IdProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * 内存存储的收藏仓库
@@ -15,12 +18,16 @@ import java.util.stream.Collectors;
  */
 @Repository
 public class FavoriteRepository {
+    /** ID 生成器：Spring 注入（演示=实体生成器 / 生产=Snowflake），测试无 Spring 时用默认实体生成器 */
+    @Autowired(required = false)
+    private IdProvider idProvider = new EntityIdProvider();
+
 
     private final Map<Long, Favorite> storage = new ConcurrentHashMap<>();
 
     public Favorite save(Favorite favorite) {
         if (favorite.getId() == null) {
-            favorite.setId(Favorite.nextId());
+            favorite.setId(idProvider.next("Favorite"));
         }
         storage.put(favorite.getId(), favorite);
         return favorite;

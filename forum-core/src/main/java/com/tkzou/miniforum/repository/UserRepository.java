@@ -8,6 +8,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import com.tkzou.miniforum.util.EntityIdProvider;
+import com.tkzou.miniforum.util.IdProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * 内存存储的用户仓库
@@ -15,12 +18,16 @@ import java.util.stream.Collectors;
  */
 @Repository
 public class UserRepository {
+    /** ID 生成器：Spring 注入（演示=实体生成器 / 生产=Snowflake），测试无 Spring 时用默认实体生成器 */
+    @Autowired(required = false)
+    private IdProvider idProvider = new EntityIdProvider();
+
 
     private final Map<Long, User> storage = new ConcurrentHashMap<>();
 
     public User save(User user) {
         if (user.getId() == null) {
-            user.setId(User.nextId());
+            user.setId(idProvider.next("User"));
         }
         storage.put(user.getId(), user);
         return user;
