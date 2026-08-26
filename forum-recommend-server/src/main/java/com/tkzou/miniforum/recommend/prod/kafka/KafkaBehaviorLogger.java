@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PreDestroy;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -68,7 +69,8 @@ public class KafkaBehaviorLogger implements BehaviorLogger {
         }
     }
 
-    /** 关闭时刷盘并关闭 producer（生产由 Spring 生命周期管理） */
+    /** 关闭时刷盘并关闭 producer（Spring 生命周期管理） */
+    @PreDestroy
     public void close() {
         producer.flush();
         producer.close();

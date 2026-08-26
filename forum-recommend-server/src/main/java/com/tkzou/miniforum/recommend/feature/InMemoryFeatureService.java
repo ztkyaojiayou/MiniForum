@@ -6,11 +6,13 @@ import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 import com.tkzou.miniforum.recommend.config.ConfigService;
 import com.tkzou.miniforum.recommend.config.RecConfig;
+import com.tkzou.miniforum.recommend.prod.redis.RedisUserProfileStore;
 import com.tkzou.miniforum.repository.CommentRepository;
 import com.tkzou.miniforum.repository.FavoriteRepository;
 import com.tkzou.miniforum.repository.FollowRepository;
 import com.tkzou.miniforum.repository.LikeRepository;
 import com.tkzou.miniforum.repository.PostRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -37,6 +39,9 @@ public class InMemoryFeatureService implements FeatureService {
     private final RealtimeFeatureStore realtimeFeatureStore;
     private final ConfigService configService;
     private final BehaviorLogRepository behaviorLogRepository;
+    /** 生产画像 Redis 存储（@Profile("prod") 才存在；演示为 null → 每次现算） */
+    @Autowired(required = false)
+    private RedisUserProfileStore redisUserProfileStore;
 
     public InMemoryFeatureService(UserProfileAggregator aggregator,
                                   PostRepository postRepository,
@@ -60,6 +65,14 @@ public class InMemoryFeatureService implements FeatureService {
 
     @Override
     public UserProfile userProfile(Long userId) {
+        if (redisUserProfileStore != null) {
+            // 生产：读 Redis 画像（跨实例共享），未命中现算并写回
+            return redisUserProfileStore.get(userId).orElseGet(() -> {
+                UserProfile p = aggregator.build(userId);
+                redisUserProfileStore.put(userId, p);
+                return p;
+            });
+        }
         return aggregator.build(userId);
     }
 
