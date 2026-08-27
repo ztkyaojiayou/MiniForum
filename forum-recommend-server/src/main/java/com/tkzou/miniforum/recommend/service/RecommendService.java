@@ -21,6 +21,8 @@ import com.tkzou.miniforum.recommend.rank.RankService;
 import com.tkzou.miniforum.recommend.recall.RecallService;
 import com.tkzou.miniforum.recommend.rerank.RerankService;
 import com.tkzou.miniforum.repository.PostRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -45,6 +47,8 @@ import java.util.stream.Collectors;
  */
 @Service
 public class RecommendService {
+
+    private static final Logger log = LoggerFactory.getLogger(RecommendService.class);
 
     private final FeatureService featureService;
     private final RecallService recallService;
@@ -82,12 +86,29 @@ public class RecommendService {
         this.itemCfModelStore = itemCfModelStore;
     }
 
-    /** 推荐流：完整漏斗，返回带理由的 TopN */
+    /**
+     * 推荐流：完整漏斗，返回带理由的 TopN。
+     * <p>
+     * 高并发降级保护：主链路（召回/排序/重排）任一步异常 → 降级为全站热门兜底，保证接口不 500、
+     * 只损失个性化（大厂"降级牺牲功能、限流牺牲流量"）。
+     */
     public List<RecommendPostVO> recommend(RecommendContext ctx, String username, String expId) {
-        // AB 实验：实验组 B 走多样性变体配置
-        RecConfig cfg = abExperimentService.configFor(expId, ctx.getUserId());
-        int topN = Math.min(ctx.getSize() > 0 ? ctx.getSize() : cfg.getFinalTopN(), cfg.getFinalTopN());
+        int topN = RecConfig.defaults().getFinalTopN(); // 兜底默认条数（降级路径也要有界）
+        try {
+            // AB 实验：实验组 B 走多样性变体配置
+            RecConfig cfg = abExperimentService.configFor(expId, ctx.getUserId());
+            topN = Math.min(ctx.getSize() > 0 ? ctx.getSize() : cfg.getFinalTopN(), cfg.getFinalTopN());
+            return doRecommend(ctx, username, expId, cfg, topN);
+        } catch (Exception e) {
+            log.warn("推荐链路异常，降级为热门兜底：userId={}, expId={}, err={}",
+                    ctx.getUserId(), expId, e.getMessage());
+            return hotFallback(ctx, username, topN);
+        }
+    }
 
+    /** 完整推荐漏斗（单独抽出，便于 {@link #recommend} 整体降级） */
+    private List<RecommendPostVO> doRecommend(RecommendContext ctx, String username, String expId,
+                                              RecConfig cfg, int topN) {
         // 1. 多路召回 → 融合候选
         List<Candidate> candidates = recallService.recall(ctx);
         // 2. 规则排序
@@ -107,6 +128,21 @@ public class RecommendService {
                 .map(r -> toVO(r, username))
                 .filter(java.util.Objects::nonNull)
                 .collect(Collectors.toList());
+    }
+
+    /** 热门兜底：主链路降级时返回全站热度 TopN；最坏情况（兜底也失败）返回空列表，绝不向上抛异常 */
+    private List<RecommendPostVO> hotFallback(RecommendContext ctx, String username, int topN) {
+        try {
+            return topHotPosts().stream()
+                    .limit(topN)
+                    .map(p -> toVO(new RankedItem(p.getId(), 0.5, Map.of("hot", 1.0),
+                            List.of("hot"), "推荐服务降级·热门兜底"), username))
+                    .filter(java.util.Objects::nonNull)
+                    .collect(Collectors.toList());
+        } catch (Exception ex) {
+            log.error("热门兜底也失败：userId={}, err={}", ctx.getUserId(), ex.getMessage());
+            return List.of();
+        }
     }
 
     /** 详情页相关推荐：ItemCF 相似帖（"看过这篇的人还看"） */

@@ -13,11 +13,14 @@ import com.tkzou.miniforum.repository.FollowRepository;
 import com.tkzou.miniforum.repository.LikeRepository;
 import com.tkzou.miniforum.repository.PostRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 内存特征服务（默认实现）
@@ -43,6 +46,41 @@ public class InMemoryFeatureService implements FeatureService {
     @Autowired(required = false)
     private RedisUserProfileStore redisUserProfileStore;
 
+    /**
+     * 画像缓存 TTL（ms）。>0 启用：避免每次推荐请求全量重算画像（"能预计算的不实时算"）。
+     * 行为回流后再现算（TTL 兜底），近实时即可；≤0 禁用（测试/调试可关）。
+     */
+    @Value("${app.rec.profile-cache-ttl-ms:30000}")
+    private long profileCacheTtlMs;
+
+    /**
+     * 物品特征缓存 TTL（ms）。>0 启用：热度/计数是"读多写少"（读远多于点赞/评论），
+     * 缓存后排序/热门路径从"N 次 count 聚合"降为"一次缓存读"；≤0 禁用。
+     */
+    @Value("${app.rec.item-feature-cache-ttl-ms:5000}")
+    private long itemFeatureCacheTtlMs;
+
+    /** 画像缓存：userId → 条目（惰性过期，TTL 到期自动淘汰，无独立清理线程） */
+    private final Map<Long, CacheEntry<UserProfile>> profileCache = new ConcurrentHashMap<>();
+
+    /** 物品特征缓存：postId → 条目（惰性过期） */
+    private final Map<Long, CacheEntry<ItemFeature>> itemFeatureCache = new ConcurrentHashMap<>();
+
+    /** 短 TTL 缓存条目：值 + 到期时间戳。返回的值为"只读约定"，调用方不得修改（否则污染缓存） */
+    private static final class CacheEntry<T> {
+        final T value;
+        final long expireAtMillis;
+
+        CacheEntry(T value, long ttlMillis) {
+            this.value = value;
+            this.expireAtMillis = System.currentTimeMillis() + ttlMillis;
+        }
+
+        boolean expired() {
+            return System.currentTimeMillis() > expireAtMillis;
+        }
+    }
+
     public InMemoryFeatureService(UserProfileAggregator aggregator,
                                   PostRepository postRepository,
                                   FollowRepository followRepository,
@@ -66,18 +104,43 @@ public class InMemoryFeatureService implements FeatureService {
     @Override
     public UserProfile userProfile(Long userId) {
         if (redisUserProfileStore != null) {
-            // 生产：读 Redis 画像（跨实例共享），未命中现算并写回
+            // 生产：读 Redis 画像（跨实例共享，天然缓存），未命中现算并写回
             return redisUserProfileStore.get(userId).orElseGet(() -> {
                 UserProfile p = aggregator.build(userId);
                 redisUserProfileStore.put(userId, p);
                 return p;
             });
         }
+        // 演示：短 TTL 内存缓存，避免每次推荐请求全量重算画像（TTL<=0 时禁用）
+        if (profileCacheTtlMs > 0) {
+            CacheEntry<UserProfile> entry = profileCache.get(userId);
+            if (entry != null && !entry.expired()) {
+                return entry.value;
+            }
+            UserProfile p = aggregator.build(userId);
+            profileCache.put(userId, new CacheEntry<>(p, profileCacheTtlMs));
+            return p;
+        }
         return aggregator.build(userId);
     }
 
     @Override
     public ItemFeature itemFeature(Long postId) {
+        // 短 TTL 缓存：热度/计数特征"读多写少"，缓存命中即免去多次 count 聚合（TTL<=0 时禁用）
+        if (itemFeatureCacheTtlMs > 0) {
+            CacheEntry<ItemFeature> entry = itemFeatureCache.get(postId);
+            if (entry != null && !entry.expired()) {
+                return entry.value;
+            }
+            ItemFeature f = computeItemFeature(postId);
+            itemFeatureCache.put(postId, new CacheEntry<>(f, itemFeatureCacheTtlMs));
+            return f;
+        }
+        return computeItemFeature(postId);
+    }
+
+    /** 现算物品特征（缓存 miss 时执行）：聚合计数 + 时效新鲜度 + 作者权重 + 冷启标记 */
+    private ItemFeature computeItemFeature(Long postId) {
         ItemFeature f = new ItemFeature();
         Post post = postRepository.findById(postId).orElse(null);
         if (post == null) {

@@ -3,13 +3,20 @@ package com.tkzou.miniforum.recommend.recall;
 import com.tkzou.miniforum.recommend.config.ConfigService;
 import com.tkzou.miniforum.recommend.config.RecConfig;
 import com.tkzou.miniforum.recommend.domain.Candidate;
+import com.tkzou.miniforum.recommend.domain.RecallHit;
 import com.tkzou.miniforum.recommend.domain.RecommendContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 /**
  * 召回编排服务
@@ -23,6 +30,19 @@ import java.util.Map;
 @Component
 public class RecallService {
 
+    private static final Logger log = LoggerFactory.getLogger(RecallService.class);
+
+    /**
+     * 召回并行线程池：六路召回互不依赖 → 并行执行（腾讯"并发化"方法论）。
+     * 独立小池（而非占用 Tomcat 请求线程），避免慢召回通道拖住整条请求；daemon 线程不影响 JVM 退出。
+     */
+    private static final ExecutorService CHANNEL_EXECUTOR = Executors.newFixedThreadPool(6,
+            r -> {
+                Thread t = new Thread(r, "recall-channel");
+                t.setDaemon(true);
+                return t;
+            });
+
     private final List<RecallChannel> channels;
     private final MergeRecallService merger;
     private final ConfigService configService;
@@ -35,13 +55,29 @@ public class RecallService {
         this.configService = configService;
     }
 
-    /** 多路召回 → 融合 → 返回候选集 */
+    /**
+     * 多路召回 → 融合 → 返回候选集。
+     * <p>
+     * 高并发优化：六路并行发起；单路失败只丢弃该路（多路召回互为兜底，大厂容灾原则），
+     * 不拖垮整次召回——召回耗时从"6 路耗时求和"降为"6 路耗时最大值"。
+     */
     public List<Candidate> recall(RecommendContext ctx) {
         RecConfig cfg = configService.current();
-        List<com.tkzou.miniforum.recommend.domain.RecallHit> hits = new ArrayList<>();
-        for (RecallChannel channel : channels) {
-            hits.addAll(channel.recall(ctx, cfg.getRecallPerChannel()));
-        }
+        // 先一次性提交全部六路（stream 的 map 是惰性的，若边提交边 join 会退化成串行）；
+        // 单路失败只丢弃该路（多路召回互为兜底，大厂容灾原则），不拖垮整次召回。
+        List<CompletableFuture<List<RecallHit>>> futures = channels.stream()
+                .map(channel -> CompletableFuture
+                        .supplyAsync(() -> channel.recall(ctx, cfg.getRecallPerChannel()), CHANNEL_EXECUTOR)
+                        .exceptionally(e -> {
+                            log.warn("召回通道失败（丢弃该路，其余继续）：source={}, err={}",
+                                    channel.name(), e.getMessage());
+                            return List.<RecallHit>of();
+                        }))
+                .collect(Collectors.toList());
+        // 再统一等待：召回耗时 = 6 路耗时最大值（而非求和）
+        List<RecallHit> hits = futures.stream()
+                .flatMap(future -> future.join().stream())
+                .collect(Collectors.toList());
         return merger.merge(hits, cfg, cfg.getMergeTopN());
     }
 

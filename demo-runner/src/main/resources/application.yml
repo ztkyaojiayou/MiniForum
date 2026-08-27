@@ -41,6 +41,9 @@ app:
     explore-lambda-warm-user: 0.1
     realtime-window-minutes: 5
     realtime-window-max-events: 100
+    # 画像/物品特征短 TTL 缓存（P0 高并发优化：避免每次推荐请求现算聚合，TTL<=0 禁用）
+    profile-cache-ttl-ms: 30000        # 用户画像缓存（ms）：行为回流后最多滞后一个 TTL
+    item-feature-cache-ttl-ms: 5000    # 物品特征（热度/计数）缓存（ms）：读多写少，短缓存即可
     # 关注流 inbox 封顶条数（推模式每用户 inbox 只保留最近 N 条 postId，超限淘汰最旧）
     feed:
       cap: 500
