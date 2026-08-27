@@ -19,6 +19,24 @@ public class ItemCfModel {
 
     private final Map<Long, List<SimilarItem>> simMap = new HashMap<>();
 
+    /** 无参构造（供 Jackson 反序列化 / 空模型） */
+    public ItemCfModel() {
+    }
+
+    /** 相似表快照（供序列化发布：离线构建 → Redis → 在线加载） */
+    public Map<Long, List<SimilarItem>> getSimMap() {
+        return simMap;
+    }
+
+    /** 从相似表重建模型（反序列化工厂：离线发布的反向操作） */
+    public static ItemCfModel from(Map<Long, List<SimilarItem>> map) {
+        ItemCfModel model = new ItemCfModel();
+        if (map != null) {
+            map.forEach(model::putSimilarities);
+        }
+        return model;
+    }
+
     public void putSimilarities(Long itemId, List<SimilarItem> similarities) {
         simMap.put(itemId, similarities);
     }

@@ -42,6 +42,11 @@
             <artifactId>xxl-job-core</artifactId>
             <version>2.4.0</version>
         </dependency>
+        <!-- Redis（生产）：ItemCF 模型离线发布（ItemCfModelRedisStore 在 forum-recommend-server 为 optional） -->
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>com.tkzou</groupId>

@@ -18,9 +18,12 @@ import org.springframework.context.annotation.Profile;
 public class XxlJobOfflineConfig {
 
     private final OfflineEvalScheduler offlineEvalScheduler;
+    private final ItemCfModelPublisher itemCfModelPublisher;
 
-    public XxlJobOfflineConfig(OfflineEvalScheduler offlineEvalScheduler) {
+    public XxlJobOfflineConfig(OfflineEvalScheduler offlineEvalScheduler,
+                               ItemCfModelPublisher itemCfModelPublisher) {
         this.offlineEvalScheduler = offlineEvalScheduler;
+        this.itemCfModelPublisher = itemCfModelPublisher;
     }
 
     @Value("${xxl.job.admin.addresses:http://localhost:8080/xxl-job-admin}")
@@ -49,5 +52,11 @@ public class XxlJobOfflineConfig {
     @XxlJob("offline-eval")
     public void offlineEval(String param) {
         offlineEvalScheduler.doRunEval();
+    }
+
+    /** 离线构建 ItemCF → 发布 Redis（P2-3，供在线多实例读取） */
+    @XxlJob("itemcf-publish")
+    public void itemcfPublish(String param) {
+        itemCfModelPublisher.publish();
     }
 }
