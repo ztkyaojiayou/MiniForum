@@ -1,9 +1,23 @@
 server:
   port: 8090
+  tomcat:
+    # 高并发参数显式化（P1-3）：配合入口限流"超量排队而非直接拒绝"
+    max-threads: 200            # 请求处理线程上限（经验公式：峰值QPS × 平均RT × 1.5）
+    min-spare-threads: 20
+    accept-count: 200           # 连接等待队列（有界，避免无限排队堆积）
+    max-connections: 10000
+    connection-timeout: 20000
 
 spring:
   application:
     name: mini-forum
+
+logging:
+  pattern:
+    # traceId（P1-5）：有则打印、无则留空（后台线程/未过滤路径）
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} [%X{traceId:-}] - %msg%n"
+  level:
+    com.tkzou.miniforum: info
 
 app:
   # 数据持久化目录（JSON 文件）
@@ -44,6 +58,14 @@ app:
     # 画像/物品特征短 TTL 缓存（P0 高并发优化：避免每次推荐请求现算聚合，TTL<=0 禁用）
     profile-cache-ttl-ms: 30000        # 用户画像缓存（ms）：行为回流后最多滞后一个 TTL
     item-feature-cache-ttl-ms: 5000    # 物品特征（热度/计数）缓存（ms）：读多写少，短缓存即可
+    hot-board-ttl-ms: 30000            # 热搜整榜缓存（ms）：整榜 Top-50 一次算好，按请求 limit 现场切片
+    hot-post-ids-ttl-ms: 10000         # 热门/兜底 postId 排序缓存（ms）：只缓存 ID 顺序，VO 每请求现算
+    # 入口单机限流（P1-4）：/api/** 按 IP 滑动窗口，超限 429（仅单实例有效，多 Pod 需分布式限流）
+    rate-limit:
+      enabled: true
+      limit-per-window: 100            # 每窗口每 IP 放行上限
+      window-ms: 60000                 # 滑动窗口（毫秒）
+      key-mode: IP                     # IP | IP_PATH（IP+路径，隔离单 IP 单路径突发）
     # 关注流 inbox 封顶条数（推模式每用户 inbox 只保留最近 N 条 postId，超限淘汰最旧）
     feed:
       cap: 500
@@ -78,7 +100,3 @@ app:
     posts-per-tick: 2
     # 每轮互动数（点赞/评论，随机 0~N）
     interactions-per-tick: 2
-
-logging:
-  level:
-    com.tkzou.miniforum: info

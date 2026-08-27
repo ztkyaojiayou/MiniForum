@@ -1,0 +1,16 @@
+# 生产配置（spring.profiles.active=prod 时生效）
+# 说明：演示 profile（默认）跑内存仓库，无 DataSource；本文件仅 -Pprod 构建 + prod profile 激活时加载。
+# 中间件地址（Kafka/Redis/ClickHouse/Nacos）由各 @Value 默认值兜底，可在命令行/环境变量覆盖。
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/miniforum?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: '${MYSQL_PASSWORD}'
+    hikari:
+      # 连接池参数（P1-3 显式化）：参考公式 connections = (core×2) + disk；小池 + 池外等待是设计意图
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000      # 获取连接超时（避免无限等连接）
+      max-lifetime: 1800000          # 连接最大存活 30 分钟
+      pool-name: MiniForumHikari
