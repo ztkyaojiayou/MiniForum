@@ -107,6 +107,10 @@ public class PostService {
         hotPostIdsCache.setTtlMillis(ttl);
     }
 
+    /** 调度模式：local=@Scheduled 自调度（演示默认）/ xxl=由 XXL-Job 派发（生产，@Scheduled 空转防双跑） */
+    @Value("${app.scheduling.mode:local}")
+    private String schedulingMode;
+
     public PostService(PostRepository postRepository,
                        LikeRepository likeRepository,
                        CommentRepository commentRepository,
@@ -435,9 +439,18 @@ public class PostService {
     /**
      * 定时清理回收站：彻底删除删除时间超过 {@link #RECYCLE_RETENTION_DAYS} 天的帖子，
      * 并级联清理其评论、点赞、通知与收藏。默认每天凌晨 3 点执行一次。
+     * 生产（mode=xxl）由 XXL-Job 派发 doPurgeExpiredPosts，此处空转防双跑。
      */
     @Scheduled(cron = "${app.recycle.clean-cron:0 0 3 * * ?}")
     public void purgeExpiredPosts() {
+        if ("xxl".equals(schedulingMode)) {
+            return;
+        }
+        doPurgeExpiredPosts();
+    }
+
+    /** 清理回收站业务逻辑（演示自调度与 XXL-Job handler 共用入口） */
+    public void doPurgeExpiredPosts() {
         LocalDateTime cutoff = LocalDateTime.now().minusDays(RECYCLE_RETENTION_DAYS);
         List<Post> expired = postRepository.findAll().stream()
                 .filter(Post::isDeleted)

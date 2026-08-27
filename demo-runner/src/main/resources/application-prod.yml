@@ -14,3 +14,18 @@ spring:
       connection-timeout: 30000      # 获取连接超时（避免无限等连接）
       max-lifetime: 1800000          # 连接最大存活 30 分钟
       pool-name: MiniForumHikari
+
+app:
+  scheduling:
+    mode: xxl        # 生产：定时任务由 XXL-Job 调度中心派发（各业务 @Scheduled 空转防双跑；演示默认 local 自调度）
+
+xxl:
+  job:
+    # 调度中心地址（需自行启动 xxl-job-admin；接入步骤见 docs/高并发优化落地清单-带优先级.md P2-5）
+    admin:
+      addresses: http://localhost:8080/xxl-job-admin
+    accessToken: ''
+    executor:
+      appname: mini-forum-web       # 离线端执行器（forum-offline-job）用 mini-forum-offline
+      port: 9999
+      logpath: ./logs/xxl-job

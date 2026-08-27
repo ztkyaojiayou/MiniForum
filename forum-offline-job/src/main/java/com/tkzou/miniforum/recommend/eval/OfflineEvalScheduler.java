@@ -61,6 +61,10 @@ public class OfflineEvalScheduler {
     @Value("${app.rec.eval-min-behaviors:50}")
     private long minBehaviors;
 
+    /** 调度模式：local=@Scheduled 自调度（演示默认）/ xxl=由 XXL-Job 派发（生产，@Scheduled 空转防双跑） */
+    @Value("${app.scheduling.mode:local}")
+    private String schedulingMode;
+
     public OfflineEvalScheduler(OfflineEvaluator evaluator,
                                 BehaviorLogRepository behaviorLogRepository,
                                 ObjectMapper objectMapper) {
@@ -69,9 +73,17 @@ public class OfflineEvalScheduler {
         this.objectMapper = objectMapper;
     }
 
-    /** 定时离线评估（默认每 30 分钟，可经 app.rec.eval-interval-ms 调整） */
+    /** 定时离线评估（默认每 30 分钟）。生产（mode=xxl）由 XXL-Job 派发 doRunEval，此处空转防双跑 */
     @Scheduled(fixedDelayString = "${app.rec.eval-interval-ms:1800000}")
     public void runEval() {
+        if ("xxl".equals(schedulingMode)) {
+            return;
+        }
+        doRunEval();
+    }
+
+    /** 离线评估业务逻辑（演示自调度与 XXL-Job handler 共用入口） */
+    public void doRunEval() {
         if (!enabled) {
             return;
         }

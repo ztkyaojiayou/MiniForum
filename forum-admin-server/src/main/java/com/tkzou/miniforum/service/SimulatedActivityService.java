@@ -77,6 +77,10 @@ public class SimulatedActivityService {
     @Value("${app.sim.interactions-per-tick:2}")
     private int interactionsPerTick;
 
+    /** 调度模式：local=@Scheduled 自调度（演示默认）/ xxl=由 XXL-Job 派发（生产，@Scheduled 空转防双跑） */
+    @Value("${app.scheduling.mode:local}")
+    private String schedulingMode;
+
     public SimulatedActivityService(PostService postService,
                                     CommentService commentService,
                                     UserRepository userRepository,
@@ -87,9 +91,17 @@ public class SimulatedActivityService {
         this.postRepository = postRepository;
     }
 
-    /** 定时模拟一轮活动（默认每 15 分钟，可通过 app.sim.interval-ms 调整） */
+    /** 定时模拟一轮活动（默认每 15 分钟）。生产（mode=xxl）由 XXL-Job 派发 doSimulate，此处空转防双跑 */
     @Scheduled(fixedDelayString = "${app.sim.interval-ms:900000}")
     public void simulate() {
+        if ("xxl".equals(schedulingMode)) {
+            return;
+        }
+        doSimulate();
+    }
+
+    /** 模拟一轮活动：新建随机帖 + 随机互动（演示自调度与 XXL-Job handler 共用入口） */
+    public void doSimulate() {
         if (!enabled) {
             return;
         }

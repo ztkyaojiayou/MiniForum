@@ -48,7 +48,8 @@ class HotSearchServiceCacheTest {
         Post p = new Post();
         p.setId(id);
         p.setTags(List.of(tag));
-        p.setCreatedAt(LocalDateTime.now());
+        // 用"5 分钟前"而非 now()：避开 aggregateHeat 窗口边界 !createdAt.isBefore(to) 的微妙时序，保证确定性
+        p.setCreatedAt(LocalDateTime.now().minusMinutes(5));
         p.setViewCount(viewCount);
         p.setStatus(Post.STATUS_PUBLISHED);
         return p;

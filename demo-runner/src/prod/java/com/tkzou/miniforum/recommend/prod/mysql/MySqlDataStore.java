@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -147,9 +148,21 @@ public class MySqlDataStore implements ApplicationRunner {
         }
     }
 
-    /** 定时保存（默认每 30 秒） */
+    /** 调度模式：local=@Scheduled 自调度（演示默认）/ xxl=由 XXL-Job 派发（生产，@Scheduled 空转防双跑） */
+    @Value("${app.scheduling.mode:local}")
+    private String schedulingMode;
+
+    /** 定时保存（默认每 30 秒）。生产由 XXL-Job 派发 doScheduledSave，此处空转防双跑 */
     @Scheduled(fixedDelayString = "${app.persistence.interval-ms:30000}")
     public void scheduledSave() {
+        if ("xxl".equals(schedulingMode)) {
+            return;
+        }
+        doScheduledSave();
+    }
+
+    /** 保存快照（演示自调度与 XXL-Job handler 共用入口） */
+    public void doScheduledSave() {
         saveAll();
     }
 

@@ -67,6 +67,10 @@ public class TrafficPool {
     @Value("${app.rec.traffic-pool.tiers:50,500,5000,50000}")
     private String tiersCsv;
 
+    /** 调度模式：local=@Scheduled 自调度（演示默认）/ xxl=由 XXL-Job 派发（生产，@Scheduled 空转防双跑） */
+    @Value("${app.scheduling.mode:local}")
+    private String schedulingMode;
+
     public TrafficPool(FeatureService featureService, BehaviorEventQueue eventQueue) {
         this.featureService = featureService;
         this.eventQueue = eventQueue;
@@ -178,9 +182,17 @@ public class TrafficPool {
                 || type == BehaviorType.COMMENT || type == BehaviorType.REPOST || type == BehaviorType.DWELL;
     }
 
-    /** 定时清理已停止的过期状态（默认每小时），防止无界增长 */
+    /** 定时清理已停止的过期状态（默认每小时）。生产（mode=xxl）由 XXL-Job 派发 doCleanup，此处空转防双跑 */
     @Scheduled(fixedDelayString = "${app.rec.traffic-pool.cleanup-ms:3600000}")
     public void cleanup() {
+        if ("xxl".equals(schedulingMode)) {
+            return;
+        }
+        doCleanup();
+    }
+
+    /** 清理已停止的过期状态，防止无界增长（演示自调度与 XXL-Job handler 共用入口） */
+    public void doCleanup() {
         if (states.isEmpty()) {
             return;
         }
