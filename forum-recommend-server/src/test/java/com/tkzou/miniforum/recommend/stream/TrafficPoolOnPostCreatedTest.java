@@ -1,5 +1,6 @@
 package com.tkzou.miniforum.recommend.stream;
 
+import com.tkzou.miniforum.recommend.coldstart.InMemoryTrafficPoolStore;
 import com.tkzou.miniforum.recommend.coldstart.TrafficPool;
 import com.tkzou.miniforum.recommend.feature.FeatureService;
 import com.tkzou.miniforum.recommend.feature.ItemFeature;
@@ -46,9 +47,10 @@ class TrafficPoolOnPostCreatedTest {
     /**
      * 构造 TrafficPool 并注入 @Value 配置（裸 new 时 Spring 不处理注解，
      * enabled 默认 false 会跳过入池），取值对齐 application.yml 默认：enabled=true、base-boost=0.3。
+     * 存储用内存实现（P2-2 状态外置后 TrafficPool 依赖 store 接口）。
      */
     private static TrafficPool newTrafficPool(FeatureService featureService) {
-        TrafficPool pool = new TrafficPool(featureService, new BehaviorEventQueue());
+        TrafficPool pool = new TrafficPool(featureService, new BehaviorEventQueue(), new InMemoryTrafficPoolStore());
         ReflectionTestUtils.setField(pool, "enabled", true);
         ReflectionTestUtils.setField(pool, "baseBoost", 0.3);
         return pool;

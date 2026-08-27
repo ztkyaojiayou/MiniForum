@@ -7,8 +7,6 @@ import com.tkzou.miniforum.repository.PostRepository;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -17,6 +15,9 @@ import java.util.stream.Collectors;
  * <b>数据流程</b>：池内为冷启内容（新发布或互动过少）。每个 item 维护 [alpha, beta, 待惩罚曝光数]：
  * 深度互动 → α+=1；连续 EXPOSE_FAIL_THRESHOLD 次曝光无互动 → β+=1（"曝光无转化"惩罚）。
  * {@link #sampleScore} 供排序层取 Thompson 采样分（探索加分），后验由 {@code ColdStartFeedbackListener} 回灌。
+ * <p>
+ * 状态经 {@link NewItemPoolStore} 存取：演示 InMemory（单实例）/ 生产 Redis（多实例共享，见 RedisNewItemPoolStore）。
+ * 读改写跨 pod 非原子，局限与升级路径见 RedisNewItemPoolStore 注释。
  */
 @Component
 public class NewItemPool {
@@ -24,13 +25,17 @@ public class NewItemPool {
     /** 连续曝光多少次无互动记为一次负反馈 */
     private static final int EXPOSE_FAIL_THRESHOLD = 3;
 
+    /** 状态 TTL（秒）：Redis 默认 30 天（InMemory 忽略 TTL） */
+    private static final long DEFAULT_TTL_SECONDS = 2592000;
+
     private final PostRepository postRepository;
     private final FeatureService featureService;
-    private final Map<Long, double[]> alphaBeta = new ConcurrentHashMap<>();
+    private final NewItemPoolStore store;
 
-    public NewItemPool(PostRepository postRepository, FeatureService featureService) {
+    public NewItemPool(PostRepository postRepository, FeatureService featureService, NewItemPoolStore store) {
         this.postRepository = postRepository;
         this.featureService = featureService;
+        this.store = store;
     }
 
     /** 当前池内物品（冷启内容） */
@@ -43,16 +48,25 @@ public class NewItemPool {
                 .collect(Collectors.toList());
     }
 
+    /** 读取或原子创建后验参数（语义对齐原 computeIfAbsent：读缺失时以默认 {1,1,0} 入池） */
+    private AlphaBeta getOrCreate(long itemId) {
+        return store.get(itemId).orElseGet(() -> {
+            AlphaBeta fresh = new AlphaBeta();
+            store.putIfAbsent(itemId, fresh, DEFAULT_TTL_SECONDS);
+            return store.get(itemId).orElse(fresh);
+        });
+    }
+
     /** Thompson 采样分 */
     public double sampleScore(long itemId) {
-        double[] ab = alphaBeta.computeIfAbsent(itemId, k -> new double[]{1.0, 1.0, 0});
-        return ThompsonBandit.sampleBeta(ab[0], ab[1]);
+        AlphaBeta ab = getOrCreate(itemId);
+        return ThompsonBandit.sampleBeta(ab.getAlpha(), ab.getBeta());
     }
 
     /** 期望互动率 α/(α+β) */
     public double expect(long itemId) {
-        double[] ab = alphaBeta.computeIfAbsent(itemId, k -> new double[]{1.0, 1.0, 0});
-        return ab[0] / (ab[0] + ab[1]);
+        AlphaBeta ab = getOrCreate(itemId);
+        return ab.getAlpha() / (ab.getAlpha() + ab.getBeta());
     }
 
     /**
@@ -61,23 +75,22 @@ public class NewItemPool {
      * @param success true=深度互动（α+1，清空待惩罚曝光）；false=一次曝光（累计阈值后 β+1）
      */
     public void recordOutcome(long itemId, boolean success) {
-        double[] ab = alphaBeta.computeIfAbsent(itemId, k -> new double[]{1.0, 1.0, 0});
-        synchronized (ab) {
-            if (success) {
-                ab[0] += 1;
-                ab[2] = 0;
-            } else {
-                ab[2] += 1;
-                if (ab[2] >= EXPOSE_FAIL_THRESHOLD) {
-                    ab[1] += 1;
-                    ab[2] = 0;
-                }
+        AlphaBeta ab = getOrCreate(itemId);
+        if (success) {
+            ab.setAlpha(ab.getAlpha() + 1);
+            ab.setPendingExposures(0);
+        } else {
+            ab.setPendingExposures(ab.getPendingExposures() + 1);
+            if (ab.getPendingExposures() >= EXPOSE_FAIL_THRESHOLD) {
+                ab.setBeta(ab.getBeta() + 1);
+                ab.setPendingExposures(0);
             }
         }
+        store.put(itemId, ab);
     }
 
     /** 是否在池内（冷启内容） */
     public boolean contains(long itemId) {
-        return alphaBeta.containsKey(itemId) || poolItems().contains(itemId);
+        return store.containsKey(itemId) || poolItems().contains(itemId);
     }
 }

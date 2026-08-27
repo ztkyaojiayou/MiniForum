@@ -13,8 +13,6 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 流量池 / 赛马机制（仿抖音新内容渐进式曝光）
@@ -36,18 +34,13 @@ public class TrafficPool {
 
     private static final Logger log = LoggerFactory.getLogger(TrafficPool.class);
 
-    /** 单帖流量池状态 */
-    private static class PostState {
-        int tier;                 // 当前档位下标
-        int exposures;            // 当前档位内曝光数
-        int successes;            // 当前档位内深度互动数
-        boolean stopped;          // 是否停止探索（未达标）
-        LocalDateTime stoppedAt;  // 停止时间（用于清理）
-    }
+    /** 状态存储 TTL（秒）：Redis 默认 7 天，停止后自然过期（InMemory 忽略 TTL） */
+    private static final long DEFAULT_TTL_SECONDS = 604800;
 
     private final FeatureService featureService;
     private final BehaviorEventQueue eventQueue;
-    private final Map<Long, PostState> states = new ConcurrentHashMap<>();
+    /** 流量池状态存储：演示 InMemory（单实例）/ 生产 Redis（多实例共享，见 RedisTrafficPoolStore） */
+    private final TrafficPoolStore store;
 
     @Value("${app.rec.traffic-pool.enabled:true}")
     private boolean enabled;
@@ -71,9 +64,10 @@ public class TrafficPool {
     @Value("${app.scheduling.mode:local}")
     private String schedulingMode;
 
-    public TrafficPool(FeatureService featureService, BehaviorEventQueue eventQueue) {
+    public TrafficPool(FeatureService featureService, BehaviorEventQueue eventQueue, TrafficPoolStore store) {
         this.featureService = featureService;
         this.eventQueue = eventQueue;
+        this.store = store;
         this.eventQueue.subscribe(this::onBehavior);
     }
 
@@ -82,23 +76,33 @@ public class TrafficPool {
         if (!enabled || b.getPostId() == null) {
             return;
         }
-        PostState st = states.get(b.getPostId());
+        PostState st = store.get(b.getPostId()).orElse(null);
         if (st == null) {
             // 只跟踪冷启新帖
             if (!featureService.itemFeature(b.getPostId()).isInNewPool()) {
                 return;
             }
-            st = states.computeIfAbsent(b.getPostId(), k -> new PostState());
+            // 原子入池：SETNX 保证多 pod 只有一个创建；失败说明别的 pod 已建，re-get
+            PostState fresh = new PostState();
+            if (store.putIfAbsent(b.getPostId(), fresh, DEFAULT_TTL_SECONDS)) {
+                st = fresh;
+            } else {
+                st = store.get(b.getPostId()).orElse(null);
+            }
+            if (st == null) {
+                return;
+            }
         }
-        if (st.stopped) {
+        if (st.isStopped()) {
             return;
         }
         if (b.getType() == BehaviorType.EXPOSE) {
-            st.exposures++;
+            st.setExposures(st.getExposures() + 1);
         } else if (isDeepInteraction(b.getType())) {
-            st.successes++;
+            st.setSuccesses(st.getSuccesses() + 1);
         }
         maybePromote(b.getPostId(), st);
+        store.put(b.getPostId(), st);
     }
 
     /** 帖子创建事件：若为冷启新帖且未跟踪，则从创建起就进入流量池（prod 由 Kafka 消费者触发） */
@@ -106,36 +110,34 @@ public class TrafficPool {
         if (!enabled || postId == null) {
             return;
         }
-        if (states.containsKey(postId)) {
-            return;
-        }
         if (!featureService.itemFeature(postId).isInNewPool()) {
             return;
         }
-        states.put(postId, new PostState());
+        // 原子判重入池：已存在则 SETNX 返回 false，不覆盖（多 pod 幂等）
+        store.putIfAbsent(postId, new PostState(), DEFAULT_TTL_SECONDS);
     }
 
     /** 当前档位曝光达标 → Wilson 下界 vs 基线 判定晋级/停止 */
     private void maybePromote(Long postId, PostState st) {
         int[] tiers = tiers();
-        if (st.tier >= tiers.length) {
+        if (st.getTier() >= tiers.length) {
             return; // 已到最高档
         }
-        int quota = tiers[st.tier];
-        if (st.exposures < quota) {
+        int quota = tiers[st.getTier()];
+        if (st.getExposures() < quota) {
             return;
         }
-        double phat = (double) st.successes / Math.max(1, st.exposures);
-        double wilson = wilsonLower(phat, st.exposures, z);
+        double phat = (double) st.getSuccesses() / Math.max(1, st.getExposures());
+        double wilson = wilsonLower(phat, st.getExposures(), z);
         if (wilson >= baseline) {
-            st.tier++;
-            st.exposures = 0;
-            st.successes = 0;
-            log.info("流量池晋级：post={} → tier={}", postId, st.tier);
+            st.setTier(st.getTier() + 1);
+            st.setExposures(0);
+            st.setSuccesses(0);
+            log.info("流量池晋级：post={} → tier={}", postId, st.getTier());
         } else {
-            st.stopped = true;
-            st.stoppedAt = LocalDateTime.now();
-            log.info("流量池停止：post={}，tier={}，wilson={} < baseline={}", postId, st.tier, wilson, baseline);
+            st.setStopped(true);
+            st.setStoppedAt(LocalDateTime.now());
+            log.info("流量池停止：post={}，tier={}，wilson={} < baseline={}", postId, st.getTier(), wilson, baseline);
         }
     }
 
@@ -150,11 +152,11 @@ public class TrafficPool {
         if (!enabled) {
             return 0;
         }
-        PostState st = states.get(postId);
-        if (st == null || st.stopped) {
+        PostState st = store.get(postId).orElse(null);
+        if (st == null || st.isStopped()) {
             return 0;
         }
-        return baseBoost + tierStep * st.tier;
+        return baseBoost + tierStep * st.getTier();
     }
 
     /** Wilson 置信区间下界：p̂ 是互动率，n 是样本量，z 是置信系数（95%→1.96） */
@@ -193,21 +195,21 @@ public class TrafficPool {
 
     /** 清理已停止的过期状态，防止无界增长（演示自调度与 XXL-Job handler 共用入口） */
     public void doCleanup() {
-        if (states.isEmpty()) {
+        if (store.size() == 0) {
             return;
         }
         LocalDateTime cutoff = LocalDateTime.now().minusDays(7);
         List<Long> toRemove = new ArrayList<>();
-        states.forEach((postId, st) -> {
-            if (st.stopped && st.stoppedAt != null && st.stoppedAt.isBefore(cutoff)) {
+        store.all().forEach((postId, st) -> {
+            if (st.isStopped() && st.getStoppedAt() != null && st.getStoppedAt().isBefore(cutoff)) {
                 toRemove.add(postId);
             }
         });
-        toRemove.forEach(states::remove);
+        toRemove.forEach(store::remove);
     }
 
     /** 当前跟踪的帖子数（测试/监控） */
     public int size() {
-        return states.size();
+        return store.size();
     }
 }

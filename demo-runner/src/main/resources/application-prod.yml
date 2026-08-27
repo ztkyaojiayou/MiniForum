@@ -21,6 +21,12 @@ spring:
 app:
   scheduling:
     mode: xxl        # 生产：定时任务由 XXL-Job 调度中心派发（各业务 @Scheduled 空转防双跑；演示默认 local 自调度）
+  rec:
+    # 冷启动池状态 Redis TTL（P2-2）：停止后自然过期，替代进程内 cleanup
+    traffic-pool:
+      redis-ttl-seconds: 604800       # 流量池赛马状态 7 天
+    coldstart:
+      redis-ttl-seconds: 2592000      # Thompson 后验 30 天
 
 xxl:
   job:
