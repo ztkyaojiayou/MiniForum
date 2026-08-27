@@ -21,8 +21,10 @@ import com.tkzou.miniforum.recommend.rank.RankService;
 import com.tkzou.miniforum.recommend.recall.RecallService;
 import com.tkzou.miniforum.recommend.rerank.RerankService;
 import com.tkzou.miniforum.repository.PostRepository;
+import com.tkzou.miniforum.util.TtlCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -31,6 +33,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -49,6 +52,18 @@ import java.util.stream.Collectors;
 public class RecommendService {
 
     private static final Logger log = LoggerFactory.getLogger(RecommendService.class);
+
+    /** 兜底/冷启动热门 postId 缓存：单 key 存 Top-50 排序列表，TTL 内命中（复用 app.rec.hot-post-ids-ttl-ms） */
+    private static final String TOP_HOT_KEY = "top-hot-posts";
+    /** 热门缓存 TTL 打散幅度（ms） */
+    private static final long TOP_HOT_JITTER_MS = 1_000;
+    private final TtlCache<String, List<Long>> topHotCache = new TtlCache<>(0, TOP_HOT_JITTER_MS);
+
+    /** 热门 postId 缓存 TTL（ms），Spring 注入；>0 启用，≤0 禁用（每次现算） */
+    @Value("${app.rec.hot-post-ids-ttl-ms:10000}")
+    public void setTopHotCacheTtlMs(long ttl) {
+        topHotCache.setTtlMillis(ttl);
+    }
 
     private final FeatureService featureService;
     private final RecallService recallService;
@@ -187,11 +202,23 @@ public class RecommendService {
         return result;
     }
 
+    /** 全站热门 Top-50（兜底/冷启动路径用）：缓存排序 postId 列表，避免每请求全表扫 + 逐帖 itemFeature 排序 */
     private List<Post> topHotPosts() {
+        List<Long> ids = topHotCache.get(TOP_HOT_KEY, this::computeTopHotPostIds);
+        return ids.stream()
+                .map(postRepository::findById)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toList());
+    }
+
+    /** 现算热门 postId 排序（缓存 miss 时执行）：itemFeature.hotScore 降序取 50（内部 itemFeature 已有 5s 缓存） */
+    private List<Long> computeTopHotPostIds() {
         return postRepository.findAll().stream()
                 .filter(p -> Post.STATUS_PUBLISHED.equals(p.getStatus()) && !p.isDeleted())
                 .sorted(Comparator.comparingDouble((Post p) -> featureService.itemFeature(p.getId()).getHotScore()).reversed())
                 .limit(50)
+                .map(Post::getId)
                 .collect(Collectors.toList());
     }
 

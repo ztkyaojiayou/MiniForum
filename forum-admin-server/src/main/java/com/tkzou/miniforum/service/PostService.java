@@ -24,7 +24,9 @@ import com.tkzou.miniforum.recommend.stream.PostCreatedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.tkzou.miniforum.search.SearchIndex;
+import com.tkzou.miniforum.util.TtlCache;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -92,6 +94,18 @@ public class PostService {
     /** 帖子倒排索引（事件驱动；测试/未装配为 null → 搜索回退全表扫） */
     @Autowired(required = false)
     private SearchIndex searchIndex;
+
+    /** 热门帖排序 postId 缓存：单 key 存 Top-100 排序列表，TTL 内命中（高并发"能预计算的不实时算"） */
+    private static final String HOT_POST_KEY = "hot-posts";
+    /** 热门帖缓存 TTL 打散幅度（ms） */
+    private static final long HOT_POST_JITTER_MS = 1_000;
+    private final TtlCache<String, List<Long>> hotPostIdsCache = new TtlCache<>(0, HOT_POST_JITTER_MS);
+
+    /** 热门帖 postId 缓存 TTL（ms），Spring 注入；>0 启用，≤0 禁用（每次现算） */
+    @Value("${app.rec.hot-post-ids-ttl-ms:10000}")
+    public void setHotPostIdsCacheTtlMs(long ttl) {
+        hotPostIdsCache.setTtlMillis(ttl);
+    }
 
     public PostService(PostRepository postRepository,
                        LikeRepository likeRepository,
@@ -250,17 +264,34 @@ public class PostService {
         return toVO(post, username);
     }
 
-    /** 热门排行：按阅读量降序（同阅读量按最新），默认取前 10 */
+    /**
+     * 热门排行：按阅读量降序（同阅读量按最新），默认取前 10。
+     * 高并发优化：缓存"排序后的 postId 列表"（TTL 内免全表扫+排序），逐条回源 + 现算 toVO——
+     * 因为 PostVO 带 likedByMe/favoritedByMe（用户相关），不能整页缓存 VO，只能缓存 ID 顺序。
+     */
     public List<PostVO> getHotPosts(int limit, String username) {
         int safeLimit = Math.min(Math.max(limit, 1), 100);
+        List<Long> topIds = hotPostIdsCache.get(HOT_POST_KEY, this::computeHotPostIds);
+        List<Long> slice = topIds.size() > safeLimit
+                ? new ArrayList<>(topIds.subList(0, safeLimit)) : new ArrayList<>(topIds);
+        return slice.stream()
+                .map(postRepository::findById)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .map(p -> toVO(p, username))
+                .collect(Collectors.toList());
+    }
+
+    /** 现算热门 postId 排序（缓存 miss 时执行）：isVisible + viewCount 降序 + 取前 100 */
+    private List<Long> computeHotPostIds() {
         return postRepository.findAll().stream()
                 .filter(this::isVisible)
                 .sorted((a, b) -> {
                     int cmp = Long.compare(b.getViewCount(), a.getViewCount());
                     return cmp != 0 ? cmp : b.getCreatedAt().compareTo(a.getCreatedAt());
                 })
-                .limit(safeLimit)
-                .map(p -> toVO(p, username))
+                .limit(100)
+                .map(Post::getId)
                 .collect(Collectors.toList());
     }
 

@@ -11,7 +11,6 @@ import com.tkzou.miniforum.repository.LikeRepository;
 import com.tkzou.miniforum.repository.PostRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -58,9 +57,9 @@ class InMemoryFeatureServiceCacheTest {
         featureService = new InMemoryFeatureService(aggregator, postRepository, followRepository,
                 likeRepository, commentRepository, favoriteRepository, realtimeFeatureStore,
                 configService, behaviorLogRepository);
-        // 默认启用缓存：画像 30s、物品特征 5s（对齐 application.yml 默认值）
-        ReflectionTestUtils.setField(featureService, "profileCacheTtlMs", 30_000L);
-        ReflectionTestUtils.setField(featureService, "itemFeatureCacheTtlMs", 5_000L);
+        // 默认启用缓存：画像 30s、物品特征 5s（对齐 application.yml 默认值，@Value setter 注入语义）
+        featureService.setProfileCacheTtlMs(30_000L);
+        featureService.setItemFeatureCacheTtlMs(5_000L);
     }
 
     @Test
@@ -74,7 +73,7 @@ class InMemoryFeatureServiceCacheTest {
 
     @Test
     void userProfile_cacheDisabledWhenTtlZero() {
-        ReflectionTestUtils.setField(featureService, "profileCacheTtlMs", 0L);
+        featureService.setProfileCacheTtlMs(0L);
         when(aggregator.build(1L)).thenReturn(mock(UserProfile.class));
         featureService.userProfile(1L);
         featureService.userProfile(1L);

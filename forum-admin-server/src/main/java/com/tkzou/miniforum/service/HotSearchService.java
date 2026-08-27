@@ -7,7 +7,9 @@ import com.tkzou.miniforum.repository.CommentRepository;
 import com.tkzou.miniforum.repository.PostRepository;
 import com.tkzou.miniforum.repository.SearchRecordRepository;
 import com.tkzou.miniforum.recommend.stream.HeatAggregator;
+import com.tkzou.miniforum.util.TtlCache;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -33,6 +35,10 @@ public class HotSearchService {
     private static final long WINDOW_DAYS = 30;
     /** 搜索词热度权重：搜索次数 × 该值，使高频搜索能进入热搜榜 */
     private static final long SEARCH_KEYWORD_WEIGHT = 50;
+    /** 榜单缓存单 key：整榜缓存 Top-50 一次算好，按请求 limit 现场切片（避免按 limit 建多个 key） */
+    private static final String BOARD_KEY = "hot-search-board";
+    /** 榜单缓存 TTL 打散幅度（ms）：单 key 榜单本无需打散，保留以与统一模式一致 */
+    private static final long BOARD_JITTER_MS = 1_000;
 
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
@@ -40,6 +46,19 @@ public class HotSearchService {
     /** 行为热度聚合器（事件驱动；测试/未装配为 null → 不并入行为信号） */
     @Autowired(required = false)
     private HeatAggregator heatAggregator;
+
+    /**
+     * 热搜整榜缓存：Top-50 现算一次，TTL 内命中（高并发"能预计算的不实时算"）。
+     * 行为信号（HeatAggregator/搜索词）最多滞后一个 TTL（默认 30s），热搜属近实时场景可接受。
+     * 返回的 VO 按"只读约定"共享，调用方不得修改字段（getHotSearches 已做列表级防御拷贝）。
+     */
+    private final TtlCache<String, List<HotSearchVO>> boardCache = new TtlCache<>(0, BOARD_JITTER_MS);
+
+    /** 榜单缓存 TTL（ms），Spring 注入；>0 启用，≤0 禁用（每次现算） */
+    @Value("${app.rec.hot-board-ttl-ms:30000}")
+    public void setHotBoardCacheTtlMs(long ttl) {
+        boardCache.setTtlMillis(ttl);
+    }
 
     public HotSearchService(PostRepository postRepository,
                             CommentRepository commentRepository,
@@ -49,9 +68,20 @@ public class HotSearchService {
         this.searchRecordRepository = searchRecordRepository;
     }
 
-    /** 计算热搜榜（标签/话题 + 搜索词，按热度降序，默认 Top10，最多 50，附排名趋势） */
+    /**
+     * 计算热搜榜（标签/话题 + 搜索词，按热度降序，默认 Top10，最多 50，附排名趋势）。
+     * 高并发优化：整榜（Top-50）短 TTL 缓存，按 limit 现场切片——把"每请求两窗口全表扫 + 逐帖 count"
+     * 降为"每 TTL 算一次"。
+     */
     public List<HotSearchVO> getHotSearches(int limit) {
         int safeLimit = Math.min(Math.max(limit, 1), 50);
+        List<HotSearchVO> top50 = boardCache.get(BOARD_KEY, this::computeTop50);
+        // 防御性拷贝（列表级）：不把缓存 list 直接外泄，调用方 add/remove/clear 不影响缓存
+        return top50.size() > safeLimit ? new ArrayList<>(top50.subList(0, safeLimit)) : new ArrayList<>(top50);
+    }
+
+    /** 现算完整 Top-50 榜单（缓存 miss 时执行）；rank/trend/level 在完整榜上计算，切片后语义不变 */
+    private List<HotSearchVO> computeTop50() {
         LocalDateTime now = LocalDateTime.now();
         // 当前窗口（近 WINDOW_DAYS 天）与上一窗口（WINDOW_DAYS~2*WINDOW_DAYS 天前）的热度聚合
         Map<String, double[]> cur = aggregateHeat(now.minusDays(WINDOW_DAYS), now);
@@ -85,9 +115,7 @@ public class HotSearchService {
         prevRanked.sort((x, y) -> Double.compare(
                 prev.get(y)[0] > 0 ? prev.get(y)[0] : prev.get(y)[1] * 10,
                 prev.get(x)[0] > 0 ? prev.get(x)[0] : prev.get(x)[1] * 10));
-        List<HotSearchVO> topN = result.size() > safeLimit
-                ? new ArrayList<>(result.subList(0, safeLimit))
-                : result;
+        List<HotSearchVO> topN = result.size() > 50 ? new ArrayList<>(result.subList(0, 50)) : result;
         for (int i = 0; i < topN.size(); i++) {
             HotSearchVO vo = topN.get(i);
             vo.setRank(i + 1);
