@@ -7,6 +7,7 @@ import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLog;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
+import com.tkzou.miniforum.recommend.behavior.InMemoryBehaviorLogger;
 import com.tkzou.miniforum.recommend.domain.RecommendContext;
 import com.tkzou.miniforum.recommend.eval.Metrics;
 import com.tkzou.miniforum.recommend.eval.OfflineEvaluator;
@@ -41,6 +42,8 @@ class RecommendFlowIntegrationTest {
     private UserRepository userRepository;
     @Autowired
     private BehaviorLogRepository behaviorLogRepository;
+    @Autowired
+    private InMemoryBehaviorLogger behaviorLogger; // 异步打点：断言曝光前需 flush 排空
     @Autowired
     private OfflineEvaluator offlineEvaluator;
 
@@ -80,7 +83,8 @@ class RecommendFlowIntegrationTest {
         assertEquals(feed.size(), feed.stream().map(RecommendPostVO::getPost).map(PostVO::getId).distinct().count(),
                 "推荐流不应有重复帖子");
 
-        // 5. 曝光日志已自动记录
+        // 5. 曝光日志已自动记录（异步打点 → 先 flush 排空，近线语义下断言前同步等待）
+        behaviorLogger.flush();
         long exposes = behaviorLogRepository.findAll().stream()
                 .filter(b -> b.getType() == BehaviorType.EXPOSE).count();
         assertTrue(exposes >= feed.size(), "推荐下发应自动记录曝光");
