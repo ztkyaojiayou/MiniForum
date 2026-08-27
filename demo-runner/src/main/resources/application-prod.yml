@@ -14,6 +14,9 @@ spring:
       connection-timeout: 30000      # 获取连接超时（避免无限等连接）
       max-lifetime: 1800000          # 连接最大存活 30 分钟
       pool-name: MiniForumHikari
+  session:
+    store-type: redis     # Session 外置 Redis（多实例共享登录态）
+    timeout: 7d           # 会话存活 7 天
 
 app:
   scheduling:
