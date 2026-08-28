@@ -1,6 +1,6 @@
 # MiniForum（迷你微博论坛系统）
 
-一个基于 **Spring Boot 2.7 + Java 17**、**以生产级推荐系统为核心**的**微博风格轻量博客系统**，无需任何数据库与第三方中间件，开箱即用。支持发帖、分类、标签、话题、关注流、点赞、评论、收藏、转发、@提及、消息通知、站内私信、热搜榜、全文搜索、数据看板、深色模式等 **40+ 项功能**，全部前后端闭环，内置 11 个原生静态页面。
+一个基于 **Spring Boot 2.7 + Java 17**、**以生产级推荐系统为核心**的**微博风格轻量博客系统**。**演示模式开箱即用、零中间件服务**（内存实现 + JSON 持久化）；**生产适配齐备**（Kafka / Redis / MySQL / ClickHouse / Nacos / Flink / Sentinel，`-Pprod` + prod profile 激活）。支持发帖、分类、标签、话题、关注流、点赞、评论、收藏、转发、@提及、消息通知、站内私信、热搜榜、全文搜索、数据看板、深色模式等 **40+ 项功能**，全部前后端闭环，内置 12 个原生静态页面。
 
 > 🎯 **推荐是本项目的核心**——完整生产级推荐系统（业务侧全链路）：多路召回（热门 / 话题 / 类目 / ItemCF / 新内容 / 关注）→ 微博式排序 → MMR 打散重排 → Thompson 冷启动 → 实时特征 → AB 实验 → 离线评估。每条推荐带可解释理由，行为全量回流闭环，生产适配代码齐备；微服务拆分后独立为在线（forum-recommend-server）/ 离线（forum-offline-job）/ 近线（forum-flink-nearline）三模块。弱训练侧（ItemCF + 规则加权），纯 Java 实现。详见 [推荐系统](#-推荐系统)。
 
@@ -18,15 +18,17 @@
 - ✅ **详情相关推荐**：详情页"看过这篇的人还看"（ItemCF 相似帖）
 - ✅ **AB 实验 + 离线评估**：哈希分层分桶；时间切分 + AUC/GAUC/Recall@K/NDCG@K/Coverage/Diversity/Freshness 7 指标
 - ✅ **定时离线评估**：每 30 分钟自动跑一次评估，指标写日志 + 落盘 `data/eval-report.json`（可观察推荐质量随数据积累的变化，让系统"活"起来）
-- ✅ **生产适配**：Kafka / Redis / Nacos / **Flink / MySQL** 适配代码（`-Pprod` 编译 + `@Profile("prod")` 激活，默认内存实现）
+- ✅ **高并发治理（P3）**：入口单机限流（`RateLimitFilter`）→ 推荐主链路 **Sentinel 限流 + 异常比例熔断**（prod，触发即降级热门兜底）→ 热点 key 单帖本地缓存（写路径失效）→ 容量压测脚本 `scripts/loadtest_feed.py`（纯标准库）
+- ✅ **域分层对齐标准推荐系统**：画像（`profile`）/ 特征（`feature`）/ 社交图谱（`graph`）三域独立接口 + 内存实现，由漏斗编排层按需注入
+- ✅ **生产适配**：Kafka / Redis / MySQL / **ClickHouse** / Nacos / **Sentinel** / Flink 适配代码（`-Pprod` 编译 + `@Profile("prod")` 激活，默认内存实现）
 - ✅ **模拟活动**：定时任务持续产生新帖与互动，让系统像真实社区"转起来"
 
 ### 📦 内容发布
 - ✅ 发帖 / 编辑 / 删除（标题 + 正文，正文最长 5000 字）
 - ✅ **Markdown 渲染**（前端 marked.js，后端存原文）
 - ✅ **帖子分类**：固定 12 类（科技 / 数码 / 游戏 / 娱乐 / 体育 / 财经 / 汽车 / 时事 / 教育 / 生活 / 美食 / 其他）
-- ✅ **标签**：发帖打 1~5 个标签，按标签筛选
-- ✅ **话题**：内容 `#话题#` 自动提取，话题榜 + 话题筛选
+- ✅ **标签**：发帖打 1~5 个标签，**标签聚合页**（`/tag.html?tag=X`）独立展示该标签下全部帖子
+- ✅ **话题**：内容 `#话题#` 自动提取，话题榜 + **话题聚合页**（`/tag.html?topic=X`）
 - ✅ 草稿 / 发布状态管理
 - ✅ **回收站**：软删除、可恢复、30 天自动清理
 - ✅ **阅读量统计** + 热门帖子排行
@@ -80,6 +82,7 @@
 GET /api/recommend/feed?page&size      (session: userId)
   │
   ▼  RecommendService.recommend(ctx, username, expId)
+  ├─⓪ 限流/熔断  SphU.entry("recommend-feed")   ← Sentinel（prod 规则：QPS 限流 + 异常比例熔断；触发 → 降级热门兜底）
   ├─① 画像      UserProfileService.userProfile(uid)
   │            → 话题/类目兴趣权重(时间衰减) + 最近交互序列 + 活跃度
   ├─② 召回      RecallService.recall(ctx) → 6 路并行:
@@ -115,15 +118,19 @@ GET /api/recommend/feed?page&size      (session: userId)
 
 **生产模式（`-Pprod` 编译 + `--spring.profiles.active=prod`，真实中间件）**
 ```
-用户行为 → KafkaBehaviorLogger → Kafka topic "behavior-log"（一份行为, 两个独立消费组）
+用户行为 → KafkaBehaviorLogger → Kafka topic "behavior-log"（一份行为, 多路消费）
   ├─▶ [Flink 作业 group=mini-forum-realtime]  ← 近线
   │      KafkaSource → 滑动窗口(5min/1min) → Redis "realtime:{user|post}:{id}"(TTL 60s)
   │        └─▶ 在线排序 realtimeMatch 读 Redis（RedisRealtimeFeatureStore）
-  └─▶ [KafkaBehaviorConsumer group=mini-forum-offline]  ← 离线侧（应用内, 500ms poll）
-         ├─▶ BehaviorLogRepository（内存）→ 画像 / ItemCF / 离线评估
+  ├─▶ [ClickHouse Kafka Engine group=mini-forum-clickhouse]  ← 离线行为事实源
+  │      Kafka Engine 表 → 物化视图 → MergeTree behavior_log（毫秒级自动消费）
+  │        └─▶ 离线画像 / ItemCF / 离线评估读 ClickHouse（ClickHouseBehaviorStore）
+  └─▶ [KafkaBehaviorConsumer group=mini-forum-offline]  ← 在线侧回灌（应用内, 500ms poll）
+         ├─▶ BehaviorLogRepository（内存）→ 实时特征 / 冷启动反馈
          └─▶ BehaviorEventQueue → ColdStartFeedbackListener → Thompson 后验
 
-持久化：MySqlDataStore 每 30s 把内存各仓库（含行为）快照到 MySQL mini_store，重启 loadAll 恢复；
+持久化：10 个业务实体全部行级 MySQL（MySql*Repository 自管，@PostConstruct 建表 + upsert；
+       行为经 Kafka → ClickHouse）；MySqlDataStore 仅把 behavior-log 快照到 mini_store 作近线兜底；
        JSON DataStore 在 prod 下禁用（@Profile("!prod")）。
 ```
 
@@ -153,14 +160,18 @@ AbExperimentService：floorMod(hash(uid:salt), 100) 分桶
 
 生产适配（`-Pprod` 编译 src/prod/java，`@Profile("prod")` 运行时激活，默认内存实现）：
   prod.kafka.KafkaBehaviorLogger（行为→Kafka topic behavior-log）
-  prod.kafka.KafkaBehaviorConsumer（Kafka behavior-log→行为库+事件队列，离线侧回灌）
-  prod.kafka.KafkaPostCreatedProducer（发帖→Kafka topic post-created，@Profile("prod")）
-  prod.kafka.KafkaPostCreatedConsumer（post-created→预热流量池，@Profile("prod")）
-  prod.redis.RedisRealtimeFeatureStore（实时特征→Redis, TTL 60s）
-  prod.redis.RedisFollowRepository（关注关系→Redis Hash+ZSET 索引，@Profile("prod") 高频读写）
+  prod.kafka.KafkaBehaviorConsumer（Kafka behavior-log→内存行为库+事件队列，在线侧回灌）
+  prod.kafka.KafkaPostCreatedProducer / KafkaPostCreatedConsumer（发帖事件→Kafka topic post-created：扇出/冷启/搜索索引）
+  prod.clickhouse.ClickHouseBehaviorStore（行为→Kafka Engine 表→物化视图→MergeTree，离线画像/ItemCF/评估读取）
+  prod.redis.RedisUserProfileStore（画像→Redis profile:{uid}, TTL 1h）
+  prod.redis.RedisRealtimeFeatureStore（实时特征→Redis realtime:{key}, TTL 60s）
+  prod.redis.RedisTrafficPoolStore / RedisNewItemPoolStore（冷启池状态→Redis，跨实例一致）
+  prod.redis.ItemCfModelRedisStore（ItemCF 模型→Redis itemcf:latest，offline-job 发布）
   prod.nacos.NacosConfigService（配置→Nacos rec-config, 监听热更新）
+  prod.sentinel.SentinelConfig（推荐主链路 QPS 限流 + 异常比例熔断规则下发）
   prod.flink.FlinkRealtimeWindow（Flink 实时特征作业：Kafka→滑动窗口→Redis，独立进程）
-  prod.mysql.MySqlDataStore（MySQL 持久化：JSON 快照表 mini_store，替代 JSON 文件）
+  行级 MySQL（demo-runner src/prod）：MySql{User,Post,Comment,Like,Favorite,Follow,Message,Conversation,Notification,SearchRecord}Repository —— 10 实体行级表
+  快照兜底：MySqlDataStore（仅 behavior-log → mini_store JSON blob，替代 JSON 文件）
 ```
 
 ### 6. 生产模式闭环审计
@@ -169,17 +180,21 @@ AbExperimentService：floorMod(hash(uid:salt), 100) 分桶
 |---|---|---|
 | 行为采集 → Kafka | KafkaBehaviorLogger | ✅ |
 | Kafka → 近线实时特征(Redis) | Flink 作业（独立消费组 mini-forum-realtime） | ✅ |
-| Kafka → 离线侧行为库 | KafkaBehaviorConsumer（独立消费组 mini-forum-offline） | ✅ |
+| Kafka → 离线行为事实源(ClickHouse) | Kafka Engine 表 → 物化视图 → MergeTree（消费组 mini-forum-clickhouse） | ✅ |
+| 离线画像 / ItemCF / 评估读行为 | ClickHouseBehaviorStore（findByUserId/findAll/...） | ✅ |
 | 在线请求读近线特征 | realtimeMatch → RedisRealtimeFeatureStore | ✅ |
-| 在线请求读画像/ItemCF | 内存库（消费者喂 + MySQL 恢复） | ✅ |
-| 行为 → 冷启动反馈 | consumer → BehaviorEventQueue → ColdStartFeedbackListener | ✅ |
-| 持久化 → 重启恢复 | MySqlDataStore mini_store（JSON DataStore 已禁用） | ✅ |
+| 在线请求读画像 / ItemCF 模型 | RedisUserProfileStore（profile:{uid}）+ ItemCfModelRedisStore（itemcf:latest） | ✅ |
+| 行为 → 冷启动反馈 | KafkaBehaviorConsumer → BehaviorEventQueue → ColdStartFeedbackListener | ✅ |
+| 主存储（10 业务实体）→ MySQL | MySql*Repository 行级表（@PostConstruct 建表 + upsert） | ✅ |
+| 行为 → 快照兜底 | MySqlDataStore mini_store（仅 behavior-log，JSON DataStore 已禁用） | ✅ |
+| 关注关系 / 冷启池状态 | MySqlFollowRepository（MySQL 事实 + Redis ZSET）+ RedisTrafficPool/NewItemPoolStore | ✅ |
+| 推荐主链路限流 / 熔断 | SentinelConfig（QPS + 异常比例，触发降级热门） | ✅ |
 | 配置 → Nacos | NacosConfigService（内存配置已禁用） | ✅ |
 
 **已知取舍（非致命，落地前需知晓）**：
 1. Flink 暂不算用户 topicClicks（缺帖子维度 join）——prod 下 realtime 特征偏"物品热度爆发"，用户话题投影弱化
-2. 单实例假设：多实例部署时各实例内存库独立、Kafka 消费组分片，画像/ItemCF 不共享
-3. ≤30s 数据丢失窗口：行为先入内存、每 30s 落 MySQL，崩溃丢窗口内数据（可调小 `app.persistence.interval-ms`）
+2. 单实例假设：多实例部署时各实例内存库独立、Kafka 消费组分片，画像/特征/模型已 Redis 外置、主存储已 MySQL 行级（可水平扩展前提已备）
+3. behavior-log 快照兜底 ≤30s 丢失窗口：行为先入 Kafka/ClickHouse，mini_store 快照仅兜底（可调小 `app.persistence.interval-ms`）
 4. Kafka 自动提交 offset + 崩溃重放可能重复计数（可加幂等去重）
 
 ## 技术栈
@@ -191,11 +206,12 @@ AbExperimentService：floorMod(hash(uid:salt), 100) 分桶
 | Spring Web | RESTful 接口 |
 | Spring Validation | 参数校验 |
 | 推荐算法（弱训练侧） | ItemCF（共现余弦）、规则加权排序、Thompson sampling，纯 Java 手写 |
-| 中间件形态 | Kafka / Flink / Redis / Nacos 以「接口 + 内存实现默认 + `@Profile("prod")` 适配」三件套落地 |
+| 限流 / 熔断 | **Sentinel**（`sentinel-core` 内嵌库，prod 对推荐主链路做 QPS 限流 + 异常比例熔断） |
+| 中间件形态 | Kafka / Redis / MySQL / ClickHouse / Nacos / Flink / Sentinel 以「接口 + 内存实现默认 + `@Profile("prod")` 适配」落地 |
 | Maven | 构建工具，**多模块聚合**（forum-core / forum-admin-server / forum-recommend-server / forum-offline-job / forum-flink-nearline / demo-runner） |
-| JSON 文件持久化 | 内存存储（`ConcurrentHashMap`）+ `data/*.json` 落盘 |
+| JSON 文件持久化 | 内存存储（`ConcurrentHashMap`）+ `data/*.json` 落盘（演示模式） |
 
-**零第三方中间件**：无数据库、无 Redis、无消息队列、无 WebSocket —— 全部功能基于纯 Java 实现。
+**演示模式零中间件服务**：无需连接任何数据库/Redis/MQ/时序库即可开箱运行（Sentinel 为内嵌 jar、不连外部服务，无规则时原样放行）；生产模式 `-Pprod` 编译 + prod profile 激活后，才需 Kafka / Redis / MySQL / ClickHouse / Nacos。
 
 ## 项目结构
 
@@ -209,18 +225,20 @@ my-first-nanobot-server/                  # Maven 多模块（父 POM forum-pare
 │       └── dto/PostAssembler.java   # 帖子视图装配（admin 与 recommend 共用，破依赖环）
 ├── forum-admin-server/      # ★ 主业务：帖子/用户/评论/关注/feed/搜索/热搜/通知/私信
 │   └── src/main/java/com/tkzou/miniforum/{controller, service, config, exception}
-├── forum-recommend-server/  # ★ 推荐核心：召回/排序/重排/冷启动/画像/AB/配置 + 生产适配
+├── forum-recommend-server/  # ★ 推荐核心：召回/排序/重排/冷启动/三域/AB/配置 + 生产适配
 │   └── src/main/java/com/tkzou/miniforum/recommend/
-│       ├── recall/ rank/ rerank/ coldstart/ feature/ model/     # 推荐管道
-│       ├── config/ ab/ domain/ service/ stream/                 # 配置/AB/编排/事件
-│       └── prod/            #   Kafka/Redis/Nacos 生产适配(@Profile("prod"))
+│       ├── recall/ rank/ rerank/ coldstart/ model/               # 推荐管道
+│       ├── profile/ feature/ graph/                              # 三域：画像/特征/社交图谱（各自接口+内存实现）
+│       ├── config/ ab/ domain/ service/ stream/                  # 配置/AB/编排/事件
+│       └── prod/            #   Kafka/Redis/ClickHouse/Nacos/Sentinel 生产适配(@Profile("prod"))
 ├── forum-offline-job/       # 离线层：离线评估（OfflineEvalScheduler）+ OfflineJobApplication
 ├── forum-flink-nearline/    # 近线层：Flink 实时特征作业（-Pprod 才构建，独立进程）
 ├── demo-runner/             # ★ 演示启动器：聚合 admin+recommend 单进程
 │   ├── src/main/java/.../MiniForumApplication.java   # 启动类（扫描 com.tkzou.miniforum）
-│   ├── src/main/java/.../persistence/DataStore.java  # JSON 持久化
+│   ├── src/main/java/.../persistence/DataStore.java  # JSON 持久化（!prod）
 │   ├── src/main/java/.../controller/RecommendController.java  # 推荐 web 装配
-│   └── src/main/resources/static/  # 11 个原生静态页面 + application.yml
+│   ├── src/prod/java/.../repository/                # 行级 MySql*Repository（10 实体）+ MySqlDataStore 快照
+│   └── src/main/resources/static/  # 12 个原生静态页面（含标签聚合页 tag.html）+ application.yml
 ├── data/                    # 运行时 JSON 数据（自动生成，gitignore）
 ├── docs/                    # 需求规划 / API 文档 / 推荐系统方案
 ├── scripts/                 # 辅助脚本（启停 + seed_users / seed_posts / seed_recsys_data 造数）
@@ -250,12 +268,12 @@ mvn clean package && java -jar demo-runner/target/demo-runner-1.0.0.jar
 
 启动后访问 <http://localhost:8090/>，将自动跳转到登录页。**默认账号**：`admin / admin123`（管理员）。
 
-> **生产构建**：`-Pprod` 会追加 `forum-flink-nearline` 模块（Flink 实时特征作业），并编译 `demo-runner` 的 `src/prod/java`（MySqlDataStore MySQL 持久化）：
+> **生产构建**：`-Pprod` 会追加 `forum-flink-nearline` 模块（Flink 实时特征作业），并编译 `demo-runner` 的 `src/prod/java`（10 实体行级 `MySql*Repository` + MySqlDataStore 快照）：
 > ```bash
-> mvn -Pprod clean package   # 生产包（含 Flink 作业 / MySQL 适配）
-> SPRING_PROFILES_ACTIVE=prod java -jar demo-runner/target/demo-runner-1.0.0.jar  # 运行时激活真适配（需 Kafka/Redis/Nacos/MySQL）
+> mvn -Pprod clean package   # 生产包（含 Flink 作业 / MySQL 行级化 / ClickHouse 适配）
+> SPRING_PROFILES_ACTIVE=prod java -jar demo-runner/target/demo-runner-1.0.0.jar  # 运行时激活真适配（需 Kafka/Redis/MySQL/ClickHouse/Nacos）
 > ```
-> 本地默认（不带 `-Pprod`、不切 prod profile）仍是零中间件、内存 + JSON 文件。
+> 本地默认（不带 `-Pprod`、不切 prod profile）仍是零中间件服务、内存 + JSON 文件。
 
 ### 体验推荐系统
 
@@ -296,6 +314,11 @@ python scripts/seed_recsys_data.py
 | `app.rec.*` | — | 推荐系统配置（召回/排序权重、冷启比例、打散参数、**定时评估**等） |
 | `app.rec.eval-enabled` | `true` | 定时离线评估开关 |
 | `app.rec.eval-interval-ms` | `1800000` | 离线评估间隔（毫秒，默认 30 分钟） |
+| `app.rec.post-cache-ttl-ms` | `5000` | 单帖本地缓存 TTL（热点 key，写路径失效+短TTL兜底） |
+| `app.rec.graph-author-followers-cache-ttl-ms` | `5000` | 社交图谱作者粉丝数缓存 TTL |
+| `app.rec.sentinel.enabled` | `true` | Sentinel 规则下发开关（prod，false=仅埋点不拦截） |
+| `app.rec.sentinel.feed.flow-qps` | `100` | 推荐主链路单机 QPS 限流阈值 |
+| `app.rec.sentinel.feed.degrade.ratio` | `0.5` | 推荐主链路异常比例熔断阈值（0~1） |
 | `app.sim.enabled` | `true` | 模拟活动开关 |
 | `app.sim.interval-ms` | `900000` | 模拟活动间隔（毫秒，默认 15 分钟） |
 | `app.sim.posts-per-tick` | `2` | 每轮新帖数 |
@@ -334,12 +357,15 @@ python scripts/seed_recsys_data.py
 
 ## 数据存储
 
-> 项目使用**内存存储**（`ConcurrentHashMap`）+ **JSON 文件持久化**：
-> - 运行时数据常驻内存，读写高效；
-> - 每 30 秒自动落盘到 `data/*.json`，应用关闭 / 重启时自动加载，**重启不丢数据**；
-> - 如需切换数据库，将 `app.persistence.enabled` 置为 `false` 即可关闭持久化。
+> **演示模式**：**内存存储**（`ConcurrentHashMap`）+ **JSON 文件持久化**（`data/*.json`，每 30s 自动落盘、关闭/重启自动加载，**重启不丢数据**）；将 `app.persistence.enabled` 置 `false` 可关闭持久化。
+>
+> **生产模式**（prod profile）：按存储矩阵分层——
+> - **10 个业务实体**：行级 **MySQL**（`MySql*Repository`，事务 / 点查 / 强一致）；
+> - **热点数据**：**Redis**（关注图 ZSET / feed inbox / 画像 / 实时特征 / ItemCF 模型 / 冷启池状态）；
+> - **行为日志**：**Kafka** 采集 → **ClickHouse**（Kafka Engine 摄入 + MergeTree，离线画像/ItemCF/评估读取）；
+> - **事件**：**Kafka**（`behavior-log` / `post-created` 两个 topic）。
 
-`data/` 目录文件：`users.json`、`posts.json`、`comments.json`、`likes.json`、`follows.json`、`notifications.json`、`favorites.json`、`search-records.json`、`conversations.json`、`messages.json`、`behavior-log.json`（推荐行为日志）。
+`data/` 目录文件（演示模式）：`users.json`、`posts.json`、`comments.json`、`likes.json`、`follows.json`、`notifications.json`、`favorites.json`、`search-records.json`、`conversations.json`、`messages.json`、`behavior-log.json`（推荐行为日志）。
 
 ## 测试
 
@@ -347,7 +373,7 @@ python scripts/seed_recsys_data.py
 JAVA_HOME='D:\devSoftWare\jdk17\jdk-17.0.19+10' mvn test
 ```
 
-共 **87 个测试**（分布在各模块：forum-core 24 / forum-admin-server 14 / forum-recommend-server 16 / forum-offline-job 6 / demo-runner 27，含端到端集成测试）。
+共 **176 个测试**（forum-core 44 / forum-admin-server 39 / forum-recommend-server 57 / forum-offline-job 8 / demo-runner 28，含端到端集成测试）。
 
 ## 推荐系统（深度参考）
 
@@ -365,6 +391,13 @@ JAVA_HOME='D:\devSoftWare\jdk17\jdk-17.0.19+10' mvn test
 | [docs/系统功能全景.md](docs/系统功能全景.md) | 功能全景盘点（基于源码核验） |
 | [docs/API.md](docs/API.md) | 完整接口文档 |
 | [docs/微博化改版规划.md](docs/微博化改版规划.md) | 微博化改版规划 |
+| [docs/高并发优化落地清单-带优先级.md](docs/高并发优化落地清单-带优先级.md) | 高并发优化落地清单（P0~P3 全批次，含 Sentinel 限流熔断 / 热点key / 压测） |
+| [docs/限流与熔断-分布式治理概念澄清.md](docs/限流与熔断-分布式治理概念澄清.md) | 限流/熔断/降级三兄弟 + 形态A/B + 分布式限流 + 流量漏斗 |
+| [docs/容量测试方法.md](docs/容量测试方法.md) | 容量压测方法论（漏斗分层测法 + 扩容公式 + `scripts/loadtest_feed.py`） |
+| [docs/领域模型与实体关系.md](docs/领域模型与实体关系.md) | 10 个业务实体 + 关系 + 存储落点矩阵（理解微博业务的数据底座） |
+| [docs/搜广推-概念与架构.md](docs/搜广推-概念与架构.md) | 搜索/广告/推荐三块业务 + 共享底座 + 本项目位置与差距 |
+| [docs/ClickHouse新手学习-对比MySQL与Redis.md](docs/ClickHouse新手学习-对比MySQL与Redis.md) | 列式 OLAP 新手学习（对比 MySQL/Redis + 进阶 Q&A） |
+| [docs/时序数据库对比-ClickHouse-InfluxDB-IoTDB.md](docs/时序数据库对比-ClickHouse-InfluxDB-IoTDB.md) | ClickHouse / InfluxDB / IoTDB 三库对比（定位/模型/时序能力） |
 
 ## 功能闭环
 
