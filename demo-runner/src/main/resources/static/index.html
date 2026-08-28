@@ -413,6 +413,7 @@
         .pagination button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
         .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
         .pagination .page-info { font-size: 13px; color: var(--muted); }
+        .pagination .page-ellipsis { padding: 6px 2px; color: var(--muted); font-size: 14px; user-select: none; }
         .empty { text-align: center; color: var(--muted); padding: 40px 0; }
         .loading { text-align: center; color: var(--muted); padding: 20px; }
         /* 弹窗 */
@@ -979,11 +980,22 @@
         function renderPagination(total, totalPages) {
             const box = document.getElementById('pagination');
             if (!total || totalPages <= 1) { box.innerHTML = ''; return; }
-            let html = '<button class="page-btn" data-page="' + (currentPage - 1) + '" ' + (currentPage <= 1 ? 'disabled' : '') + '>‹ 上一页</button>';
-            for (let i = 1; i <= totalPages; i++) {
-                html += '<button class="page-btn' + (i === currentPage ? ' active' : '') + '" data-page="' + i + '">' + i + '</button>';
+            // 折叠页码（仿百度搜索）：首页/上一页 + 首尾页码固定 + 当前页±2 窗口，空隙用省略号，再下一页/尾页
+            let html = '<button class="page-btn" data-page="1" ' + (currentPage <= 1 ? 'disabled' : '') + '>首页</button>';
+            html += '<button class="page-btn" data-page="' + (currentPage - 1) + '" ' + (currentPage <= 1 ? 'disabled' : '') + '>‹ 上一页</button>';
+            const pages = new Set([1, totalPages]);
+            for (let i = currentPage - 2; i <= currentPage + 2; i++) {
+                if (i >= 1 && i <= totalPages) pages.add(i);
             }
+            const sorted = Array.from(pages).sort((a, b) => a - b);
+            let prev = 0;
+            sorted.forEach(p => {
+                if (prev && p - prev > 1) html += '<span class="page-ellipsis">…</span>';
+                html += '<button class="page-btn' + (p === currentPage ? ' active' : '') + '" data-page="' + p + '">' + p + '</button>';
+                prev = p;
+            });
             html += '<button class="page-btn" data-page="' + (currentPage + 1) + '" ' + (currentPage >= totalPages ? 'disabled' : '') + '>下一页 ›</button>';
+            html += '<button class="page-btn" data-page="' + totalPages + '" ' + (currentPage >= totalPages ? 'disabled' : '') + '>尾页</button>';
             html += '<span class="page-info">共 ' + total + ' 条</span>';
             box.innerHTML = html;
             box.querySelectorAll('.page-btn').forEach(btn => {
