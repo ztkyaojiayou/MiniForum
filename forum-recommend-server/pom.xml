@@ -29,6 +29,14 @@
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
+        <!-- Sentinel 流量治理（P3-1 限流 + P3-2 熔断）：
+             必须普通依赖（非 optional）——RecommendService 主代码（demo+prod 都跑）引用 SphU/Entry/BlockException，
+             optional 不传递会让演示运行时 NoClassDefFoundError。无规则时完全惰性，不连任何中间件。 -->
+        <dependency>
+            <groupId>com.alibaba.csp</groupId>
+            <artifactId>sentinel-core</artifactId>
+            <version>1.8.6</version>
+        </dependency>
         <!-- 生产适配（Kafka/Redis/Nacos）仅编译，默认不连中间件 -->
         <dependency>
             <groupId>org.apache.kafka</groupId>

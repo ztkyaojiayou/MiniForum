@@ -27,6 +27,15 @@ app:
       redis-ttl-seconds: 604800       # 流量池赛马状态 7 天
     coldstart:
       redis-ttl-seconds: 2592000      # Thompson 后验 30 天
+    # Sentinel 流量治理（P3-1 限流 + P3-2 熔断）：推荐主链路资源 recommend-feed（@Profile("prod") 激活，演示不加载）
+    sentinel:
+      enabled: true                    # 总开关：false 时仅埋点、不下发规则（演示保持放行）
+      feed:
+        flow-qps: 100                  # 单机 QPS 阈值（每 pod 本地计数；集群流控留生产部署文档项）
+        degrade:
+          ratio: 0.5                   # 异常比例熔断阈值（0~1，推荐链路异常率超过则熔断）
+          min-requests: 10             # 最小请求数（样本不足不判定，防误熔断）
+          time-window-seconds: 10      # 熔断打开后的等待窗口（秒），过后半开试探自动恢复
 
 xxl:
   job:

@@ -60,6 +60,7 @@ app:
     item-feature-cache-ttl-ms: 5000    # 物品特征（热度/计数）缓存（ms）：读多写少，短缓存即可
     hot-board-ttl-ms: 30000            # 热搜整榜缓存（ms）：整榜 Top-50 一次算好，按请求 limit 现场切片
     hot-post-ids-ttl-ms: 10000         # 热门/兜底 postId 排序缓存（ms）：只缓存 ID 顺序，VO 每请求现算
+    post-cache-ttl-ms: 5000            # 单帖详情本地缓存（P3-3 热点 key）：热门帖回源压力下降，写路径失效+短TTL兜底
     # 入口单机限流（P1-4）：/api/** 按 IP 滑动窗口，超限 429（仅单实例有效，多 Pod 需分布式限流）
     rate-limit:
       enabled: true

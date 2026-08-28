@@ -1,5 +1,9 @@
 package com.tkzou.miniforum.recommend.service;
 
+import com.alibaba.csp.sentinel.Entry;
+import com.alibaba.csp.sentinel.SphU;
+import com.alibaba.csp.sentinel.Tracer;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.tkzou.miniforum.dto.PostAssembler;
 import com.tkzou.miniforum.dto.PostVO;
 import com.tkzou.miniforum.dto.RecommendPostVO;
@@ -53,6 +57,9 @@ public class RecommendService {
 
     private static final Logger log = LoggerFactory.getLogger(RecommendService.class);
 
+    /** Sentinel 资源名：推荐 feed 主链路（P3-1 限流 + P3-2 熔断共用）。prod 由 {@code SentinelConfig} 下发规则，演示无规则原样放行 */
+    public static final String SENTINEL_RESOURCE_FEED = "recommend-feed";
+
     /** 兜底/冷启动热门 postId 缓存：单 key 存 Top-50 排序列表，TTL 内命中（复用 app.rec.hot-post-ids-ttl-ms） */
     private static final String TOP_HOT_KEY = "top-hot-posts";
     /** 热门缓存 TTL 打散幅度（ms） */
@@ -104,20 +111,42 @@ public class RecommendService {
     /**
      * 推荐流：完整漏斗，返回带理由的 TopN。
      * <p>
-     * 高并发降级保护：主链路（召回/排序/重排）任一步异常 → 降级为全站热门兜底，保证接口不 500、
-     * 只损失个性化（大厂"降级牺牲功能、限流牺牲流量"）。
+     * 高并发降级保护（P3-1/P3-2 Sentinel 接入点，prod 生效、演示无规则放行）：
+     * <ul>
+     *   <li><b>限流/熔断</b>：{@link SphU#entry} 对资源 {@value #SENTINEL_RESOURCE_FEED} 做 QPS 限流 + 异常比例熔断。
+     *       触发（{@link BlockException}）→ 直接降级全站热门兜底（"限流牺牲流量、降级牺牲功能"）；</li>
+     *   <li><b>业务异常兜底</b>：主链路（召回/排序/重排）任一步异常 → {@link Tracer#trace} 给异常比例熔断供数
+     *       + 降级热门兜底，接口不 500、只损失个性化。</li>
+     * </ul>
      */
     public List<RecommendPostVO> recommend(RecommendContext ctx, String username, String expId) {
         int topN = RecConfig.defaults().getFinalTopN(); // 兜底默认条数（降级路径也要有界）
+        Entry entry = null;
         try {
+            // Sentinel 埋点：prod 有规则则做 QPS 限流 + 异常比例熔断；无规则原样放行（演示行为不变）。
+            // 放最前面：超限/熔断的请求在进入漏斗前就被拦截（不占昂贵算力）。
+            entry = SphU.entry(SENTINEL_RESOURCE_FEED);
             // AB 实验：实验组 B 走多样性变体配置
             RecConfig cfg = abExperimentService.configFor(expId, ctx.getUserId());
             topN = Math.min(ctx.getSize() > 0 ? ctx.getSize() : cfg.getFinalTopN(), cfg.getFinalTopN());
             return doRecommend(ctx, username, expId, cfg, topN);
+        } catch (BlockException e) {
+            // 限流/熔断触发：BlockException 是 checked 异常，必须最先 catch（它是 Exception 子类）。
+            // 不计入异常比例熔断（被限流是"预期拒绝"，不是业务故障）——直接降级热门。
+            log.warn("推荐入口被 Sentinel 限流/熔断，降级热门兜底：userId={}, expId={}, rule={}",
+                    ctx.getUserId(), expId, e.getRuleLimitApp());
+            return hotFallback(ctx, username, topN);
         } catch (Exception e) {
+            // 业务异常：Tracer.trace 给异常比例熔断规则（DEGRADE_GRADE_EXCEPTION_RATIO）供数，
+            // 异常率超阈值后 Sentinel 自动熔断（后续 entry 抛 DegradeException → 走上面的 BlockException 分支）。
+            Tracer.trace(e);
             log.warn("推荐链路异常，降级为热门兜底：userId={}, expId={}, err={}",
                     ctx.getUserId(), expId, e.getMessage());
             return hotFallback(ctx, username, topN);
+        } finally {
+            if (entry != null) {
+                entry.exit(); // 与 SphU.entry 成对：只有成功拿到 entry 才需要 exit（含异常路径）
+            }
         }
     }
 

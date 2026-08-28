@@ -107,6 +107,16 @@ public class PostService {
         hotPostIdsCache.setTtlMillis(ttl);
     }
 
+    /** 单帖实体缓存：热点帖详情回源压力下降（P3-3 热点 key）；缓存实体引用，TTL 内接受轻微过期 */
+    private static final long POST_CACHE_JITTER_MS = 1_000;
+    private final TtlCache<Long, Post> postCache = new TtlCache<>(0, POST_CACHE_JITTER_MS);
+
+    /** 单帖实体缓存 TTL（ms），Spring 注入；>0 启用，≤0 禁用（每次回源） */
+    @Value("${app.rec.post-cache-ttl-ms:5000}")
+    public void setPostCacheTtlMs(long ttl) {
+        postCache.setTtlMillis(ttl);
+    }
+
     /** 调度模式：local=@Scheduled 自调度（演示默认）/ xxl=由 XXL-Job 派发（生产，@Scheduled 空转防双跑） */
     @Value("${app.scheduling.mode:local}")
     private String schedulingMode;
@@ -249,9 +259,14 @@ public class PostService {
                 .collect(Collectors.toList());
     }
 
-    /** 根据 ID 查询帖子，不存在/已删除时抛出异常；草稿仅作者本人/管理员可见；查看已发布帖子时阅读量 +1 */
+    /**
+     * 根据 ID 查询帖子，不存在/已删除时抛出异常；草稿仅作者本人/管理员可见；查看已发布帖子时阅读量 +1
+     * <p>
+     * 热点 key 优化（P3-3）：读帖子走本地 {@link TtlCache}，热门帖详情回源压力下降；
+     * 写路径（update/delete/restore/like/unlike）主动失效 + 短 TTL 兜底，接受轻微过期。
+     */
     public PostVO getById(Long id, String username) {
-        Post post = getPostOrThrow(id);
+        Post post = postCache.get(id, () -> getPostOrThrow(id));
         if (post.isDeleted()) {
             throw new ResourceNotFoundException("帖子不存在：id=" + id);
         }
@@ -384,7 +399,9 @@ public class PostService {
                     .orElse(post.getAuthorId());
             notifyMentions(post, username, actorId);
         }
-        return toVO(postRepository.save(post), username);
+        Post saved = postRepository.save(post);
+        postCache.invalidate(id); // 帖子内容变更 → 踢单帖缓存
+        return toVO(saved, username);
     }
 
     /**
@@ -404,6 +421,7 @@ public class PostService {
         post.setDeleted(true);
         post.setDeletedAt(LocalDateTime.now());
         postRepository.save(post);
+        postCache.invalidate(id); // 软删除 → 踢单帖缓存
     }
 
     /** 恢复回收站中的帖子（仅作者本人/管理员可操作） */
@@ -417,7 +435,9 @@ public class PostService {
         }
         post.setDeleted(false);
         post.setDeletedAt(null);
-        return toVO(postRepository.save(post), username);
+        Post saved = postRepository.save(post);
+        postCache.invalidate(id); // 恢复 → 踢单帖缓存
+        return toVO(saved, username);
     }
 
     /** 我的回收站：当前用户已删除的帖子（分页，按删除时间倒序） */
@@ -462,6 +482,7 @@ public class PostService {
             likeRepository.deleteByPostId(post.getId());
             favoriteRepository.deleteByPostId(post.getId());
             notificationService.deleteByPostId(post.getId());
+            postCache.invalidate(post.getId()); // 彻底删除 → 踢单帖缓存
         }
         if (!expired.isEmpty()) {
             log.info("回收站清理完成：已彻底删除 {} 篇过期帖子", expired.size());
@@ -580,6 +601,7 @@ public class PostService {
         // 通知帖子作者（给自己点赞不通知）
         notificationService.notify(post.getAuthorId(), actorId, username,
                 Notification.TYPE_LIKE, postId, "赞了你的帖子《" + post.getTitle() + "》");
+        postCache.invalidate(postId); // 点赞数变化 → 踢单帖缓存
         return toVO(post, username);
     }
 
@@ -593,6 +615,7 @@ public class PostService {
                 .orElseThrow(() -> new BusinessException("你还没有点过赞"));
         likeRepository.delete(like);
         post.setLikeCount(Math.max(0, post.getLikeCount() - 1));
+        postCache.invalidate(postId); // 取消点赞 → 踢单帖缓存
         return toVO(post, username);
     }
 
