@@ -1,6 +1,5 @@
 package com.tkzou.miniforum.recommend.rank;
 
-import com.tkzou.miniforum.entity.Follow;
 import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.recommend.coldstart.TrafficPool;
 import com.tkzou.miniforum.recommend.config.ConfigService;
@@ -8,13 +7,14 @@ import com.tkzou.miniforum.recommend.config.RecConfig;
 import com.tkzou.miniforum.recommend.domain.Candidate;
 import com.tkzou.miniforum.recommend.domain.RankedItem;
 import com.tkzou.miniforum.recommend.domain.RecommendContext;
-import com.tkzou.miniforum.recommend.feature.FeatureService;
 import com.tkzou.miniforum.recommend.feature.ItemFeature;
-import com.tkzou.miniforum.recommend.feature.UserProfile;
+import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
+import com.tkzou.miniforum.recommend.graph.SocialGraphService;
+import com.tkzou.miniforum.recommend.profile.UserProfile;
 import com.tkzou.miniforum.recommend.model.ItemCfModel;
 import com.tkzou.miniforum.recommend.model.ItemCfModelStore;
 import com.tkzou.miniforum.recommend.model.ItemCfScorer;
-import com.tkzou.miniforum.repository.FollowRepository;
+import com.tkzou.miniforum.recommend.profile.UserProfileService;
 import com.tkzou.miniforum.repository.PostRepository;
 import org.springframework.stereotype.Component;
 
@@ -25,7 +25,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * 规则加权排序（弱训练侧默认排序器）
@@ -41,27 +40,30 @@ import java.util.stream.Collectors;
 @Component
 public class RuleRankService implements RankService {
 
-    private final FeatureService featureService;
+    private final UserProfileService userProfileService;
+    private final ItemFeatureService itemFeatureService;
     private final ItemCfModelStore itemCfModelStore;
     private final ItemCfScorer itemCfScorer;
-    private final FollowRepository followRepository;
+    private final SocialGraphService socialGraphService;
     private final PostRepository postRepository;
     private final ConfigService configService;
     private final ExploreProvider exploreProvider;
     private final TrafficPool trafficPool;
 
-    public RuleRankService(FeatureService featureService,
+    public RuleRankService(UserProfileService userProfileService,
+                           ItemFeatureService itemFeatureService,
                            ItemCfModelStore itemCfModelStore,
                            ItemCfScorer itemCfScorer,
-                           FollowRepository followRepository,
+                           SocialGraphService socialGraphService,
                            PostRepository postRepository,
                            ConfigService configService,
                            ExploreProvider exploreProvider,
                            TrafficPool trafficPool) {
-        this.featureService = featureService;
+        this.userProfileService = userProfileService;
+        this.itemFeatureService = itemFeatureService;
         this.itemCfModelStore = itemCfModelStore;
         this.itemCfScorer = itemCfScorer;
-        this.followRepository = followRepository;
+        this.socialGraphService = socialGraphService;
         this.postRepository = postRepository;
         this.configService = configService;
         this.exploreProvider = exploreProvider;
@@ -71,30 +73,33 @@ public class RuleRankService implements RankService {
     @Override
     public List<RankedItem> rank(RecommendContext ctx, List<Candidate> candidates) {
         RecConfig cfg = configService.current();
-        UserProfile profile = featureService.userProfile(ctx.getUserId());
+        UserProfile profile = userProfileService.userProfile(ctx.getUserId());
         List<Long> history = profile.getRecentItemIds();
         ItemCfModel model = itemCfModelStore.get();
-        Set<Long> followedRepostedIds = computeFollowedRepostedIds(ctx.getUserId());
+        Set<Long> followedRepostedIds = socialGraphService.followedRepostedIds(ctx.getUserId());
 
         // 候选内最大互动热度（用于 hot 特征归一化）
         double maxInteract = 1;
         for (Candidate c : candidates) {
-            maxInteract = Math.max(maxInteract, Math.log1p(featureService.itemFeature(c.getItemId()).getHotScore()));
+            maxInteract = Math.max(maxInteract, Math.log1p(itemFeatureService.itemFeature(c.getItemId()).getHotScore()));
         }
 
         Map<Long, Double> itemCfCache = new HashMap<>();
         List<RankedItem> ranked = new ArrayList<>();
         for (Candidate c : candidates) {
-            ItemFeature f = featureService.itemFeature(c.getItemId());
+            ItemFeature f = itemFeatureService.itemFeature(c.getItemId());
+            // 作者信息（社交/作者特征需要）：与 social() 原逻辑一致，每候选一次回源
+            Post post = postRepository.findById(c.getItemId()).orElse(null);
+            Long authorId = post != null ? post.getAuthorId() : null;
             Map<String, Double> feats = new LinkedHashMap<>();
 
             double interact = Math.log1p(f.getHotScore());
             double quality = quality(f);
             double interest = interest(profile, f, model, history, itemCfCache);
-            double social = social(ctx.getUserId(), f, followedRepostedIds);
-            double author = f.getAuthorFollowers();
+            double social = social(ctx.getUserId(), authorId, c.getItemId(), followedRepostedIds);
+            double author = authorId != null ? socialGraphService.authorFollowers(authorId) : 0;
             double hot = interact / Math.max(1, maxInteract);
-            double realtime = featureService.realtimeMatch(ctx.getUserId(), c.getItemId());
+            double realtime = itemFeatureService.realtimeMatch(ctx.getUserId(), c.getItemId());
 
             feats.put("interact", interact);
             feats.put("quality", quality);
@@ -143,36 +148,16 @@ public class RuleRankService implements RankService {
         return 0.6 * topicOverlap + 0.4 * itemcf;
     }
 
-    /** 关注关系：基础 1 + 作者被我关注 +1 + 我关注的人转发了 +0.5（微博二度关系） */
-    private double social(Long userId, ItemFeature f, Set<Long> followedRepostedIds) {
+    /** 关注关系：基础 1 + 作者被我关注 +1 + 我关注的人转发了 +0.5（微博二度关系；社交信号取自图域 SocialGraphService） */
+    private double social(Long userId, Long authorId, Long postId, Set<Long> followedRepostedIds) {
         double score = 1.0;
-        Post post = postRepository.findById(f.getPostId()).orElse(null);
-        if (userId != null && post != null && post.getAuthorId() != null
-                && followRepository.exists(userId, post.getAuthorId())) {
+        if (socialGraphService.isFollowing(userId, authorId)) {
             score += 1.0;
         }
-        if (followedRepostedIds.contains(f.getPostId())) {
+        if (followedRepostedIds.contains(postId)) {
             score += 0.5;
         }
         return score;
-    }
-
-    /** 我关注的人转发过的帖子 ID 集合（二度关系信号，一次请求内预计算） */
-    private Set<Long> computeFollowedRepostedIds(Long userId) {
-        if (userId == null) {
-            return Set.of();
-        }
-        Set<Long> following = followRepository.findByFollowerId(userId).stream()
-                .map(Follow::getFolloweeId)
-                .collect(Collectors.toSet());
-        if (following.isEmpty()) {
-            return Set.of();
-        }
-        return postRepository.findAll().stream()
-                .filter(p -> p.getOriginalPostId() != null && p.getOriginalAuthorId() != null)
-                .filter(p -> following.contains(p.getOriginalAuthorId()))
-                .map(Post::getOriginalPostId)
-                .collect(Collectors.toSet());
     }
 
     /** 可解释推荐理由（微博式：关注/话题/互动/热点/新内容） */

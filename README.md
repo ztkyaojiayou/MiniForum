@@ -80,7 +80,7 @@
 GET /api/recommend/feed?page&size      (session: userId)
   │
   ▼  RecommendService.recommend(ctx, username, expId)
-  ├─① 画像      FeatureService.userProfile(uid)
+  ├─① 画像      UserProfileService.userProfile(uid)
   │            → 话题/类目兴趣权重(时间衰减) + 最近交互序列 + 活跃度
   ├─② 召回      RecallService.recall(ctx) → 6 路并行:
   │             hot(热度分) / topic(兴趣话题) / category(兴趣类目)

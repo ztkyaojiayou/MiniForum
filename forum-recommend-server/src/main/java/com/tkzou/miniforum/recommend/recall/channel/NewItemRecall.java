@@ -3,7 +3,7 @@ package com.tkzou.miniforum.recommend.recall.channel;
 import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.recommend.domain.RecallHit;
 import com.tkzou.miniforum.recommend.domain.RecommendContext;
-import com.tkzou.miniforum.recommend.feature.FeatureService;
+import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
 import com.tkzou.miniforum.recommend.feature.ItemFeature;
 import com.tkzou.miniforum.recommend.recall.RecallChannel;
 import com.tkzou.miniforum.repository.PostRepository;
@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 
 /**
  * 新内容召回：冷启内容池（新发布或互动过少）按新鲜度取 TopN，保证新帖有曝光机会。
- * <p>数据流程：PostRepository 可见帖 → FeatureService.itemFeature().isInNewPool 过滤 → 按 freshness 降序取 N
+ * <p>数据流程：PostRepository 可见帖 → ItemFeatureService.itemFeature().isInNewPool 过滤 → 按 freshness 降序取 N
  * → RecallHit(source="newitem")。与冷启动池配合（Thompson 探索分在排序阶段注入）。
  */
 @Component
@@ -28,11 +28,11 @@ import java.util.stream.Collectors;
 public class NewItemRecall implements RecallChannel {
 
     private final PostRepository postRepository;
-    private final FeatureService featureService;
+    private final ItemFeatureService itemFeatureService;
 
-    public NewItemRecall(PostRepository postRepository, FeatureService featureService) {
+    public NewItemRecall(PostRepository postRepository, ItemFeatureService itemFeatureService) {
         this.postRepository = postRepository;
-        this.featureService = featureService;
+        this.itemFeatureService = itemFeatureService;
     }
 
     @Override
@@ -44,7 +44,7 @@ public class NewItemRecall implements RecallChannel {
     public List<RecallHit> recall(RecommendContext ctx, int size) {
         return postRepository.findAll().stream()
                 .filter(this::isVisible)
-                .map(p -> featureService.itemFeature(p.getId()))
+                .map(p -> itemFeatureService.itemFeature(p.getId()))
                 .filter(ItemFeature::isInNewPool)
                 .sorted(Comparator.comparingDouble(ItemFeature::getFreshness).reversed())
                 .limit(size)

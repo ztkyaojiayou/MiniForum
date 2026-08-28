@@ -2,7 +2,7 @@ package com.tkzou.miniforum.recommend.coldstart;
 
 import com.tkzou.miniforum.recommend.behavior.BehaviorLog;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
-import com.tkzou.miniforum.recommend.feature.FeatureService;
+import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
 import com.tkzou.miniforum.recommend.stream.BehaviorEventQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +37,7 @@ public class TrafficPool {
     /** 状态存储 TTL（秒）：Redis 默认 7 天，停止后自然过期（InMemory 忽略 TTL） */
     private static final long DEFAULT_TTL_SECONDS = 604800;
 
-    private final FeatureService featureService;
+    private final ItemFeatureService itemFeatureService;
     private final BehaviorEventQueue eventQueue;
     /** 流量池状态存储：演示 InMemory（单实例）/ 生产 Redis（多实例共享，见 RedisTrafficPoolStore） */
     private final TrafficPoolStore store;
@@ -64,8 +64,8 @@ public class TrafficPool {
     @Value("${app.scheduling.mode:local}")
     private String schedulingMode;
 
-    public TrafficPool(FeatureService featureService, BehaviorEventQueue eventQueue, TrafficPoolStore store) {
-        this.featureService = featureService;
+    public TrafficPool(ItemFeatureService itemFeatureService, BehaviorEventQueue eventQueue, TrafficPoolStore store) {
+        this.itemFeatureService = itemFeatureService;
         this.eventQueue = eventQueue;
         this.store = store;
         this.eventQueue.subscribe(this::onBehavior);
@@ -79,7 +79,7 @@ public class TrafficPool {
         PostState st = store.get(b.getPostId()).orElse(null);
         if (st == null) {
             // 只跟踪冷启新帖
-            if (!featureService.itemFeature(b.getPostId()).isInNewPool()) {
+            if (!itemFeatureService.itemFeature(b.getPostId()).isInNewPool()) {
                 return;
             }
             // 原子入池：SETNX 保证多 pod 只有一个创建；失败说明别的 pod 已建，re-get
@@ -110,7 +110,7 @@ public class TrafficPool {
         if (!enabled || postId == null) {
             return;
         }
-        if (!featureService.itemFeature(postId).isInNewPool()) {
+        if (!itemFeatureService.itemFeature(postId).isInNewPool()) {
             return;
         }
         // 原子判重入池：已存在则 SETNX 返回 false，不覆盖（多 pod 幂等）

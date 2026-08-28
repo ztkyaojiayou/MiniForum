@@ -5,7 +5,7 @@ import com.tkzou.miniforum.recommend.behavior.BehaviorLog;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 import com.tkzou.miniforum.recommend.config.ConfigService;
-import com.tkzou.miniforum.recommend.feature.FeatureService;
+import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
 import com.tkzou.miniforum.recommend.model.ItemCfBuilder;
 import com.tkzou.miniforum.recommend.model.ItemCfModel;
 import com.tkzou.miniforum.recommend.prod.clickhouse.ClickHouseBehaviorStore;
@@ -42,7 +42,7 @@ public class OfflineEvaluator {
 
     private final BehaviorLogRepository behaviorLogRepository;
     private final PostRepository postRepository;
-    private final FeatureService featureService;
+    private final ItemFeatureService itemFeatureService;
     private final ConfigService configService;
     /** 生产：从 ClickHouse 读行为全量（数仓，Kafka Engine 摄入）；演示为 null → 内存仓库 */
     @Autowired(required = false)
@@ -50,11 +50,11 @@ public class OfflineEvaluator {
 
     public OfflineEvaluator(BehaviorLogRepository behaviorLogRepository,
                             PostRepository postRepository,
-                            FeatureService featureService,
+                            ItemFeatureService itemFeatureService,
                             ConfigService configService) {
         this.behaviorLogRepository = behaviorLogRepository;
         this.postRepository = postRepository;
-        this.featureService = featureService;
+        this.itemFeatureService = itemFeatureService;
         this.configService = configService;
     }
 
@@ -117,7 +117,7 @@ public class OfflineEvaluator {
             }
             for (Post p : visiblePosts()) {
                 scores.merge(p.getId(),
-                        0.05 * Math.log1p(featureService.itemFeature(p.getId()).getHotScore()), Double::sum);
+                        0.05 * Math.log1p(itemFeatureService.itemFeature(p.getId()).getHotScore()), Double::sum);
             }
 
             List<Long> ranking = scores.entrySet().stream()
@@ -190,7 +190,7 @@ public class OfflineEvaluator {
     }
 
     private String categoryOf(Long postId) {
-        String cat = featureService.itemFeature(postId).getCategory();
+        String cat = itemFeatureService.itemFeature(postId).getCategory();
         return cat == null || cat.isBlank() ? "其他" : cat;
     }
 

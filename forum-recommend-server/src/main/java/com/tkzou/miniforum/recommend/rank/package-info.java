@@ -14,7 +14,8 @@
  * 时效新鲜度 = exp(-ln2·ageHours/halfLife)（RecConfig.halfLifeHours，默认 4h）
  * </pre>
  *
- * 特征统一取自 {@code FeatureService.itemFeature(postId)}（与推荐漏斗解耦，可独立调用）。
+ * 特征统一取自三域：{@code ItemFeatureService.itemFeature(postId)}（物品特征）、
+ * {@code UserProfileService.userProfile(uid)}（画像 interest）、{@code SocialGraphService}（social/author 社交特征）——与推荐漏斗解耦，可独立调用。
  * 权重来自 {@code RecConfig.rankWeight}（运行时可热更新 / Nacos）。
  */
 package com.tkzou.miniforum.recommend.rank;

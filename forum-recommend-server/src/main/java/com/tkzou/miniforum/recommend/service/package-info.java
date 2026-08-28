@@ -8,7 +8,7 @@
  * <pre>
  * RecommendController.feed(session:userId) → RecommendContext(userId, scene, size)
  *   → RecommendService.recommend
- *     ├① feature.InMemoryFeatureService.userProfile → 画像（话题/类目兴趣权重）
+ *     ├① profile.InMemoryUserProfileService.userProfile → 画像（话题/类目兴趣权重）
  *     ├② recall.RecallService.recall → 6 路召回 → MergeRecallService 归一化融合 → List&lt;Candidate&gt;
  *     ├③ rank.RuleRankService.rank → 微博式 rankScore → List&lt;RankedItem&gt;（带特征分构成 + 推荐理由）
  *     ├④ rerank.DiversifyRerankService.rerank → 同类打散 + MMR → TopN

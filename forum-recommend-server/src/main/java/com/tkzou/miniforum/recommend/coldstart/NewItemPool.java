@@ -1,7 +1,7 @@
 package com.tkzou.miniforum.recommend.coldstart;
 
 import com.tkzou.miniforum.entity.Post;
-import com.tkzou.miniforum.recommend.feature.FeatureService;
+import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
 import com.tkzou.miniforum.recommend.feature.ItemFeature;
 import com.tkzou.miniforum.repository.PostRepository;
 import org.springframework.stereotype.Component;
@@ -29,12 +29,12 @@ public class NewItemPool {
     private static final long DEFAULT_TTL_SECONDS = 2592000;
 
     private final PostRepository postRepository;
-    private final FeatureService featureService;
+    private final ItemFeatureService itemFeatureService;
     private final NewItemPoolStore store;
 
-    public NewItemPool(PostRepository postRepository, FeatureService featureService, NewItemPoolStore store) {
+    public NewItemPool(PostRepository postRepository, ItemFeatureService itemFeatureService, NewItemPoolStore store) {
         this.postRepository = postRepository;
-        this.featureService = featureService;
+        this.itemFeatureService = itemFeatureService;
         this.store = store;
     }
 
@@ -42,7 +42,7 @@ public class NewItemPool {
     public List<Long> poolItems() {
         return postRepository.findAll().stream()
                 .filter(p -> Post.STATUS_PUBLISHED.equals(p.getStatus()) && !p.isDeleted())
-                .map(p -> featureService.itemFeature(p.getId()))
+                .map(p -> itemFeatureService.itemFeature(p.getId()))
                 .filter(ItemFeature::isInNewPool)
                 .map(ItemFeature::getPostId)
                 .collect(Collectors.toList());

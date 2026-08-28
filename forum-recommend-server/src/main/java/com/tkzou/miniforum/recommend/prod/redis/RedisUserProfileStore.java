@@ -1,7 +1,7 @@
 package com.tkzou.miniforum.recommend.prod.redis;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tkzou.miniforum.recommend.feature.UserProfile;
+import com.tkzou.miniforum.recommend.profile.UserProfile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;

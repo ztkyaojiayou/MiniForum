@@ -2,9 +2,8 @@ package com.tkzou.miniforum.recommend.stream;
 
 import com.tkzou.miniforum.recommend.coldstart.InMemoryTrafficPoolStore;
 import com.tkzou.miniforum.recommend.coldstart.TrafficPool;
-import com.tkzou.miniforum.recommend.feature.FeatureService;
 import com.tkzou.miniforum.recommend.feature.ItemFeature;
-import com.tkzou.miniforum.recommend.feature.UserProfile;
+import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -21,14 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 class TrafficPoolOnPostCreatedTest {
 
-    /** 可控的 FeatureService 桩：itemFeature 返回指定 inNewPool 标记 */
-    private static FeatureService featureService(boolean inNewPool) {
-        return new FeatureService() {
-            @Override
-            public UserProfile userProfile(Long userId) {
-                return null;
-            }
-
+    /** 可控的 ItemFeatureService 桩：itemFeature 返回指定 inNewPool 标记 */
+    private static ItemFeatureService itemFeatureService(boolean inNewPool) {
+        return new ItemFeatureService() {
             @Override
             public ItemFeature itemFeature(Long postId) {
                 ItemFeature f = new ItemFeature();
@@ -49,8 +43,8 @@ class TrafficPoolOnPostCreatedTest {
      * enabled 默认 false 会跳过入池），取值对齐 application.yml 默认：enabled=true、base-boost=0.3。
      * 存储用内存实现（P2-2 状态外置后 TrafficPool 依赖 store 接口）。
      */
-    private static TrafficPool newTrafficPool(FeatureService featureService) {
-        TrafficPool pool = new TrafficPool(featureService, new BehaviorEventQueue(), new InMemoryTrafficPoolStore());
+    private static TrafficPool newTrafficPool(ItemFeatureService itemFeatureService) {
+        TrafficPool pool = new TrafficPool(itemFeatureService, new BehaviorEventQueue(), new InMemoryTrafficPoolStore());
         ReflectionTestUtils.setField(pool, "enabled", true);
         ReflectionTestUtils.setField(pool, "baseBoost", 0.3);
         return pool;
@@ -58,7 +52,7 @@ class TrafficPoolOnPostCreatedTest {
 
     @Test
     void postCreatedEvent_pushesNewPostIntoTrafficPool() {
-        TrafficPool trafficPool = newTrafficPool(featureService(true));
+        TrafficPool trafficPool = newTrafficPool(itemFeatureService(true));
         PostCreatedEventBus eventBus = new PostCreatedEventBus();
         new TrafficPoolOnPostCreated(eventBus, trafficPool); // 构造器即订阅
         InMemoryPostCreatedNotifier notifier = new InMemoryPostCreatedNotifier(eventBus);
@@ -72,7 +66,7 @@ class TrafficPoolOnPostCreatedTest {
 
     @Test
     void repeatedPostCreatedEvent_isDeduplicated() {
-        TrafficPool trafficPool = newTrafficPool(featureService(true));
+        TrafficPool trafficPool = newTrafficPool(itemFeatureService(true));
         PostCreatedEventBus eventBus = new PostCreatedEventBus();
         new TrafficPoolOnPostCreated(eventBus, trafficPool);
 
@@ -85,7 +79,7 @@ class TrafficPoolOnPostCreatedTest {
 
     @Test
     void nonNewPoolPost_isIgnoredByTrafficPool() {
-        TrafficPool trafficPool = newTrafficPool(featureService(false));
+        TrafficPool trafficPool = newTrafficPool(itemFeatureService(false));
         PostCreatedEventBus eventBus = new PostCreatedEventBus();
         new TrafficPoolOnPostCreated(eventBus, trafficPool);
 

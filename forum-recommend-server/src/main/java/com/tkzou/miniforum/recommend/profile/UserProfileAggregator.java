@@ -1,4 +1,4 @@
-package com.tkzou.miniforum.recommend.feature;
+package com.tkzou.miniforum.recommend.profile;
 
 import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLog;

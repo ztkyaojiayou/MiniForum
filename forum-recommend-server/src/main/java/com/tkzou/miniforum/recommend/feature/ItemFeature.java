@@ -36,9 +36,6 @@ public class ItemFeature {
     /** 时效新鲜度 = exp(-ln2·ageHours/halfLife) */
     private double freshness;
 
-    /** 作者粉丝数（log1p 归一化） */
-    private double authorFollowers;
-
     /** 是否冷启内容（新发布或互动过少） */
     private boolean inNewPool;
 
@@ -139,14 +136,6 @@ public class ItemFeature {
 
     public void setFreshness(double freshness) {
         this.freshness = freshness;
-    }
-
-    public double getAuthorFollowers() {
-        return authorFollowers;
-    }
-
-    public void setAuthorFollowers(double authorFollowers) {
-        this.authorFollowers = authorFollowers;
     }
 
     public boolean isInNewPool() {

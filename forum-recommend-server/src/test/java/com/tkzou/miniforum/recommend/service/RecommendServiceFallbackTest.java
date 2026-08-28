@@ -10,8 +10,9 @@ import com.tkzou.miniforum.recommend.coldstart.ColdStartService;
 import com.tkzou.miniforum.recommend.config.ConfigService;
 import com.tkzou.miniforum.recommend.config.RecConfig;
 import com.tkzou.miniforum.recommend.domain.RecommendContext;
-import com.tkzou.miniforum.recommend.feature.FeatureService;
 import com.tkzou.miniforum.recommend.feature.ItemFeature;
+import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
+import com.tkzou.miniforum.recommend.profile.UserProfileService;
 import com.tkzou.miniforum.recommend.model.ItemCfModelStore;
 import com.tkzou.miniforum.recommend.rank.RankService;
 import com.tkzou.miniforum.recommend.recall.RecallService;
@@ -40,7 +41,8 @@ class RecommendServiceFallbackTest {
 
     @Test
     void recommend_fallsBackToHotPostsWhenFunnelThrows() {
-        FeatureService featureService = mock(FeatureService.class);
+        UserProfileService userProfileService = mock(UserProfileService.class);
+        ItemFeatureService itemFeatureService = mock(ItemFeatureService.class);
         RecallService recallService = mock(RecallService.class);
         RankService rankService = mock(RankService.class);
         RerankService rerankService = mock(RerankService.class);
@@ -63,11 +65,11 @@ class RecommendServiceFallbackTest {
         when(postRepository.findAll()).thenReturn(List.of(hotPost));
         ItemFeature hotFeature = new ItemFeature();
         hotFeature.setHotScore(100);
-        when(featureService.itemFeature(100L)).thenReturn(hotFeature);
+        when(itemFeatureService.itemFeature(100L)).thenReturn(hotFeature);
         when(postRepository.findById(100L)).thenReturn(Optional.of(hotPost));
         when(postAssembler.toVO(hotPost, "alice")).thenReturn(mock(PostVO.class));
 
-        RecommendService service = new RecommendService(featureService, recallService, rankService, rerankService,
+        RecommendService service = new RecommendService(userProfileService, itemFeatureService, recallService, rankService, rerankService,
                 coldStartService, configService, abExperimentService, behaviorLogger, postAssembler,
                 postRepository, itemCfModelStore);
 

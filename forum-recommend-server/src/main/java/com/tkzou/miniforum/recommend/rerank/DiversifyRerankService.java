@@ -4,7 +4,7 @@ import com.tkzou.miniforum.recommend.config.ConfigService;
 import com.tkzou.miniforum.recommend.config.RecConfig;
 import com.tkzou.miniforum.recommend.domain.RankedItem;
 import com.tkzou.miniforum.recommend.domain.RecommendContext;
-import com.tkzou.miniforum.recommend.feature.FeatureService;
+import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
 import com.tkzou.miniforum.recommend.feature.ItemFeature;
 import org.springframework.stereotype.Component;
 
@@ -23,11 +23,11 @@ import java.util.List;
 @Component
 public class DiversifyRerankService implements RerankService {
 
-    private final FeatureService featureService;
+    private final ItemFeatureService itemFeatureService;
     private final ConfigService configService;
 
-    public DiversifyRerankService(FeatureService featureService, ConfigService configService) {
-        this.featureService = featureService;
+    public DiversifyRerankService(ItemFeatureService itemFeatureService, ConfigService configService) {
+        this.itemFeatureService = itemFeatureService;
         this.configService = configService;
     }
 
@@ -97,8 +97,8 @@ public class DiversifyRerankService implements RerankService {
     }
 
     private boolean similar(RankedItem a, RankedItem b) {
-        ItemFeature fa = featureService.itemFeature(a.getItemId());
-        ItemFeature fb = featureService.itemFeature(b.getItemId());
+        ItemFeature fa = itemFeatureService.itemFeature(a.getItemId());
+        ItemFeature fb = itemFeatureService.itemFeature(b.getItemId());
         if (fa.getCategory() != null && fa.getCategory().equals(fb.getCategory())) {
             return true;
         }
@@ -111,7 +111,7 @@ public class DiversifyRerankService implements RerankService {
     }
 
     private String categoryOf(RankedItem item) {
-        String cat = featureService.itemFeature(item.getItemId()).getCategory();
+        String cat = itemFeatureService.itemFeature(item.getItemId()).getCategory();
         return cat == null || cat.isBlank() ? "其他" : cat;
     }
 }

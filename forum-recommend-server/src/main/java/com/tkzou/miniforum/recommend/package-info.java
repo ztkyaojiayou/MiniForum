@@ -9,8 +9,10 @@
  * <pre>
  * 用户请求 /api/recommend/feed (session:userId)
  *   └→ service.RecommendService         编排：画像→召回→排序→重排→冷启动→下发→曝光日志
- *        ├→ feature.InMemoryFeatureService  画像(userProfile)/物品特征(itemFeature)/实时匹配
- *        │    └→ UserProfileAggregator      行为日志 → 话题/类目兴趣权重
+ *        ├→ profile.InMemoryUserProfileService   画像(userProfile, 话题/类目兴趣权重)
+ *        │    └→ profile.UserProfileAggregator    行为日志 → 话题/类目兴趣权重
+ *        ├→ feature.InMemoryItemFeatureService    物品特征(itemFeature)/实时匹配(realtimeMatch)
+ *        ├→ graph.InMemorySocialGraphService      社交图谱(followingIds/social/authorFollowers)
  *        ├→ recall.RecallService            6 路召回（hot/topic/category/itemcf/newitem/follow）
  *        │    └→ MergeRecallService         各路 rank 归一化 + 通道加权 + 去重 → Candidate
  *        ├→ rank.RuleRankService            微博式 rankScore（interact/quality/interest/social/author/hot/realtime × 时效）

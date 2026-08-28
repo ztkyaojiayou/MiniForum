@@ -17,8 +17,9 @@ import com.tkzou.miniforum.recommend.config.RecConfig;
 import com.tkzou.miniforum.recommend.domain.Candidate;
 import com.tkzou.miniforum.recommend.domain.RankedItem;
 import com.tkzou.miniforum.recommend.domain.RecommendContext;
-import com.tkzou.miniforum.recommend.feature.FeatureService;
-import com.tkzou.miniforum.recommend.feature.UserProfile;
+import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
+import com.tkzou.miniforum.recommend.profile.UserProfile;
+import com.tkzou.miniforum.recommend.profile.UserProfileService;
 import com.tkzou.miniforum.recommend.model.ItemCfModel;
 import com.tkzou.miniforum.recommend.model.ItemCfModelStore;
 import com.tkzou.miniforum.recommend.rank.RankService;
@@ -44,7 +45,7 @@ import java.util.stream.Collectors;
 /**
  * 推荐服务（漏斗编排核心）
  * <p>
- * <b>数据流程</b>：{@code RecommendContext(uid, scene, size)} → 画像 {@link FeatureService#userProfile}
+ * <b>数据流程</b>：{@code RecommendContext(uid, scene, size)} → 画像 {@link UserProfileService#userProfile}
  * → {@link RecallService#recall} 多路召回+融合(Candidate) → {@link RuleRankService#rank} 微博式排序(RankedItem+推荐理由)
  * → {@link DiversifyRerankService#rerank} 打散/MMR(TopN) → 冷启动兜底(新用户补热门) → 逐条记 EXPOSE 行为日志
  * → 组装带理由的 {@link RecommendPostVO} 下发。
@@ -72,7 +73,8 @@ public class RecommendService {
         topHotCache.setTtlMillis(ttl);
     }
 
-    private final FeatureService featureService;
+    private final UserProfileService userProfileService;
+    private final ItemFeatureService itemFeatureService;
     private final RecallService recallService;
     private final RankService rankService;
     private final RerankService rerankService;
@@ -84,7 +86,8 @@ public class RecommendService {
     private final PostRepository postRepository;
     private final ItemCfModelStore itemCfModelStore;
 
-    public RecommendService(FeatureService featureService,
+    public RecommendService(UserProfileService userProfileService,
+                            ItemFeatureService itemFeatureService,
                             RecallService recallService,
                             RankService rankService,
                             RerankService rerankService,
@@ -95,7 +98,8 @@ public class RecommendService {
                             PostAssembler postAssembler,
                             PostRepository postRepository,
                             ItemCfModelStore itemCfModelStore) {
-        this.featureService = featureService;
+        this.userProfileService = userProfileService;
+        this.itemFeatureService = itemFeatureService;
         this.recallService = recallService;
         this.rankService = rankService;
         this.rerankService = rerankService;
@@ -213,7 +217,7 @@ public class RecommendService {
     /** 冷用户热门兜底：保证新用户能看到"大家都在看"（热搜/热门池） */
     private List<RankedItem> coldStartFallback(RecommendContext ctx, List<RankedItem> reranked,
                                                int topN, RecConfig cfg) {
-        UserProfile profile = featureService.userProfile(ctx.getUserId());
+        UserProfile profile = userProfileService.userProfile(ctx.getUserId());
         if (!profile.isCold(cfg.getMinBehaviorForWarm()) || reranked.isEmpty()) {
             return reranked;
         }
@@ -245,7 +249,7 @@ public class RecommendService {
     private List<Long> computeTopHotPostIds() {
         return postRepository.findAll().stream()
                 .filter(p -> Post.STATUS_PUBLISHED.equals(p.getStatus()) && !p.isDeleted())
-                .sorted(Comparator.comparingDouble((Post p) -> featureService.itemFeature(p.getId()).getHotScore()).reversed())
+                .sorted(Comparator.comparingDouble((Post p) -> itemFeatureService.itemFeature(p.getId()).getHotScore()).reversed())
                 .limit(50)
                 .map(Post::getId)
                 .collect(Collectors.toList());
@@ -262,6 +266,6 @@ public class RecommendService {
 
     /** 调试：当前用户画像快照（供测试/排障） */
     public UserProfile profileOf(Long userId) {
-        return featureService.userProfile(userId);
+        return userProfileService.userProfile(userId);
     }
 }

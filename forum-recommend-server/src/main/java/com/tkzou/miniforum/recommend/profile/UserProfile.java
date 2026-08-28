@@ -1,4 +1,4 @@
-package com.tkzou.miniforum.recommend.feature;
+package com.tkzou.miniforum.recommend.profile;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

@@ -2,9 +2,10 @@ package com.tkzou.miniforum.recommend.coldstart;
 
 import com.tkzou.miniforum.recommend.config.ConfigService;
 import com.tkzou.miniforum.recommend.config.RecConfig;
-import com.tkzou.miniforum.recommend.feature.FeatureService;
 import com.tkzou.miniforum.recommend.feature.ItemFeature;
-import com.tkzou.miniforum.recommend.feature.UserProfile;
+import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
+import com.tkzou.miniforum.recommend.profile.UserProfile;
+import com.tkzou.miniforum.recommend.profile.UserProfileService;
 import com.tkzou.miniforum.recommend.rank.ExploreProvider;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
@@ -23,25 +24,28 @@ import org.springframework.stereotype.Component;
 public class ColdStartService implements ExploreProvider {
 
     private final NewItemPool newItemPool;
-    private final FeatureService featureService;
+    private final ItemFeatureService itemFeatureService;
+    private final UserProfileService userProfileService;
     private final ConfigService configService;
 
     public ColdStartService(NewItemPool newItemPool,
-                            FeatureService featureService,
+                            ItemFeatureService itemFeatureService,
+                            UserProfileService userProfileService,
                             ConfigService configService) {
         this.newItemPool = newItemPool;
-        this.featureService = featureService;
+        this.itemFeatureService = itemFeatureService;
+        this.userProfileService = userProfileService;
         this.configService = configService;
     }
 
     @Override
     public double exploreBonus(Long userId, Long postId) {
-        ItemFeature f = featureService.itemFeature(postId);
+        ItemFeature f = itemFeatureService.itemFeature(postId);
         if (!f.isInNewPool()) {
             return 0;
         }
         RecConfig cfg = configService.current();
-        UserProfile profile = featureService.userProfile(userId);
+        UserProfile profile = userProfileService.userProfile(userId);
         double lambda = profile.isCold(cfg.getMinBehaviorForWarm())
                 ? cfg.getExploreLambdaNewUser()
                 : cfg.getExploreLambdaWarmUser();
@@ -51,6 +55,6 @@ public class ColdStartService implements ExploreProvider {
     /** 是否冷用户（行为过少） */
     public boolean isColdUser(Long userId) {
         RecConfig cfg = configService.current();
-        return featureService.userProfile(userId).isCold(cfg.getMinBehaviorForWarm());
+        return userProfileService.userProfile(userId).isCold(cfg.getMinBehaviorForWarm());
     }
 }

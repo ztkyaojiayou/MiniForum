@@ -1,6 +1,6 @@
 package com.tkzou.miniforum.recommend.coldstart;
 
-import com.tkzou.miniforum.recommend.feature.FeatureService;
+import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
 import com.tkzou.miniforum.repository.PostRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,9 +22,9 @@ class NewItemPoolTest {
     @BeforeEach
     void setUp() {
         PostRepository postRepository = mock(PostRepository.class);
-        FeatureService featureService = mock(FeatureService.class);
+        ItemFeatureService itemFeatureService = mock(ItemFeatureService.class);
         when(postRepository.findAll()).thenReturn(List.of()); // poolItems 为空，contains 只依赖 store
-        pool = new NewItemPool(postRepository, featureService, new InMemoryNewItemPoolStore());
+        pool = new NewItemPool(postRepository, itemFeatureService, new InMemoryNewItemPoolStore());
     }
 
     @Test

@@ -15,9 +15,10 @@ import com.tkzou.miniforum.recommend.config.ConfigService;
 import com.tkzou.miniforum.recommend.config.RecConfig;
 import com.tkzou.miniforum.recommend.domain.RankedItem;
 import com.tkzou.miniforum.recommend.domain.RecommendContext;
-import com.tkzou.miniforum.recommend.feature.FeatureService;
 import com.tkzou.miniforum.recommend.feature.ItemFeature;
-import com.tkzou.miniforum.recommend.feature.UserProfile;
+import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
+import com.tkzou.miniforum.recommend.profile.UserProfile;
+import com.tkzou.miniforum.recommend.profile.UserProfileService;
 import com.tkzou.miniforum.recommend.model.ItemCfModelStore;
 import com.tkzou.miniforum.recommend.rank.RankService;
 import com.tkzou.miniforum.recommend.recall.RecallService;
@@ -55,7 +56,8 @@ import static org.mockito.Mockito.when;
  */
 class RecommendServiceSentinelTest {
 
-    private FeatureService featureService;
+    private UserProfileService userProfileService;
+    private ItemFeatureService itemFeatureService;
     private RecallService recallService;
     private RankService rankService;
     private RerankService rerankService;
@@ -70,7 +72,8 @@ class RecommendServiceSentinelTest {
 
     @BeforeEach
     void setUp() {
-        featureService = mock(FeatureService.class);
+        userProfileService = mock(UserProfileService.class);
+        itemFeatureService = mock(ItemFeatureService.class);
         recallService = mock(RecallService.class);
         rankService = mock(RankService.class);
         rerankService = mock(RerankService.class);
@@ -86,7 +89,7 @@ class RecommendServiceSentinelTest {
         // 完整漏斗桩：recall → rank → rerank → 冷启动（暖用户，不再补热门）→ 逐条 toVO
         UserProfile warm = new UserProfile();
         warm.setBehaviorCount(10); // 行为数 ≥ min-behavior-for-warm(5) → 非冷用户，冷启动兜底直接返回重排结果
-        when(featureService.userProfile(anyLong())).thenReturn(warm);
+        when(userProfileService.userProfile(anyLong())).thenReturn(warm);
         when(recallService.recall(any())).thenReturn(List.of());
         RankedItem ranked = new RankedItem(100L, 1.0, Map.of("hot", 1.0), List.of("hot"), "热门");
         when(rankService.rank(any(), any())).thenReturn(List.of(ranked));
@@ -99,10 +102,10 @@ class RecommendServiceSentinelTest {
         when(postRepository.findById(100L)).thenReturn(Optional.of(hotPost));
         ItemFeature hotFeature = new ItemFeature();
         hotFeature.setHotScore(100);
-        when(featureService.itemFeature(100L)).thenReturn(hotFeature);
+        when(itemFeatureService.itemFeature(100L)).thenReturn(hotFeature);
         when(postAssembler.toVO(any(), any())).thenReturn(mock(PostVO.class));
 
-        service = new RecommendService(featureService, recallService, rankService, rerankService,
+        service = new RecommendService(userProfileService, itemFeatureService, recallService, rankService, rerankService,
                 coldStartService, configService, abExperimentService, behaviorLogger, postAssembler,
                 postRepository, itemCfModelStore);
     }

@@ -135,7 +135,7 @@ JDK 官方口径【源：JEP 439】：**G1（默认 GC）暂停从毫秒到秒�
 ### 本项目对照
 
 - `UserProfileAggregator.build(userId)`：**每次推荐请求**都把该用户**全部历史行为**扫一遍做权重×衰减聚合；
-- `InMemoryFeatureService.itemFeature(postId)`：每次现算聚合点赞/评论/收藏/转发/浏览/时长。
+- `InMemoryItemFeatureService.itemFeature(postId)`：每次现算聚合点赞/评论/收藏/转发/浏览/时长。
 
 这正是高并发第一铁律"**能预计算的不实时算**"的违反——QPS 一上来，CPU 全耗在重复计算上。**这是本项目单 pod 阶段最值得先做的优化**（把画像/物品特征近线预聚合，在线只读）。
 

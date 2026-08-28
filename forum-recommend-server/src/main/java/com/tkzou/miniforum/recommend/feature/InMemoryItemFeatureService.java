@@ -6,14 +6,11 @@ import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 import com.tkzou.miniforum.recommend.config.ConfigService;
 import com.tkzou.miniforum.recommend.config.RecConfig;
-import com.tkzou.miniforum.recommend.prod.redis.RedisUserProfileStore;
 import com.tkzou.miniforum.repository.CommentRepository;
 import com.tkzou.miniforum.repository.FavoriteRepository;
-import com.tkzou.miniforum.repository.FollowRepository;
 import com.tkzou.miniforum.repository.LikeRepository;
 import com.tkzou.miniforum.repository.PostRepository;
 import com.tkzou.miniforum.util.TtlCache;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -22,49 +19,31 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 内存特征服务（默认实现）
+ * 物品特征服务内存默认实现（无 profile 组件，演示/生产通吃）
  * <p>
- * <b>数据流程</b>：{@link #userProfile} 委托 {@link UserProfileAggregator}（行为日志→兴趣权重，供召回/排序）；
- * {@link #itemFeature} 聚合 PostRepository 计数 + FollowRepository 粉丝数 + ConfigService 时效（热/排序/重排特征）；
- * {@link #realtimeMatch} 合并 {@link RealtimeFeatureStore} 的用户话题投影与物品热度爆发（实时特征）。
- * 生产形态：画像/物品特征存 Redis，在线读取（见 prod 适配）；本实现每次现算，数据量小时开销可忽略。
+ * <b>数据流程</b>：{@link #itemFeature} 聚合 PostRepository 计数 + ConfigService 时效（热/排序/重排特征），
+ * 走短 TTL 缓存（5s，单飞防击穿 + TTL 打散）；{@link #realtimeMatch} 合并 {@link RealtimeFeatureStore} 的
+ * 用户话题投影与物品热度爆发（实时特征）。
+ * 生产形态：实时特征存 Redis（见 prod 适配）；本实现每次现算，数据量小时开销可忽略。
+ * <p>
+ * <b>域边界</b>：只做"内容侧特征"。作者粉丝数等社交特征不在此（由 {@code graph.SocialGraphService} 提供）。
  */
 @Component
-public class InMemoryFeatureService implements FeatureService {
+public class InMemoryItemFeatureService implements ItemFeatureService {
 
-    private final UserProfileAggregator aggregator;
     private final PostRepository postRepository;
-    private final FollowRepository followRepository;
     private final LikeRepository likeRepository;
     private final CommentRepository commentRepository;
     private final FavoriteRepository favoriteRepository;
     private final RealtimeFeatureStore realtimeFeatureStore;
     private final ConfigService configService;
     private final BehaviorLogRepository behaviorLogRepository;
-    /** 生产画像 Redis 存储（@Profile("prod") 才存在；演示为 null → 每次现算） */
-    @Autowired(required = false)
-    private RedisUserProfileStore redisUserProfileStore;
-
-    /** 画像缓存 TTL 打散幅度（ms）：实际过期在 [ttl, ttl+jitter) 内随机，防多 key 同时过期惊群 */
-    private static final long PROFILE_JITTER_MS = 1_000;
 
     /** 物品特征缓存 TTL 打散幅度（ms） */
     private static final long ITEM_JITTER_MS = 500;
 
-    /** 画像缓存：userId → 画像。构造 ttl=0（禁用），由 setter 注入启用；单飞重建防击穿 */
-    private final TtlCache<Long, UserProfile> profileCache = new TtlCache<>(0, PROFILE_JITTER_MS);
-
-    /** 物品特征缓存：postId → 特征。同上 */
+    /** 物品特征缓存：postId → 特征。构造 ttl=0（禁用），由 setter 注入启用；单飞重建防击穿 */
     private final TtlCache<Long, ItemFeature> itemFeatureCache = new TtlCache<>(0, ITEM_JITTER_MS);
-
-    /**
-     * 画像缓存 TTL（ms），Spring 注入。>0 启用（避免每次请求全量重算画像，"能预计算的不实时算"）；
-     * 行为回流后再现算（TTL 兜底），近实时即可；≤0 禁用（测试/调试可关）。
-     */
-    @Value("${app.rec.profile-cache-ttl-ms:30000}")
-    public void setProfileCacheTtlMs(long ttl) {
-        profileCache.setTtlMillis(ttl);
-    }
 
     /**
      * 物品特征缓存 TTL（ms），Spring 注入。>0 启用：热度/计数是"读多写少"，缓存后排序/热门路径
@@ -75,18 +54,14 @@ public class InMemoryFeatureService implements FeatureService {
         itemFeatureCache.setTtlMillis(ttl);
     }
 
-    public InMemoryFeatureService(UserProfileAggregator aggregator,
-                                  PostRepository postRepository,
-                                  FollowRepository followRepository,
-                                  LikeRepository likeRepository,
-                                  CommentRepository commentRepository,
-                                  FavoriteRepository favoriteRepository,
-                                  RealtimeFeatureStore realtimeFeatureStore,
-                                  ConfigService configService,
-                                  BehaviorLogRepository behaviorLogRepository) {
-        this.aggregator = aggregator;
+    public InMemoryItemFeatureService(PostRepository postRepository,
+                                      LikeRepository likeRepository,
+                                      CommentRepository commentRepository,
+                                      FavoriteRepository favoriteRepository,
+                                      RealtimeFeatureStore realtimeFeatureStore,
+                                      ConfigService configService,
+                                      BehaviorLogRepository behaviorLogRepository) {
         this.postRepository = postRepository;
-        this.followRepository = followRepository;
         this.likeRepository = likeRepository;
         this.commentRepository = commentRepository;
         this.favoriteRepository = favoriteRepository;
@@ -96,26 +71,12 @@ public class InMemoryFeatureService implements FeatureService {
     }
 
     @Override
-    public UserProfile userProfile(Long userId) {
-        if (redisUserProfileStore != null) {
-            // 生产：读 Redis 画像（跨实例共享，天然缓存），未命中现算并写回
-            return redisUserProfileStore.get(userId).orElseGet(() -> {
-                UserProfile p = aggregator.build(userId);
-                redisUserProfileStore.put(userId, p);
-                return p;
-            });
-        }
-        // 演示：TtlCache 短缓存（命中免算 + 单飞防击穿 + TTL 打散），ttl<=0 自动退化为每次现算
-        return profileCache.get(userId, () -> aggregator.build(userId));
-    }
-
-    @Override
     public ItemFeature itemFeature(Long postId) {
         // 短 TTL 缓存：热度/计数特征"读多写少"，命中免去多次 count 聚合；ttl<=0 自动现算
         return itemFeatureCache.get(postId, () -> computeItemFeature(postId));
     }
 
-    /** 现算物品特征（缓存 miss 时执行）：聚合计数 + 时效新鲜度 + 作者权重 + 冷启标记 */
+    /** 现算物品特征（缓存 miss 时执行）：聚合计数 + 时效新鲜度 + 冷启标记 */
     private ItemFeature computeItemFeature(Long postId) {
         ItemFeature f = new ItemFeature();
         Post post = postRepository.findById(postId).orElse(null);
@@ -152,10 +113,6 @@ public class InMemoryFeatureService implements FeatureService {
         RecConfig cfg = configService.current();
         double halfLife = cfg.getHalfLifeHours();
         f.setFreshness(Math.exp(-Math.log(2) * ageHours / halfLife));
-
-        if (post.getAuthorId() != null) {
-            f.setAuthorFollowers(Math.log1p(followRepository.countByFolloweeId(post.getAuthorId())));
-        }
 
         boolean inNewPool = ageHours < cfg.getNewItemAgeHours()
                 || (like + comment + favorite + repost) < cfg.getNewItemMinInteractions();

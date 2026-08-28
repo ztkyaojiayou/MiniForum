@@ -3,8 +3,8 @@ package com.tkzou.miniforum.recommend.recall.channel;
 import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.recommend.domain.RecallHit;
 import com.tkzou.miniforum.recommend.domain.RecommendContext;
-import com.tkzou.miniforum.recommend.feature.FeatureService;
-import com.tkzou.miniforum.recommend.feature.UserProfile;
+import com.tkzou.miniforum.recommend.profile.UserProfileService;
+import com.tkzou.miniforum.recommend.profile.UserProfile;
 import com.tkzou.miniforum.recommend.model.ItemCfModel;
 import com.tkzou.miniforum.recommend.model.ItemCfModelStore;
 import com.tkzou.miniforum.recommend.recall.RecallChannel;
@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 
 /**
  * ItemCF 召回：用户历史交互过物品的相似物品（"看了 A 的人还看 B"）。
- * <p>数据流程：FeatureService.userProfile(uid).recentItemIds → 对每历史物品取 ItemCfModel.topSimilar
+ * <p>数据流程：UserProfileService.userProfile(uid).recentItemIds → 对每历史物品取 ItemCfModel.topSimilar
  * → 累加相似度（排除已交互）→ 过滤可见 → 降序取 N → RecallHit(source="itemcf")。
  * 使用深度互动构建的协同过滤模型，是弱训练侧核心个性化召回。
  */
@@ -36,14 +36,14 @@ import java.util.stream.Collectors;
 public class ItemCfRecall implements RecallChannel {
 
     private final ItemCfModelStore itemCfModelStore;
-    private final FeatureService featureService;
+    private final UserProfileService userProfileService;
     private final PostRepository postRepository;
 
     public ItemCfRecall(ItemCfModelStore itemCfModelStore,
-                        FeatureService featureService,
+                        UserProfileService userProfileService,
                         PostRepository postRepository) {
         this.itemCfModelStore = itemCfModelStore;
-        this.featureService = featureService;
+        this.userProfileService = userProfileService;
         this.postRepository = postRepository;
     }
 
@@ -54,7 +54,7 @@ public class ItemCfRecall implements RecallChannel {
 
     @Override
     public List<RecallHit> recall(RecommendContext ctx, int size) {
-        UserProfile profile = featureService.userProfile(ctx.getUserId());
+        UserProfile profile = userProfileService.userProfile(ctx.getUserId());
         List<Long> recentItems = profile.getRecentItemIds();
         if (recentItems.isEmpty()) {
             return List.of();

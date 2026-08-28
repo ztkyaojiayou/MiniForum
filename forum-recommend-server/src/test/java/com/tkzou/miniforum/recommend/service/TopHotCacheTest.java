@@ -9,8 +9,9 @@ import com.tkzou.miniforum.recommend.coldstart.ColdStartService;
 import com.tkzou.miniforum.recommend.config.ConfigService;
 import com.tkzou.miniforum.recommend.config.RecConfig;
 import com.tkzou.miniforum.recommend.domain.RecommendContext;
-import com.tkzou.miniforum.recommend.feature.FeatureService;
 import com.tkzou.miniforum.recommend.feature.ItemFeature;
+import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
+import com.tkzou.miniforum.recommend.profile.UserProfileService;
 import com.tkzou.miniforum.recommend.model.ItemCfModelStore;
 import com.tkzou.miniforum.recommend.rank.RankService;
 import com.tkzou.miniforum.recommend.recall.RecallService;
@@ -41,7 +42,8 @@ import static org.mockito.Mockito.when;
  */
 class TopHotCacheTest {
 
-    private FeatureService featureService;
+    private UserProfileService userProfileService;
+    private ItemFeatureService itemFeatureService;
     private RecallService recallService;
     private RankService rankService;
     private RerankService rerankService;
@@ -56,7 +58,8 @@ class TopHotCacheTest {
 
     @BeforeEach
     void setUp() {
-        featureService = mock(FeatureService.class);
+        userProfileService = mock(UserProfileService.class);
+        itemFeatureService = mock(ItemFeatureService.class);
         recallService = mock(RecallService.class);
         rankService = mock(RankService.class);
         rerankService = mock(RerankService.class);
@@ -71,7 +74,7 @@ class TopHotCacheTest {
         // 主链路抛异常 → 走热门兜底（本测试验证的就是兜底路径的热门缓存）
         when(recallService.recall(any())).thenThrow(new IllegalStateException("召回通道故障"));
         when(postAssembler.toVO(any(), any())).thenReturn(mock(PostVO.class));
-        service = new RecommendService(featureService, recallService, rankService, rerankService,
+        service = new RecommendService(userProfileService, itemFeatureService, recallService, rankService, rerankService,
                 coldStartService, configService, abExperimentService, behaviorLogger, postAssembler,
                 postRepository, itemCfModelStore);
         service.setTopHotCacheTtlMs(10_000L); // 默认启用：对齐 application.yml
@@ -80,7 +83,7 @@ class TopHotCacheTest {
     private Post post(long id, long hotScore) {
         ItemFeature f = new ItemFeature();
         f.setHotScore(hotScore);
-        when(featureService.itemFeature(id)).thenReturn(f);
+        when(itemFeatureService.itemFeature(id)).thenReturn(f);
         Post p = new Post();
         p.setId(id);
         p.setStatus(Post.STATUS_PUBLISHED);
