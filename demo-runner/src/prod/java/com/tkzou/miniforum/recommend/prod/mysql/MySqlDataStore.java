@@ -1,16 +1,8 @@
 package com.tkzou.miniforum.recommend.prod.mysql;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tkzou.miniforum.entity.Conversation;
-import com.tkzou.miniforum.entity.Message;
-import com.tkzou.miniforum.entity.Notification;
-import com.tkzou.miniforum.entity.SearchRecord;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLog;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;
-import com.tkzou.miniforum.repository.ConversationRepository;
-import com.tkzou.miniforum.repository.MessageRepository;
-import com.tkzou.miniforum.repository.NotificationRepository;
-import com.tkzou.miniforum.repository.SearchRecordRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -48,11 +40,8 @@ public class MySqlDataStore implements ApplicationRunner {
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
 
-    // 已行级化的仓库（posts/users/comments/likes/follows/favorites）由各自的 MySql*Repository 自管，此处不再持有
-    private final NotificationRepository notificationRepository;
-    private final SearchRecordRepository searchRecordRepository;
-    private final ConversationRepository conversationRepository;
-    private final MessageRepository messageRepository;
+    // 已行级化的仓库（posts/users/comments/likes/follows/favorites + messages/conversations/notifications/search-records）
+    // 由各自的 MySql*Repository 自管，此处不再持有；仅行为日志仍走快照（Kafka/ClickHouse 主链路，快照作近线兜底）
     private final BehaviorLogRepository behaviorLogRepository;
 
     /** 防止定时保存早于启动加载，覆盖已有数据 */
@@ -60,17 +49,9 @@ public class MySqlDataStore implements ApplicationRunner {
 
     public MySqlDataStore(JdbcTemplate jdbcTemplate,
                           ObjectMapper objectMapper,
-                          NotificationRepository notificationRepository,
-                          SearchRecordRepository searchRecordRepository,
-                          ConversationRepository conversationRepository,
-                          MessageRepository messageRepository,
                           BehaviorLogRepository behaviorLogRepository) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
-        this.notificationRepository = notificationRepository;
-        this.searchRecordRepository = searchRecordRepository;
-        this.conversationRepository = conversationRepository;
-        this.messageRepository = messageRepository;
         this.behaviorLogRepository = behaviorLogRepository;
     }
 
@@ -95,11 +76,7 @@ public class MySqlDataStore implements ApplicationRunner {
         if (!loaded.get()) {
             return;
         }
-        // 已行级化的仓库（posts/users/comments/likes/follows/favorites）由各自 MySql*Repository 自管，不再快照
-        save("notifications", notificationRepository.exportAll());
-        save("search-records", searchRecordRepository.exportAll());
-        save("conversations", conversationRepository.exportAll());
-        save("messages", messageRepository.exportAll());
+        // 已行级化的仓库由各自 MySql*Repository 自管，仅行为日志仍走快照（近线兜底）
         save("behavior-log", behaviorLogRepository.exportAll());
     }
 
@@ -117,14 +94,7 @@ public class MySqlDataStore implements ApplicationRunner {
 
     /** 全量加载：从 mini_store 恢复各仓库，并复位 ID 生成器 */
     public synchronized void loadAll() {
-        // 已行级化的仓库由各自 MySql*Repository 启动即读行级表，不再从 mini_store 恢复
-        load("notifications", Notification.class, notificationRepository::importAll,
-                Notification::getId, Notification::resetIdGenerator);
-        load("search-records", SearchRecord.class, searchRecordRepository::importAll,
-                SearchRecord::getId, SearchRecord::resetIdGenerator);
-        load("conversations", Conversation.class, conversationRepository::importAll,
-                Conversation::getId, Conversation::resetIdGenerator);
-        load("messages", Message.class, messageRepository::importAll, Message::getId, Message::resetIdGenerator);
+        // 已行级化的仓库由各自 MySql*Repository 启动即读行级表，不再从 mini_store 恢复；仅行为日志仍走快照
         load("behavior-log", BehaviorLog.class, behaviorLogRepository::importAll,
                 BehaviorLog::getId, BehaviorLog::resetIdGenerator);
     }

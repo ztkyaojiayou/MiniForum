@@ -3,7 +3,6 @@ package com.tkzou.miniforum.service;
 import com.tkzou.miniforum.dto.PostVO;
 import com.tkzou.miniforum.dto.SearchResultVO;
 import com.tkzou.miniforum.dto.UserBriefVO;
-import com.tkzou.miniforum.entity.SearchRecord;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.repository.SearchRecordRepository;
 import com.tkzou.miniforum.repository.UserRepository;
@@ -11,7 +10,6 @@ import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -66,16 +64,8 @@ public class SearchService {
         return u.getNickname() != null && u.getNickname().toLowerCase().contains(lower);
     }
 
-    /** 记录一次搜索：已存在则次数 +1 并更新时间，否则新建记录 */
+    /** 记录一次搜索：原子累加次数（不存在则新建 count=1）；多实例下热搜计数不丢不重 */
     private void recordKeyword(String keyword) {
-        SearchRecord record = searchRecordRepository.findByKeyword(keyword)
-                .orElseGet(() -> new SearchRecord(keyword));
-        if (record.getId() == null) {
-            searchRecordRepository.save(record);
-        } else {
-            record.setCount(record.getCount() + 1);
-            record.setLastSearchedAt(LocalDateTime.now());
-            searchRecordRepository.save(record);
-        }
+        searchRecordRepository.incrementKeyword(keyword);
     }
 }

@@ -1,96 +1,36 @@
 package com.tkzou.miniforum.repository;
 
 import com.tkzou.miniforum.entity.Message;
-import org.springframework.stereotype.Repository;
 
-import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
-import com.tkzou.miniforum.util.EntityIdProvider;
-import com.tkzou.miniforum.util.IdProvider;
-import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * 内存存储的私信消息仓库
- * 使用 ConcurrentHashMap 保证线程安全
+ * 私信消息仓库接口
+ * <p>
+ * 双实现：{@link InMemoryMessageRepository}（!prod 内存）/ MySqlMessageRepository（prod 行级表 messages）。
+ * 接口化对齐 P1.1 主存储规范化：行为由服务层消费，实现按 @Profile 切换。
  */
-@Repository
-public class MessageRepository {
-    /** ID 生成器：Spring 注入（演示=实体生成器 / 生产=Snowflake），测试无 Spring 时用默认实体生成器 */
-    @Autowired(required = false)
-    private IdProvider idProvider = new EntityIdProvider();
+public interface MessageRepository {
 
-
-    private final Map<Long, Message> storage = new ConcurrentHashMap<>();
-
-    public Message save(Message message) {
-        if (message.getId() == null) {
-            message.setId(idProvider.next("Message"));
-        }
-        storage.put(message.getId(), message);
-        return message;
-    }
+    Message save(Message message);
 
     /** 某会话的全部消息（按时间正序，聊天窗口展示顺序） */
-    public List<Message> findByConversationId(Long conversationId) {
-        return storage.values().stream()
-                .filter(m -> m.getConversationId().equals(conversationId))
-                .sorted(Comparator.comparing(Message::getCreatedAt))
-                .collect(Collectors.toList());
-    }
+    List<Message> findByConversationId(Long conversationId);
 
     /** 某会话中对方发来且我未读的消息数 */
-    public long countUnread(Long conversationId, String myUsername) {
-        return storage.values().stream()
-                .filter(m -> m.getConversationId().equals(conversationId))
-                .filter(m -> !m.isRead())
-                .filter(m -> !m.getSender().equals(myUsername))
-                .count();
-    }
+    long countUnread(Long conversationId, String myUsername);
 
     /** 某会话中对方发来的消息全部标记为已读，返回条数 */
-    public int markAllRead(Long conversationId, String myUsername) {
-        int count = 0;
-        for (Message m : storage.values()) {
-            if (m.getConversationId().equals(conversationId)
-                    && !m.isRead() && !m.getSender().equals(myUsername)) {
-                m.setRead(true);
-                count++;
-            }
-        }
-        return count;
-    }
+    int markAllRead(Long conversationId, String myUsername);
 
     /** 统计我收到的未读消息总数（会话列表角标） */
-    public long countUnreadForUser(String myUsername) {
-        return storage.values().stream()
-                .filter(m -> m.getReceiver().equals(myUsername))
-                .filter(m -> !m.isRead())
-                .count();
-    }
+    long countUnreadForUser(String myUsername);
 
-    /** 导出全部消息（用于持久化，按 ID 升序） */
-    public List<Message> exportAll() {
-        return storage.values().stream()
-                .sorted(Comparator.comparingLong(Message::getId))
-                .collect(Collectors.toList());
-    }
+    /** 导出全部消息（持久化用，按 ID 升序） */
+    List<Message> exportAll();
 
-    /** 清空并批量导入（用于从持久化数据恢复） */
-    public void importAll(List<Message> messages) {
-        storage.clear();
-        if (messages != null) {
-            for (Message m : messages) {
-                if (m != null && m.getId() != null) {
-                    storage.put(m.getId(), m);
-                }
-            }
-        }
-    }
+    /** 清空并批量导入（从持久化恢复） */
+    void importAll(List<Message> messages);
 
-    public long count() {
-        return storage.size();
-    }
+    long count();
 }

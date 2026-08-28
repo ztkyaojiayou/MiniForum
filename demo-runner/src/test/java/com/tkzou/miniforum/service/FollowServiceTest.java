@@ -12,6 +12,7 @@ import com.tkzou.miniforum.repository.CommentRepository;
 import com.tkzou.miniforum.repository.FavoriteRepository;
 import com.tkzou.miniforum.repository.InMemoryFollowRepository;
 import com.tkzou.miniforum.repository.LikeRepository;
+import com.tkzou.miniforum.repository.InMemoryNotificationRepository;
 import com.tkzou.miniforum.repository.NotificationRepository;
 import com.tkzou.miniforum.repository.PostRepository;
 import com.tkzou.miniforum.repository.UserRepository;
@@ -63,7 +64,7 @@ class FollowServiceTest {
         LikeRepository likeRepository = new InMemoryLikeRepository();
         CommentRepository commentRepository = new InMemoryCommentRepository();
         FavoriteRepository favoriteRepository = new InMemoryFavoriteRepository();
-        NotificationRepository notificationRepository = new NotificationRepository();
+        NotificationRepository notificationRepository = new InMemoryNotificationRepository();
         NotificationService notificationService = new NotificationService(notificationRepository);
         BehaviorLogger behaviorLogger = new InMemoryBehaviorLogger(new BehaviorLogRepository(), new BehaviorEventQueue());
         PostCreatedEventBus eventBus = new PostCreatedEventBus();

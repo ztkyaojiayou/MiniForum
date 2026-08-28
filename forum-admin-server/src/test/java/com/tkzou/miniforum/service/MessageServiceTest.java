@@ -5,7 +5,9 @@ import com.tkzou.miniforum.dto.MessageVO;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.exception.BusinessException;
 import com.tkzou.miniforum.exception.ResourceNotFoundException;
+import com.tkzou.miniforum.repository.InMemoryConversationRepository;
 import com.tkzou.miniforum.repository.ConversationRepository;
+import com.tkzou.miniforum.repository.InMemoryMessageRepository;
 import com.tkzou.miniforum.repository.MessageRepository;
 import com.tkzou.miniforum.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,8 +32,8 @@ class MessageServiceTest {
     @BeforeEach
     void setUp() {
         userRepository = new InMemoryUserRepository();
-        ConversationRepository conversationRepository = new ConversationRepository();
-        messageRepository = new MessageRepository();
+        ConversationRepository conversationRepository = new InMemoryConversationRepository();
+        messageRepository = new InMemoryMessageRepository();
         messageService = new MessageService(conversationRepository, messageRepository, userRepository);
     }
 
