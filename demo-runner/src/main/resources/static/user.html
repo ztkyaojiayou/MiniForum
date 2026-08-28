@@ -415,7 +415,7 @@
         function renderTags(tags) {
             if (!tags || tags.length === 0) return '';
             return '<div class="post-tags">' + tags.map(function (t) {
-                return '<span class="tag-chip">#' + escapeHtml(t) + '</span>';
+                return '<span class="tag-chip" onclick="location.href=\'/tag.html?tag=\'+encodeURIComponent(\'' + escapeHtml(t) + '\')">#' + escapeHtml(t) + '</span>';
             }).join('') + '</div>';
         }
         function renderPagination(total, totalPages) {

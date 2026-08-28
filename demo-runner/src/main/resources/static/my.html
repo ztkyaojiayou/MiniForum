@@ -482,7 +482,7 @@
                                 <span>👁 ${p.viewCount || 0} 阅</span>
                                 <span>❤️ ${p.likeCount || 0} 赞</span>
                                 <span>💬 ${p.commentCount || 0} 评</span>
-                                ${(p.tags || []).map(t => '<span class="tag-chip">#' + escapeHtml(t) + '</span>').join('')}
+                                ${(p.tags || []).map(t => '<span class="tag-chip" onclick="location.href=\'/tag.html?tag=\'+encodeURIComponent(\'' + escapeHtml(t) + '\')">#' + escapeHtml(t) + '</span>').join('')}
                             </div>
                             <div class="post-content">${escapeHtml(p.content || '')}</div>
                             <div class="post-actions">${actions}</div>`;

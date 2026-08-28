@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>标签/话题聚合</title>
+    <script>
+        // 防闪烁：在渲染前根据 localStorage 或系统偏好设置主题
+        (function () {
+            var saved = localStorage.getItem('theme');
+            var theme = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <style>
+        :root, [data-theme="light"] {
+            --bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --text: #333333;
+            --text-heading: #1a1a2e;
+            --muted: #999999;
+            --muted-2: #666666;
+            --border: #d9d9d9;
+            --border-row: #f0f0f0;
+            --primary: #4a7cff;
+            --primary-hover: #3a66e0;
+            --shadow-card: rgba(0,0,0,0.08);
+            --input-bg: #ffffff;
+            --tag-bg: #eef2ff;
+            --tag-text: #4a7cff;
+            --composer-bg: #f7f8fa;
+        }
+        [data-theme="dark"] {
+            --bg: #1a1a2e;
+            --card-bg: #24243e;
+            --text: #e4e4e4;
+            --text-heading: #ffffff;
+            --muted: #8f8fa8;
+            --muted-2: #a8a8c0;
+            --border: #3a3a5c;
+            --border-row: #33334f;
+            --primary: #5a8cff;
+            --primary-hover: #6f9bff;
+            --shadow-card: rgba(0,0,0,0.4);
+            --input-bg: #2c2c4a;
+            --tag-bg: #2e3a5c;
+            --tag-text: #8fb0ff;
+            --composer-bg: #2a2a48;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            transition: background .3s, color .3s;
+        }
+        /* ===== 顶部导航栏 ===== */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-row);
+            padding: 0 20px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 1px 4px var(--shadow-card);
+            transition: background .3s;
+        }
+        .navbar .brand { font-size: 20px; font-weight: 700; color: var(--primary); text-decoration: none; }
+        .navbar .nav-right { display: flex; align-items: center; gap: 12px; }
+        .nav-link {
+            color: var(--muted-2); text-decoration: none; font-size: 14px;
+            padding: 6px 12px; border-radius: 8px; transition: all .2s;
+        }
+        .nav-link:hover { color: var(--primary); background: var(--composer-bg); }
+        .username-tag { font-size: 14px; color: var(--muted-2); text-decoration: none; }
+        .username-tag b { color: var(--primary); font-weight: 600; }
+        .theme-toggle {
+            border: 1px solid var(--border); background: none; cursor: pointer;
+            font-size: 16px; width: 36px; height: 36px; border-radius: 50%;
+            transition: all .2s; color: var(--text);
+        }
+        .theme-toggle:hover { border-color: var(--primary); }
+        .login-btn {
+            border: 1px solid var(--primary); background: none; color: var(--primary);
+            padding: 6px 16px; border-radius: 18px; cursor: pointer; font-size: 14px; transition: all .2s;
+        }
+        .login-btn:hover { background: var(--primary); color: #fff; }
+        .logout-btn {
+            border: 1px solid var(--border); background: none; color: var(--muted-2);
+            padding: 6px 14px; border-radius: 18px; cursor: pointer; font-size: 13px; transition: all .2s;
+        }
+        .logout-btn:hover { border-color: #ff4d4f; color: #ff4d4f; }
+        .container { max-width: 720px; margin: 0 auto; padding: 20px 16px 40px; }
+        /* ===== 聚合页头 ===== */
+        .agg-header {
+            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+            background: var(--card-bg); border-radius: 12px; padding: 18px 24px;
+            box-shadow: 0 2px 12px var(--shadow-card); margin-bottom: 20px; transition: background .3s;
+        }
+        .agg-header .agg-icon { font-size: 22px; }
+        .agg-header .agg-name {
+            font-size: 20px; font-weight: 700; color: var(--primary); word-break: break-all;
+        }
+        .agg-header .agg-count { font-size: 13px; color: var(--muted-2); }
+        .agg-header .agg-back {
+            margin-left: auto; text-decoration: none; font-size: 13px; color: var(--muted-2);
+            padding: 6px 14px; border: 1px solid var(--border); border-radius: 16px; transition: all .2s;
+        }
+        .agg-header .agg-back:hover { color: var(--primary); border-color: var(--primary); }
+        /* ===== 帖子卡片（复用信息流样式） ===== */
+        .post {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 2px 12px var(--shadow-card);
+            padding: 20px 24px;
+            margin-bottom: 16px;
+            transition: background .3s;
+        }
+        .post .post-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .post .avatar {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; font-weight: 600;
+            flex-shrink: 0;
+        }
+        .post .avatar-link { text-decoration: none; display: inline-flex; }
+        .post .avatar-link:hover .avatar { opacity: 0.85; }
+        .post .author-link { text-decoration: none; }
+        .post .author-link:hover .post-author { color: var(--primary); }
+        .post .post-author { font-size: 15px; font-weight: 600; color: var(--text-heading); }
+        .post .post-time { font-size: 12px; color: var(--muted); margin-top: 2px; }
+        .post .post-title { font-size: 16px; font-weight: 600; color: var(--text-heading); margin-bottom: 8px; }
+        .post .post-title-link { color: var(--text-heading); text-decoration: none; }
+        .post .post-title-link:hover { color: var(--primary); text-decoration: underline; }
+        .post .post-content {
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--text);
+            white-space: pre-wrap;
+            word-break: break-word;
+            margin-bottom: 12px;
+        }
+        .post .post-detail-link { font-size: 13px; color: var(--primary); text-decoration: none; }
+        .post .post-detail-link:hover { text-decoration: underline; }
+        .post .post-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-top: 1px solid var(--border-row);
+            padding-top: 10px;
+        }
+        .post .post-id { font-size: 12px; color: var(--muted); }
+        .post .post-tags { margin-bottom: 8px; }
+        .post-actions { display: flex; align-items: center; gap: 12px; }
+        .like-btn {
+            background: none; border: 1px solid var(--border); border-radius: 14px;
+            padding: 3px 12px; font-size: 13px; color: var(--muted-2); cursor: pointer; transition: all .2s;
+        }
+        .like-btn:hover { border-color: #ff4d4f; color: #ff4d4f; }
+        .like-btn.liked { border-color: #ff4d4f; color: #ff4d4f; background: rgba(255,77,79,0.08); }
+        .repost-btn {
+            background: none; border: 1px solid var(--border); border-radius: 14px;
+            padding: 3px 12px; font-size: 13px; color: var(--muted-2); cursor: pointer; transition: all .2s;
+        }
+        .repost-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .stat-link { font-size: 13px; color: var(--muted-2); text-decoration: none; }
+        .stat-link:hover { color: var(--primary); }
+        .tag-chip {
+            display: inline-block; padding: 2px 10px; margin: 0 6px 6px 0;
+            background: var(--tag-bg); color: var(--tag-text); border-radius: 12px;
+            font-size: 12px; cursor: pointer; transition: all .2s;
+        }
+        .tag-chip:hover { filter: brightness(1.15); }
+        .topic-chip {
+            background: var(--tag-bg); border-radius: 4px; padding: 0 4px;
+            color: var(--tag-text); cursor: pointer; transition: all .2s;
+        }
+        .topic-chip:hover { opacity: .8; }
+        .mention-link { color: var(--primary); text-decoration: none; }
+        .mention-link:hover { text-decoration: underline; }
+        .repost-bubble {
+            border: 1px solid var(--border); border-radius: 10px;
+            padding: 10px 14px; margin: 10px 0; cursor: pointer; transition: all .2s;
+        }
+        .repost-bubble:hover { border-color: var(--primary); }
+        .repost-bubble-head { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+        .repost-bubble-title { font-size: 14px; font-weight: 600; color: var(--text-heading); margin-bottom: 2px; }
+        .repost-bubble-content {
+            font-size: 13px; color: var(--muted-2); line-height: 1.5;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .empty { text-align: center; color: var(--muted); padding: 40px 0; }
+        .pagination { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+        .pagination button {
+            padding: 6px 14px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--card-bg);
+            color: var(--text);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all .2s;
+        }
+        .pagination button:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+        .pagination button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .pagination .page-info { font-size: 13px; color: var(--muted); }
+        .fade-in { animation: fadeIn .4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+        /* ===== 转发弹窗 + toast ===== */
+        .modal-mask {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-mask.show { display: flex; }
+        .modal {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px;
+            width: 640px;
+            max-width: 92%;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+            transition: background .3s;
+        }
+        .modal h3 { font-size: 18px; color: var(--text-heading); margin-bottom: 16px; }
+        .modal .form-group { margin-bottom: 12px; display: flex; flex-direction: column; }
+        .modal .form-group label { font-size: 13px; color: var(--muted-2); margin-bottom: 4px; }
+        .modal .form-group textarea {
+            padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+            font-size: 14px; min-height: 96px; background: var(--input-bg); color: var(--text);
+            resize: vertical; font-family: inherit;
+        }
+        .modal .form-group textarea:focus { outline: none; border-color: var(--primary); }
+        .modal .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+        .repost-as-comment { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted-2); margin-bottom: 14px; cursor: pointer; }
+        .btn {
+            padding: 10px 28px;
+            border: none;
+            border-radius: 24px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            color: #fff;
+            background: var(--primary);
+            transition: all .2s;
+        }
+        .btn:hover { background: var(--primary-hover); }
+        .btn-cancel { background: var(--composer-bg); color: var(--muted-2); border: 1px solid var(--border); }
+        .btn-cancel:hover { background: var(--border-row); }
+        .toast {
+            position: fixed;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: #333;
+            color: #fff;
+            padding: 10px 24px;
+            border-radius: 20px;
+            font-size: 14px;
+            opacity: 0;
+            transition: all .3s;
+            z-index: 999;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .toast.error { background: #ff4d4f; }
+        .toast.success { background: #52c41a; }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航 -->
+    <div class="navbar">
+        <a class="brand" href="/index.html">📢 动态广场</a>
+        <div class="nav-right">
+            <a class="nav-link" href="/index.html">← 返回广场</a>
+            <a class="nav-link" href="/quote.html">💡 灵感</a>
+            <a class="nav-link" href="/my.html">📝 我的文章</a>
+            <a class="username-tag" href="/my.html" title="我的主页">👤 <b id="currentUser"></b></a>
+            <button class="login-btn" id="loginBtn" style="display:none;" onclick="location.href='/login.html'">登录 / 注册</button>
+            <button class="theme-toggle" id="themeToggle" title="切换主题" onclick="toggleTheme()">🌙</button>
+            <button class="logout-btn" id="logoutBtn" onclick="logout()">退出</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 聚合页头：标签 / 话题 -->
+        <div class="agg-header">
+            <span class="agg-icon" id="aggIcon">🏷️</span>
+            <span class="agg-name" id="aggName">#加载中#</span>
+            <span class="agg-count" id="aggCount"></span>
+            <a class="agg-back" href="/index.html">← 返回广场</a>
+        </div>
+
+        <!-- 帖子列表 -->
+        <div id="postList"></div>
+        <div class="empty" id="loading" style="display:none;">加载中...</div>
+        <!-- 分页 -->
+        <div id="pagination" class="pagination"></div>
+    </div>
+
+    <!-- 转发弹窗 -->
+    <div class="modal-mask" id="repostModal">
+        <div class="modal">
+            <h3>🔄 转发动态</h3>
+            <div class="form-group">
+                <label>说说你的想法（选填）</label>
+                <textarea id="repostContent" maxlength="500" placeholder="转发时想说点什么..."></textarea>
+            </div>
+            <label class="repost-as-comment"><input type="checkbox" id="repostAsComment"> 同时作为评论发表</label>
+            <div class="modal-actions">
+                <button class="btn btn-cancel" onclick="closeRepostModal()">取消</button>
+                <button class="btn" onclick="doRepost()">🔄 转发</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const POST_API = '/api/posts';
+        const PAGE_SIZE = 10;
+
+        // ---------- 工具 ----------
+        function showToast(msg, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast show ' + (type || '');
+            setTimeout(() => { toast.className = 'toast'; }, 2500);
+        }
+        function formatCount(n) {
+            n = parseInt(n || 0, 10);
+            if (n >= 10000) {
+                return (n / 10000).toFixed(1).replace(/\.0$/, '') + '万';
+            }
+            return '' + n;
+        }
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+        function formatTime(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            const pad = n => (n < 10 ? '0' + n : '' + n);
+            return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+                + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+        }
+        async function request(url, options) {
+            const res = await fetch(url, options);
+            let data = null;
+            try { data = await res.json(); } catch (e) {}
+            if (!res.ok) {
+                if (res.status === 401) {
+                    window.location.href = '/login.html';
+                }
+                const msg = (data && data.message) || ('请求失败 ' + res.status);
+                throw new Error(msg);
+            }
+            return (data && data.data !== undefined) ? data.data : data;
+        }
+
+        // ---------- 聚合对象（URL 参数：?tag= 或 ?topic=） ----------
+        let currentTag = '';
+        let currentTopic = '';
+        let currentPage = 1;
+        let isLoggedIn = false;
+        let totalCount = 0;
+
+        function readAggTarget() {
+            const params = new URLSearchParams(window.location.search);
+            currentTopic = (params.get('topic') || '').trim();
+            currentTag = (params.get('tag') || '').trim();
+            // topic 与 tag 互斥：优先 topic（#话题# 语义更具体）
+            if (currentTopic) { currentTag = ''; return { kind: 'topic', name: currentTopic }; }
+            if (currentTag) { return { kind: 'tag', name: currentTag }; }
+            return null;
+        }
+
+        // ---------- 加载帖子 ----------
+        async function loadPosts(page) {
+            if (page) currentPage = page;
+            const list = document.getElementById('postList');
+            const loading = document.getElementById('loading');
+            const paginationBox = document.getElementById('pagination');
+            loading.style.display = 'block';
+            try {
+                let posts = [], total = 0, totalPages = 0;
+                if (currentTag) {
+                    // 标签：走分页（?tag=&page=&size=）
+                    const data = await request(POST_API + '?tag=' + encodeURIComponent(currentTag)
+                        + '&page=' + currentPage + '&size=' + PAGE_SIZE);
+                    posts = data.records || [];
+                    total = data.total || 0;
+                    totalPages = data.totalPages || 0;
+                } else {
+                    // 话题：一次返回全部（话题量小，不分页）
+                    const data = await request(POST_API + '?topic=' + encodeURIComponent(currentTopic));
+                    posts = data.records || [];
+                    total = data.total || 0;
+                    totalPages = 1;
+                }
+                totalCount = total;
+                document.getElementById('aggCount').textContent = '共 ' + total + ' 篇';
+                list.innerHTML = '';
+                if (!posts || posts.length === 0) {
+                    list.innerHTML = '<div class="empty">该' + (currentTag ? '标签' : '话题') + '下暂无动态，去发一条带它吧～</div>';
+                    paginationBox.innerHTML = '';
+                } else {
+                    appendPostCards(posts);
+                    renderPagination(total, totalPages);
+                }
+            } catch (e) {
+                list.innerHTML = '<div class="empty">加载失败：' + escapeHtml(e.message) + '</div>';
+                paginationBox.innerHTML = '';
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        function renderPagination(total, totalPages) {
+            const box = document.getElementById('pagination');
+            if (!total || totalPages <= 1) { box.innerHTML = ''; return; }
+            let html = '<button class="page-btn" data-page="' + (currentPage - 1) + '" ' + (currentPage <= 1 ? 'disabled' : '') + '>‹ 上一页</button>';
+            for (let i = 1; i <= totalPages; i++) {
+                html += '<button class="page-btn' + (i === currentPage ? ' active' : '') + '" data-page="' + i + '">' + i + '</button>';
+            }
+            html += '<button class="page-btn" data-page="' + (currentPage + 1) + '" ' + (currentPage >= totalPages ? 'disabled' : '') + '>下一页 ›</button>';
+            html += '<span class="page-info">共 ' + total + ' 条</span>';
+            box.innerHTML = html;
+            box.querySelectorAll('.page-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    if (this.disabled) return;
+                    const target = parseInt(this.getAttribute('data-page'), 10);
+                    if (target >= 1 && target <= totalPages) loadPosts(target);
+                });
+            });
+        }
+
+        // ---------- 帖子卡片渲染（与信息流一致；标签/话题 chip 站内切换聚合页） ----------
+        function appendPostCards(posts) {
+            const list = document.getElementById('postList');
+            posts.forEach((p, i) => {
+                const div = document.createElement('div');
+                div.className = 'post fade-in';
+                div.style.animationDelay = (i * 0.05) + 's';
+                const avatarChar = (p.author || '?').charAt(0).toUpperCase();
+                div.innerHTML = `
+                    <div class="post-header">
+                        <a class="avatar-link" href="/user.html?id=${p.authorId}" title="${escapeHtml(p.author)}"><div class="avatar">${escapeHtml(avatarChar)}</div></a>
+                        <div>
+                            <a class="author-link" href="/user.html?id=${p.authorId}"><div class="post-author">${escapeHtml(p.author)}</div></a>
+                            <div class="post-time">🕐 ${formatTime(p.createdAt)}</div>
+                        </div>
+                    </div>
+                    ${p.title ? `<div class="post-title"><a class="post-title-link" href="/detail.html?id=${p.id}">${escapeHtml(p.title)}</a></div>` : ''}
+                    ${renderTags(p.tags)}
+                    ${renderRepostBubble(p)}
+                    ${renderPostContent(p)}
+                    <div class="post-footer">
+                        <span class="post-id">#${p.id}</span>
+                        <div class="post-actions">
+                            <button class="like-btn${p.likedByMe ? ' liked' : ''}" data-count="${p.likeCount || 0}" onclick="toggleLike(${p.id}, this)">❤️ <span class="like-num">${formatCount(p.likeCount || 0)}</span></button>
+                            <button class="repost-btn" onclick="openRepostModal(${p.id})" title="转发">🔄 <span>${formatCount(p.repostCount || 0)}</span></button>
+                            <span class="stat-link">👁 ${formatCount(p.viewCount || 0)}</span>
+                            <a class="stat-link" href="/detail.html?id=${p.id}">💬 ${formatCount(p.commentCount || 0)}</a>
+                            <a class="post-detail-link" href="/detail.html?id=${p.id}">📖 查看全文</a>
+                        </div>
+                    </div>`;
+                list.appendChild(div);
+            });
+        }
+        function renderTags(tags) {
+            if (!tags || tags.length === 0) return '';
+            return '<div class="post-tags">' + tags.map(function (t) {
+                return '<span class="tag-chip" onclick="location.href=\'/tag.html?tag=\'+encodeURIComponent(\'' + escapeHtml(t) + '\')">#' + escapeHtml(t) + '</span>';
+            }).join('') + '</div>';
+        }
+        function renderContent(text) {
+            if (!text) return '';
+            const escaped = escapeHtml(text);
+            const withTopics = escaped.replace(/#([^#\s]{1,30})#/g, function (m, t) {
+                return '<span class="topic-chip" onclick="location.href=\'/tag.html?topic=\'+encodeURIComponent(\'' + t + '\')">#' + t + '#</span>';
+            });
+            return withTopics.replace(/@([\w一-龥]{1,20})/g, function (m, u) {
+                return '<a class="mention-link" href="/user.html?username=' + encodeURIComponent(u) + '">@' + u + '</a>';
+            });
+        }
+        // 转发帖内容 = 评语 + "// 转发自..."，卡片只展示评语部分（原帖进转发泡）
+        function repostComment(content) {
+            const idx = content ? content.indexOf('// 转发自') : -1;
+            return idx > 0 ? content.substring(0, idx).trim() : content;
+        }
+        function renderPostContent(p) {
+            if (p.originalPostId) {
+                return '<div class="post-content">' + renderContent(repostComment(p.content)) + '</div>';
+            }
+            return '<div class="post-content">' + renderContent(p.content) + '</div>';
+        }
+        function renderRepostBubble(p) {
+            if (!p.originalPostId) return '';
+            return '<div class="repost-bubble" onclick="location.href=\'/detail.html?id=' + p.originalPostId + '\'">' +
+                '<div class="repost-bubble-head">🔁 @' + escapeHtml(p.originalAuthor || '') + ' 的原微博</div>' +
+                (p.originalTitle ? '<div class="repost-bubble-title">' + escapeHtml(p.originalTitle) + '</div>' : '') +
+                '<div class="repost-bubble-content">' + escapeHtml(p.originalContent || '') + '</div>' +
+                '</div>';
+        }
+
+        // ---------- 点赞 ----------
+        async function toggleLike(id, btn) {
+            const liked = btn.classList.contains('liked');
+            const numEl = btn.querySelector('.like-num');
+            const orig = parseInt(btn.getAttribute('data-count') || '0', 10) || 0;
+            const next = Math.max(0, orig + (liked ? -1 : 1));
+            btn.classList.toggle('liked');
+            btn.setAttribute('data-count', next);
+            if (numEl) numEl.textContent = formatCount(next);
+            try {
+                const method = liked ? 'DELETE' : 'POST';
+                const data = await request(POST_API + '/' + id + '/like', { method: method });
+                if (data && typeof data.likeCount !== 'undefined') {
+                    btn.setAttribute('data-count', data.likeCount);
+                    if (numEl) numEl.textContent = formatCount(data.likeCount);
+                }
+            } catch (e) {
+                btn.classList.toggle('liked');
+                btn.setAttribute('data-count', orig);
+                if (numEl) numEl.textContent = formatCount(orig);
+                showToast('❌ ' + e.message, 'error');
+            }
+        }
+
+        // ---------- 转发 ----------
+        let repostTargetId = null;
+        function openRepostModal(id) {
+            repostTargetId = id;
+            const ta = document.getElementById('repostContent');
+            ta.value = '转发微博';
+            ta.focus();
+            ta.setSelectionRange(ta.value.length, ta.value.length);
+            document.getElementById('repostAsComment').checked = false;
+            document.getElementById('repostModal').classList.add('show');
+        }
+        function closeRepostModal() {
+            document.getElementById('repostModal').classList.remove('show');
+        }
+        async function doRepost() {
+            if (!repostTargetId) return;
+            const content = document.getElementById('repostContent').value.trim();
+            try {
+                await request(POST_API + '/' + repostTargetId + '/repost', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: content })
+                });
+                if (document.getElementById('repostAsComment') && document.getElementById('repostAsComment').checked) {
+                    await request(POST_API + '/' + repostTargetId + '/comments', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ content: content || '转发微博' })
+                    });
+                }
+                showToast('✅ 转发成功', 'success');
+                closeRepostModal();
+                loadPosts();
+            } catch (e) {
+                showToast('❌ ' + e.message, 'error');
+            }
+        }
+
+        // ---------- 登录态 / 退出 / 主题 ----------
+        async function checkLogin() {
+            let username = '游客';
+            try {
+                const res = await fetch('/api/auth/me');
+                const data = await res.json();
+                if (res.ok && data.code === 0) {
+                    isLoggedIn = true;
+                    username = data.data.username;
+                }
+            } catch (e) {}
+            document.getElementById('currentUser').textContent = username;
+            document.getElementById('loginBtn').style.display = isLoggedIn ? 'none' : 'inline-block';
+            document.getElementById('logoutBtn').style.display = isLoggedIn ? 'inline-block' : 'none';
+        }
+        async function logout() {
+            try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (e) {}
+            window.location.href = '/login.html';
+        }
+        function updateToggleIcon() {
+            const theme = document.documentElement.getAttribute('data-theme');
+            document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            updateToggleIcon();
+        }
+
+        // ---------- 初始化 ----------
+        function init() {
+            const target = readAggTarget();
+            if (!target) {
+                // 无 tag/topic 参数：提示从帖子标签进入
+                document.getElementById('aggIcon').textContent = '⚠️';
+                document.getElementById('aggName').textContent = '请从帖子标签/#话题# 进入';
+                document.getElementById('aggCount').textContent = '';
+                document.getElementById('postList').innerHTML =
+                    '<div class="empty">此页用于聚合展示某标签或话题下的帖子<br>请回到广场，点击帖子里的 <span class="tag-chip">#标签#</span> 或 <span class="topic-chip">#话题#</span> 进入</div>';
+                return;
+            }
+            if (target.kind === 'tag') {
+                document.getElementById('aggIcon').textContent = '🏷️';
+                document.getElementById('aggName').textContent = '#' + target.name + '#';
+                document.title = '#' + target.name + '# 标签聚合 | 动态广场';
+            } else {
+                document.getElementById('aggIcon').textContent = '💬';
+                document.getElementById('aggName').textContent = '#' + target.name + '#';
+                document.title = '#' + target.name + '# 话题聚合 | 动态广场';
+            }
+            loadPosts(1);
+        }
+        checkLogin();
+        updateToggleIcon();
+        init();
+    </script>
+</body>
+</html>

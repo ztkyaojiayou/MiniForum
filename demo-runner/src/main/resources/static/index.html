@@ -1007,15 +1007,8 @@
             }).join('') + '</div>';
         }
         function filterByTag(tag) {
-            activeTag = tag;
-            activeTopic = '';
-            searchKeyword = '';
-            feedType = 'latest'; // 点标签聚合：切回"最新"Tab 使筛选生效
-            document.getElementById('searchInput').value = '';
-            document.getElementById('clearSearchBtn').style.display = 'none';
-            updateTabActive();
-            currentPage = 1;
-            loadPosts(1);
+            // 标签聚合：跳转独立聚合页（不再当前页就地筛选）
+            window.location.href = '/tag.html?tag=' + encodeURIComponent(tag);
         }
         function doSearch() {
             const kw = document.getElementById('searchInput').value.trim();
@@ -1068,16 +1061,8 @@
                 '</div>';
         }
         function filterByTopic(topic) {
-            activeTopic = topic;
-            searchKeyword = '';
-            activeTag = '';
-            feedType = 'latest'; // 点 #话题# 聚合：切回"最新"Tab 使筛选生效
-            document.getElementById('searchInput').value = '';
-            document.getElementById('clearSearchBtn').style.display = 'none';
-            document.getElementById('userResult').innerHTML = '';
-            updateTabActive();
-            currentPage = 1;
-            loadPosts(1);
+            // 话题聚合：跳转独立聚合页（不再当前页就地筛选）
+            window.location.href = '/tag.html?topic=' + encodeURIComponent(topic);
         }
         function renderUserResults(users) {
             const box = document.getElementById('userResult');
