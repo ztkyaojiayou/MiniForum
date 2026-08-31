@@ -605,16 +605,17 @@ public class PostService {
         return toVO(post, username);
     }
 
-    /** 取消点赞 */
-    public PostVO unlike(Long postId, String username) {
+    /** 取消点赞（Like 表删行 = 状态归零；同时记 UNLIKE 行为事件，与点赞成对） */
+    public PostVO unlike(Long postId, String username, Long actorId) {
         Post post = getPostOrThrow(postId);
         if (isDraft(post) || post.isDeleted()) {
             throw new BusinessException("草稿不能点赞");
         }
         Like like = likeRepository.findByPostIdAndUsername(postId, username)
                 .orElseThrow(() -> new BusinessException("你还没有点过赞"));
-        likeRepository.delete(like);
-        post.setLikeCount(Math.max(0, post.getLikeCount() - 1));
+        likeRepository.delete(like);                        // ① 状态表删行（Like=当前状态，非历史）
+        post.setLikeCount(Math.max(0, post.getLikeCount() - 1)); // ② 聚合快照 -1
+        behaviorLogger.log(actorId, postId, BehaviorType.UNLIKE, "POST", null); // ③ 事件流（推荐感知"取消赞"）
         postCache.invalidate(postId); // 取消点赞 → 踢单帖缓存
         return toVO(post, username);
     }

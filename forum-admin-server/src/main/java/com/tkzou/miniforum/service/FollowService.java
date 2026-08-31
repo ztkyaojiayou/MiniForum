@@ -102,11 +102,12 @@ public class FollowService {
                 Notification.TYPE_FOLLOW, null, "关注了你");
     }
 
-    /** 取关 */
+    /** 取关（状态表删边；同时记 UNFOLLOW 行为事件，与关注成对） */
     public void unfollow(Long followerId, Long followeeId) {
         Follow follow = followRepository.findByFollowerAndFollowee(followerId, followeeId)
                 .orElseThrow(() -> new BusinessException("你还没有关注该用户"));
-        followRepository.delete(follow);
+        followRepository.delete(follow);                        // ① 状态表删边（Follow=当前关注关系，非历史）
+        behaviorLogger.log(followerId, null, BehaviorType.UNFOLLOW, "POST", null); // ② 事件流（社交图负信号）
     }
 
     /** 是否已关注 */

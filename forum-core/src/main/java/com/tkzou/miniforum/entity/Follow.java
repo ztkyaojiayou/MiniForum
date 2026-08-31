@@ -4,9 +4,11 @@ import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * 关注关系实体
+ * 关注关系实体 —— 【当前状态表】，不是事件历史
  * <p>
  * 一条记录表示「followerId 关注了 followeeId」，同一对用户只能有一条关注记录。
+ * 关注 = INSERT、取关 = DELETE（不保留历史）；关注/取关的<b>事件流</b>由 {@code BehaviorLog}
+ * 记录（{@code FOLLOW} / {@code UNFOLLOW}），本表只管"当前关注关系"（社交图的有向边）。
  */
 public class Follow {
 

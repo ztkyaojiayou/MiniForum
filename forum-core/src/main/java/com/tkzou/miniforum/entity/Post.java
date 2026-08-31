@@ -6,9 +6,21 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * 帖子实体
+ * 帖子实体 —— 【主实体 + 当前状态快照】
  * <p>
  * 仅承载数据，纯内存存储，不依赖任何第三方中间件。
+ *
+ * <h3>与 Like/Favorite/Follow 的层次区别</h3>
+ * <ul>
+ *   <li><b>Post 是"事实本体"</b>：内容/作者/时间/状态是权威记录，不是由用户动作派生的；
+ *       编辑=覆盖字段、删除=软删除（{@code deleted}），不保留编辑历史——所以它是"当前状态"而非"编辑日志"；</li>
+ *   <li><b>Post 里的计数是"聚合快照"</b>：{@code likeCount/viewCount} 由 Like 表 / 浏览事件<b>派生</b>，
+ *       是缓存性质的近似值，可能与实际事实短暂不一致（异步/缓存权衡）——真实验证"谁赞过"看 Like 表；
+ *       Like/Favorite/Follow 才是纯"关系状态表"（点赞/取消 = INSERT/DELETE，历史走 BehaviorLog）。</li>
+ * </ul>
+ * <pre>
+ *   层次：Like/Favorite/Follow（关系状态，可增删）  ↔  Post（内容本体 + 计数快照）  ↔  BehaviorLog（事件历史）
+ * </pre>
  */
 public class Post {
 
@@ -31,7 +43,7 @@ public class Post {
     /** 作者用户名 */
     private String author;
 
-    /** 作者用户 ID（用于个人主页跳转） */
+    /** 作者用户 ID（这条帖子的作者，恒非 null；个人主页跳转 / 作者过滤 / 社交召回"我关注的人发的" authorId∈关注集合） */
     private Long authorId;
 
     /** 创建时间 */
@@ -61,13 +73,21 @@ public class Post {
     /** 删除时间（软删除时记录，用于 30 天自动清理） */
     private LocalDateTime deletedAt;
 
-    /** 转发原帖 ID（null = 原创帖） */
+    /**
+     * 转发：被转发的【直接原帖】ID（null = 原创帖）。
+     * 转发 = 生成一个新 Post 指向原帖（Post 自关联，转发链 A←B←C，每条转发指向它【直接】转的那条，不折叠到根帖）。
+     * 用途：① 转发计数 count(帖子 where originalPostId==本帖)（【直接转发数】，不含链式折叠） ② 转发泡点击跳转原帖详情 ③ 判别转发帖。
+     */
     private Long originalPostId;
 
-    /** 转发原帖作者 ID（用于跳转原帖作者主页） */
+    /**
+     * 转发：直接原帖的【作者】ID（冗余存储，配合 {@link #originalAuthor} 一次 IO 拿到"谁的原帖"，免查原帖表）。
+     * 用途：二度转发信号——"我关注的人转发了"（originalAuthorId ∈ 我的关注集合），排序 social +0.5 / 社交召回命中；
+     * 跳转原帖作者主页。
+     */
     private Long originalAuthorId;
 
-    /** 转发原帖作者用户名 */
+    /** 转发：原帖作者用户名（冗余字段，前端转发泡展示"🔁 @alice 的原微博"，免 join 原帖表） */
     private String originalAuthor;
 
     public Post() {

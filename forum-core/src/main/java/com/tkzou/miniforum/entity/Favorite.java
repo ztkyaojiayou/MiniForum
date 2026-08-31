@@ -4,9 +4,11 @@ import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * 收藏记录实体
+ * 收藏记录实体 —— 【当前状态表】，不是事件历史（同 {@link Like} 的设计）
  * <p>
  * 一条记录表示「某用户收藏了某帖子」，同一用户对同一帖子只能有一条记录。
+ * 收藏 = INSERT、取消收藏 = DELETE（不保留历史）；收藏/取消收藏的<b>事件流</b>由 {@code BehaviorLog}
+ * 记录（{@code FAVORITE} / {@code UNFAVORITE}），本表只管"当前收藏状态"。
  */
 public class Favorite {
 

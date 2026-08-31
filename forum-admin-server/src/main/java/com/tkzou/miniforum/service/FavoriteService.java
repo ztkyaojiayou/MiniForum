@@ -62,11 +62,13 @@ public class FavoriteService {
                 .ifPresent(u -> behaviorLogger.log(u.getId(), postId, BehaviorType.FAVORITE, "POST", null));
     }
 
-    /** 取消收藏 */
+    /** 取消收藏（状态表删行；同时记 UNFAVORITE 行为事件，与收藏成对） */
     public void unfavorite(Long postId, String username) {
         Favorite favorite = favoriteRepository.findByPostIdAndUsername(postId, username)
                 .orElseThrow(() -> new BusinessException("你还没有收藏过这篇帖子"));
-        favoriteRepository.delete(favorite);
+        favoriteRepository.delete(favorite);                        // ① 状态表删行（Favorite=当前状态，非历史）
+        userRepository.findByUsername(username)
+                .ifPresent(u -> behaviorLogger.log(u.getId(), postId, BehaviorType.UNFAVORITE, "POST", null)); // ② 事件流
     }
 
     /** 当前用户是否已收藏该帖子 */

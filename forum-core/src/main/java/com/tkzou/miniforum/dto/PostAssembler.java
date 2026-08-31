@@ -75,7 +75,11 @@ public class PostAssembler {
         return vo;
     }
 
-    /** 统计某帖被转发的次数（仅统计可见的转发帖） */
+    /**
+     * 统计某帖被转发的次数（仅统计可见的转发帖）。
+     * 口径 = 【直接转发数】：只数 {@code originalPostId == 本帖} 的帖子（转发链 A←B←C 时，A 只算 B 直接转的一次）；
+     * 不含"链式转发总量"（折叠到根的递归回溯，本项目不做）。
+     */
     private long countReposts(Long postId) {
         return postRepository.findAll().stream()
                 .filter(p -> postId.equals(p.getOriginalPostId()) && isVisible(p))

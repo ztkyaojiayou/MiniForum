@@ -4,10 +4,20 @@ import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * 搜索词记录实体
+ * 搜索词记录实体 —— 【全局 keyword 维度，非用户维度】
  * <p>
- * 记录用户搜索过的关键词及次数，用于将搜索词热度并入热搜榜。
+ * 记录"某关键词全站被搜索的累计次数"，用于将搜索词热度并入热搜榜。
  * 纯内存存储，可 JSON 持久化。
+ *
+ * <h3>两个维度的分工（别混淆）</h3>
+ * <ul>
+ *   <li><b>本表 = keyword 维度（全站聚合）</b>：{@code keyword} 唯一（uk_keyword），{@code count} 是<b>全站所有用户</b>
+ *       搜这个词的总次数，<b>不含 userId</b>——回答"大家都在搜什么"（热搜榜）；{@link #incrementKeyword} 用
+ *       {@code ON DUPLICATE KEY UPDATE count=count+1} 原子累加，多实例下热搜计数不丢不重；</li>
+ *   <li><b>用户维度（某用户搜了什么）</b>：在 {@code BehaviorLog}（{@code BehaviorType.SEARCH}，带 userId）——
+ *       供画像/行为分析（SEARCH 权重 0.5），不在本表。</li>
+ * </ul>
+ * 搜索时两路同时记：{@code searchRecordRepository.incrementKeyword(keyword)}（喂热搜）+ {@code behaviorLogger.log(SEARCH)}（喂画像）。
  */
 public class SearchRecord {
 

@@ -195,7 +195,8 @@ public class PostController {
     public ResponseEntity<Result<PostVO>> unlike(@PathVariable Long id,
                                                  HttpSession session) {
         String username = (String) session.getAttribute("username");
-        return ResponseEntity.ok(Result.success("已取消点赞", postService.unlike(id, username)));
+        Long userId = (Long) session.getAttribute("userId");
+        return ResponseEntity.ok(Result.success("已取消点赞", postService.unlike(id, username, userId)));
     }
 
     /** 转发帖子（body: {"content": "转发评语"}） */
