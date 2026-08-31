@@ -389,13 +389,12 @@ JAVA_HOME='D:\devSoftWare\jdk17\jdk-17.0.19+10' mvn test
 | [docs/生产化落地开发清单.md](docs/生产化落地开发清单.md) | 生产化落地开发清单（P0 幂等+Outbox → P1 数据中间件化+Snowflake → P2 分发增强 → P3 加固编排，prod 优先） |
 | [docs/数据存储矩阵.md](docs/数据存储矩阵.md) | 数据存储放置决策（MySQL=事实 / Redis=热数据 / Kafka=事件 / ClickHouse=行为全量）+ 行为日志选型 |
 | [docs/系统功能全景.md](docs/系统功能全景.md) | 功能全景盘点（基于源码核验） |
-| [docs/业务实体与关联关系.md](docs/业务实体与关联关系.md) | 业务实体全景 + ER 关系图 + 关联设计要点（基于源码核验） |
 | [docs/API.md](docs/API.md) | 完整接口文档 |
 | [docs/微博化改版规划.md](docs/微博化改版规划.md) | 微博化改版规划 |
 | [docs/高并发优化落地清单-带优先级.md](docs/高并发优化落地清单-带优先级.md) | 高并发优化落地清单（P0~P3 全批次，含 Sentinel 限流熔断 / 热点key / 压测） |
 | [docs/限流与熔断-分布式治理概念澄清.md](docs/限流与熔断-分布式治理概念澄清.md) | 限流/熔断/降级三兄弟 + 形态A/B + 分布式限流 + 流量漏斗 |
 | [docs/容量测试方法.md](docs/容量测试方法.md) | 容量压测方法论（漏斗分层测法 + 扩容公式 + `scripts/loadtest_feed.py`） |
-| [docs/领域模型与实体关系.md](docs/领域模型与实体关系.md) | 10 个业务实体 + 关系 + 存储落点矩阵（理解微博业务的数据底座） |
+| [docs/领域模型与实体关系.md](docs/领域模型与实体关系.md) | 领域模型：10 实体 + 支撑对象 + 关系明细 + 存储落点矩阵 + 开发速查（理解微博业务的数据底座） |
 | [docs/搜广推-概念与架构.md](docs/搜广推-概念与架构.md) | 搜索/广告/推荐三块业务 + 共享底座 + 本项目位置与差距 |
 | [docs/ClickHouse新手学习-对比MySQL与Redis.md](docs/ClickHouse新手学习-对比MySQL与Redis.md) | 列式 OLAP 新手学习（对比 MySQL/Redis + 进阶 Q&A） |
 | [docs/时序数据库对比-ClickHouse-InfluxDB-IoTDB.md](docs/时序数据库对比-ClickHouse-InfluxDB-IoTDB.md) | ClickHouse / InfluxDB / IoTDB 三库对比（定位/模型/时序能力） |
