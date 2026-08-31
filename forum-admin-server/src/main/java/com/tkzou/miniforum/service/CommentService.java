@@ -140,7 +140,11 @@ public class CommentService {
         }
     }
 
-    /** 评论点赞（简化实现：不校验去重，直接 +1） */
+    /**
+     * 评论点赞（简化实现：不校验去重，直接 +1）。
+     * 刻意取舍：评论赞低价值，只维护聚合快照 count，无"谁赞了"记录/不去重/无取消
+     * （与 Post 点赞的 Like 表不对称，见 {@code Comment.likeCount} 字段注释）。
+     */
     public CommentVO likeComment(Long commentId) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new ResourceNotFoundException("评论不存在：id=" + commentId));

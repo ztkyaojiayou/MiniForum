@@ -27,7 +27,13 @@ public class Comment {
     /** 评论时间 */
     private LocalDateTime createdAt;
 
-    /** 点赞数（评论点赞，仿微博） */
+    /**
+     * 评论点赞数（聚合快照）。
+     * ⚠️ 评论点赞是【简化实现】：只有这一个计数，没有"谁赞了"的记录（无 CommentLike 表）、不去重
+     * （同一用户可重复点赞，每次 +1）、无取消赞接口、也不进行为日志。
+     * 与 Post 点赞（Like 表：唯一约束/可查谁赞过/可取消/打 LIKE 事件）不对称——刻意取舍（评论赞低价值），
+     * 详见 {@link Like} 的"状态 vs 事件"说明。
+     */
     private long likeCount;
 
     /** 回复的父评论 ID（null = 根评论，非 null = 楼中楼回复） */
