@@ -1,4 +1,6 @@
 package com.tkzou.miniforum.dto;
+import lombok.Getter;
+import lombok.Setter;
 
 import com.tkzou.miniforum.entity.Comment;
 
@@ -11,6 +13,8 @@ import java.util.List;
  * <p>
  * 在 {@link Comment} 基础上追加当前用户是否为作者、点赞数、楼中楼回复列表。
  */
+// 样板 getter/setter 由 Lombok @Getter @Setter 生成（非核心 POJO；核心实体保留显式以便学习，见第 2 章）
+@Getter @Setter
 public class CommentVO {
 
     private Long id;
@@ -52,83 +56,4 @@ public class CommentVO {
         this.parentId = comment.getParentId();
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public Long getPostId() {
-        return postId;
-    }
-
-    public void setPostId(Long postId) {
-        this.postId = postId;
-    }
-
-    public String getAuthor() {
-        return author;
-    }
-
-    public void setAuthor(String author) {
-        this.author = author;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public boolean isMine() {
-        return mine;
-    }
-
-    public void setMine(boolean mine) {
-        this.mine = mine;
-    }
-
-    public long getLikeCount() {
-        return likeCount;
-    }
-
-    public void setLikeCount(long likeCount) {
-        this.likeCount = likeCount;
-    }
-
-    public Long getParentId() {
-        return parentId;
-    }
-
-    public void setParentId(Long parentId) {
-        this.parentId = parentId;
-    }
-
-    public List<CommentVO> getReplies() {
-        return replies;
-    }
-
-    public void setReplies(List<CommentVO> replies) {
-        this.replies = replies;
-    }
-
-    public int getReplyCount() {
-        return replyCount;
-    }
-
-    public void setReplyCount(int replyCount) {
-        this.replyCount = replyCount;
-    }
 }

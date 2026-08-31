@@ -1,10 +1,14 @@
 package com.tkzou.miniforum.dto;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * 推荐关注用户（社交卡）
  * <p>
  * "你关注的人关注了 X"：二度关注中按共同好友数排序推荐的用户，带推荐理由。
  */
+// 样板 getter/setter 由 Lombok @Getter @Setter 生成（非核心 POJO；核心实体保留显式以便学习，见第 2 章）
+@Getter @Setter
 public class RecommendUserVO {
 
     private Long id;
@@ -38,59 +42,4 @@ public class RecommendUserVO {
         this.followed = followed;
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getNickname() {
-        return nickname;
-    }
-
-    public void setNickname(String nickname) {
-        this.nickname = nickname;
-    }
-
-    public String getAvatar() {
-        return avatar;
-    }
-
-    public void setAvatar(String avatar) {
-        this.avatar = avatar;
-    }
-
-    public int getCommonFollowCount() {
-        return commonFollowCount;
-    }
-
-    public void setCommonFollowCount(int commonFollowCount) {
-        this.commonFollowCount = commonFollowCount;
-    }
-
-    public String getReason() {
-        return reason;
-    }
-
-    public void setReason(String reason) {
-        this.reason = reason;
-    }
-
-    public boolean isFollowed() {
-        return followed;
-    }
-
-    public void setFollowed(boolean followed) {
-        this.followed = followed;
-    }
 }

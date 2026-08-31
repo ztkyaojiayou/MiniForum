@@ -1,4 +1,6 @@
 package com.tkzou.miniforum.dto;
+import lombok.Getter;
+import lombok.Setter;
 
 import com.tkzou.miniforum.entity.Message;
 
@@ -7,6 +9,8 @@ import java.time.LocalDateTime;
 /**
  * 私信消息视图对象
  */
+// 样板 getter/setter 由 Lombok @Getter @Setter 生成（非核心 POJO；核心实体保留显式以便学习，见第 2 章）
+@Getter @Setter
 public class MessageVO {
 
     private Long id;
@@ -42,59 +46,4 @@ public class MessageVO {
         this.mine = myUsername != null && myUsername.equals(message.getSender());
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getSender() {
-        return sender;
-    }
-
-    public void setSender(String sender) {
-        this.sender = sender;
-    }
-
-    public Long getSenderId() {
-        return senderId;
-    }
-
-    public void setSenderId(Long senderId) {
-        this.senderId = senderId;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public boolean isRead() {
-        return read;
-    }
-
-    public void setRead(boolean read) {
-        this.read = read;
-    }
-
-    public boolean isMine() {
-        return mine;
-    }
-
-    public void setMine(boolean mine) {
-        this.mine = mine;
-    }
 }

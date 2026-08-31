@@ -1,4 +1,6 @@
 package com.tkzou.miniforum.recommend.feature;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -10,6 +12,8 @@ import java.util.Map;
  * 由 {@code stream.RealtimeFeatureWindow} 在事件窗口内聚合生成，写入 {@link RealtimeFeatureStore}（模拟 Redis）。
  * key 形如 "user:123" / "post:456"。用户侧携带近期点击过的话题分布（兴趣的实时投影），物品侧携带近期互动/曝光（热度爆发）。
  */
+// 样板 getter/setter 由 Lombok @Getter @Setter 生成（非核心 POJO；核心实体保留显式以便学习，见第 2 章）
+@Getter @Setter
 public class RealtimeFeature {
 
     /** key："user:{userId}" / "post:{postId}" */
@@ -38,46 +42,6 @@ public class RealtimeFeature {
     /** 深度互动率（点击/曝光，曝光为 0 时按 0） */
     public double ctr() {
         return exposeCount == 0 ? 0 : (double) clickCount / exposeCount;
-    }
-
-    public String getKey() {
-        return key;
-    }
-
-    public void setKey(String key) {
-        this.key = key;
-    }
-
-    public int getClickCount() {
-        return clickCount;
-    }
-
-    public void setClickCount(int clickCount) {
-        this.clickCount = clickCount;
-    }
-
-    public int getExposeCount() {
-        return exposeCount;
-    }
-
-    public void setExposeCount(int exposeCount) {
-        this.exposeCount = exposeCount;
-    }
-
-    public Map<String, Integer> getTopicClicks() {
-        return topicClicks;
-    }
-
-    public void setTopicClicks(Map<String, Integer> topicClicks) {
-        this.topicClicks = topicClicks;
-    }
-
-    public LocalDateTime getWindowEnd() {
-        return windowEnd;
-    }
-
-    public void setWindowEnd(LocalDateTime windowEnd) {
-        this.windowEnd = windowEnd;
     }
 
     public void addTopicClick(String topic) {

@@ -1,4 +1,6 @@
 package com.tkzou.miniforum.dto;
+import lombok.Getter;
+import lombok.Setter;
 
 import com.tkzou.miniforum.entity.User;
 
@@ -7,6 +9,8 @@ import com.tkzou.miniforum.entity.User;
  * <p>
  * 聚合用户基本信息、粉丝数、关注数与发帖数。
  */
+// 样板 getter/setter 由 Lombok @Getter @Setter 生成（非核心 POJO；核心实体保留显式以便学习，见第 2 章）
+@Getter @Setter
 public class ProfileVO {
 
     private Long id;
@@ -48,59 +52,4 @@ public class ProfileVO {
         this.avatar = user.getAvatar();
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public Integer getAge() {
-        return age;
-    }
-
-    public void setAge(Integer age) {
-        this.age = age;
-    }
-
-    public long getFollowerCount() {
-        return followerCount;
-    }
-
-    public void setFollowerCount(long followerCount) {
-        this.followerCount = followerCount;
-    }
-
-    public long getFollowingCount() {
-        return followingCount;
-    }
-
-    public void setFollowingCount(long followingCount) {
-        this.followingCount = followingCount;
-    }
-
-    public long getPostCount() {
-        return postCount;
-    }
-
-    public void setPostCount(long postCount) {
-        this.postCount = postCount;
-    }
 }

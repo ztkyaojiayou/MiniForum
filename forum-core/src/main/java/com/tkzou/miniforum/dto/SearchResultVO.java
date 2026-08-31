@@ -1,4 +1,6 @@
 package com.tkzou.miniforum.dto;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -6,6 +8,8 @@ import java.util.List;
 /**
  * 综合搜索结果视图（帖子 + 用户）
  */
+// 样板 getter/setter 由 Lombok @Getter @Setter 生成（非核心 POJO；核心实体保留显式以便学习，见第 2 章）
+@Getter @Setter
 public class SearchResultVO {
 
     /** 命中的帖子（标题/内容/标签/话题任一匹配，标题命中优先） */
@@ -22,19 +26,4 @@ public class SearchResultVO {
         this.users = users == null ? new ArrayList<>() : users;
     }
 
-    public List<PostVO> getPosts() {
-        return posts;
-    }
-
-    public void setPosts(List<PostVO> posts) {
-        this.posts = posts;
-    }
-
-    public List<UserBriefVO> getUsers() {
-        return users;
-    }
-
-    public void setUsers(List<UserBriefVO> users) {
-        this.users = users;
-    }
 }

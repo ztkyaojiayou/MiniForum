@@ -1,10 +1,14 @@
 package com.tkzou.miniforum.dto;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
 /**
  * 私信会话视图对象（会话列表用）
  */
+// 样板 getter/setter 由 Lombok @Getter @Setter 生成（非核心 POJO；核心实体保留显式以便学习，见第 2 章）
+@Getter @Setter
 public class ConversationVO {
 
     private Long id;
@@ -30,59 +34,4 @@ public class ConversationVO {
     public ConversationVO() {
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getPeer() {
-        return peer;
-    }
-
-    public void setPeer(String peer) {
-        this.peer = peer;
-    }
-
-    public Long getPeerId() {
-        return peerId;
-    }
-
-    public void setPeerId(Long peerId) {
-        this.peerId = peerId;
-    }
-
-    public String getLastMessage() {
-        return lastMessage;
-    }
-
-    public void setLastMessage(String lastMessage) {
-        this.lastMessage = lastMessage;
-    }
-
-    public String getLastSender() {
-        return lastSender;
-    }
-
-    public void setLastSender(String lastSender) {
-        this.lastSender = lastSender;
-    }
-
-    public LocalDateTime getLastMessageAt() {
-        return lastMessageAt;
-    }
-
-    public void setLastMessageAt(LocalDateTime lastMessageAt) {
-        this.lastMessageAt = lastMessageAt;
-    }
-
-    public long getUnreadCount() {
-        return unreadCount;
-    }
-
-    public void setUnreadCount(long unreadCount) {
-        this.unreadCount = unreadCount;
-    }
 }

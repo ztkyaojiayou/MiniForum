@@ -1,4 +1,6 @@
 package com.tkzou.miniforum.recommend.coldstart;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Thompson 后验参数（可序列化值类，替代 NewItemPool 的 double[3]）
@@ -7,6 +9,8 @@ package com.tkzou.miniforum.recommend.coldstart;
  * pendingExposures = 待惩罚曝光数（连续曝光无互动达阈值 3 → beta+1 并清零）。
  * 抽成 public POJO 以便 Jackson 序列化到 Redis。
  */
+// 样板 getter/setter 由 Lombok @Getter @Setter 生成（非核心 POJO；核心实体保留显式以便学习，见第 2 章）
+@Getter @Setter
 public class AlphaBeta {
 
     /** 成功次数 + 1（后验 Beta 分布的 alpha 参数） */
@@ -25,27 +29,4 @@ public class AlphaBeta {
         this.pendingExposures = pendingExposures;
     }
 
-    public double getAlpha() {
-        return alpha;
-    }
-
-    public void setAlpha(double alpha) {
-        this.alpha = alpha;
-    }
-
-    public double getBeta() {
-        return beta;
-    }
-
-    public void setBeta(double beta) {
-        this.beta = beta;
-    }
-
-    public int getPendingExposures() {
-        return pendingExposures;
-    }
-
-    public void setPendingExposures(int pendingExposures) {
-        this.pendingExposures = pendingExposures;
-    }
 }

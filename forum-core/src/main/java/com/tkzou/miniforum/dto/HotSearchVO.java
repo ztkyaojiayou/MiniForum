@@ -1,8 +1,12 @@
 package com.tkzou.miniforum.dto;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * 热搜词视图对象
  */
+// 样板 getter/setter 由 Lombok @Getter @Setter 生成（非核心 POJO；核心实体保留显式以便学习，见第 2 章）
+@Getter @Setter
 public class HotSearchVO {
 
     /** 热搜关键词（帖子标签） */
@@ -34,51 +38,4 @@ public class HotSearchVO {
         this.trend = 0;
     }
 
-    public String getLevel() {
-        return level;
-    }
-
-    public void setLevel(String level) {
-        this.level = level;
-    }
-
-    public String getKeyword() {
-        return keyword;
-    }
-
-    public void setKeyword(String keyword) {
-        this.keyword = keyword;
-    }
-
-    public long getHeat() {
-        return heat;
-    }
-
-    public void setHeat(long heat) {
-        this.heat = heat;
-    }
-
-    public long getPostCount() {
-        return postCount;
-    }
-
-    public void setPostCount(long postCount) {
-        this.postCount = postCount;
-    }
-
-    public int getRank() {
-        return rank;
-    }
-
-    public void setRank(int rank) {
-        this.rank = rank;
-    }
-
-    public int getTrend() {
-        return trend;
-    }
-
-    public void setTrend(int trend) {
-        this.trend = trend;
-    }
 }

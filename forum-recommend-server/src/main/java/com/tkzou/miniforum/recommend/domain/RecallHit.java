@@ -1,10 +1,13 @@
 package com.tkzou.miniforum.recommend.domain;
+import lombok.Getter;
 
 /**
  * 单路召回命中
  * <p>
  * 某一路召回通道输出的一个候选，携带该通道内的原始得分与来源标识（如 hot/topic/itemcf）。
  */
+// 样板 getter/setter 由 Lombok @Getter 生成（非核心 POJO；核心实体保留显式以便学习，见第 2 章）
+@Getter
 public class RecallHit {
 
     private final Long itemId;
@@ -19,18 +22,6 @@ public class RecallHit {
         this.itemId = itemId;
         this.score = score;
         this.source = source;
-    }
-
-    public Long getItemId() {
-        return itemId;
-    }
-
-    public double getScore() {
-        return score;
-    }
-
-    public String getSource() {
-        return source;
     }
 
     @Override

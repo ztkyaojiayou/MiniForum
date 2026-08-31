@@ -40,4 +40,14 @@
             </modules>
         </profile>
     </profiles>
+
+    <!-- 全局共享依赖：Lombok 编译期注解处理（@Getter/@Setter 精简非核心 POJO 样板），
+         provided 不进运行包；版本由 spring-boot-starter-parent 管理。 -->
+    <dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
 </project>

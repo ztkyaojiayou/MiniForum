@@ -1,4 +1,5 @@
 package com.tkzou.miniforum.recommend.domain;
+import lombok.Getter;
 
 import java.time.LocalDateTime;
 
@@ -7,6 +8,8 @@ import java.time.LocalDateTime;
  * <p>
  * 贯穿召回→排序→重排→下发的不可变上下文对象，承载用户、场景、请求时间与目标条数。
  */
+// 样板 getter/setter 由 Lombok @Getter 生成（非核心 POJO；核心实体保留显式以便学习，见第 2 章）
+@Getter
 public class RecommendContext {
 
     /** 用户 ID（个性化维度） */
@@ -26,22 +29,6 @@ public class RecommendContext {
         this.scene = scene;
         this.requestTime = requestTime;
         this.size = size;
-    }
-
-    public Long getUserId() {
-        return userId;
-    }
-
-    public String getScene() {
-        return scene;
-    }
-
-    public LocalDateTime getRequestTime() {
-        return requestTime;
-    }
-
-    public int getSize() {
-        return size;
     }
 
     @Override

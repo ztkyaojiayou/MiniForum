@@ -1,4 +1,5 @@
 package com.tkzou.miniforum.recommend.domain;
+import lombok.Getter;
 
 import java.util.List;
 import java.util.Map;
@@ -8,6 +9,8 @@ import java.util.Map;
  * <p>
  * 精排输出：携带最终排序分、各特征分构成（用于可解释推荐理由）与命中的召回路来源。
  */
+// 样板 getter/setter 由 Lombok @Getter 生成（非核心 POJO；核心实体保留显式以便学习，见第 2 章）
+@Getter
 public class RankedItem {
 
     private final Long itemId;
@@ -31,26 +34,6 @@ public class RankedItem {
         this.featureScores = featureScores;
         this.sources = sources;
         this.explain = explain;
-    }
-
-    public Long getItemId() {
-        return itemId;
-    }
-
-    public double getRankScore() {
-        return rankScore;
-    }
-
-    public Map<String, Double> getFeatureScores() {
-        return featureScores;
-    }
-
-    public List<String> getSources() {
-        return sources;
-    }
-
-    public String getExplain() {
-        return explain;
     }
 
     @Override

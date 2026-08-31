@@ -1,4 +1,6 @@
 package com.tkzou.miniforum.recommend.feature;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -8,6 +10,8 @@ import java.util.List;
  * <p>
  * 排序层输入的内容侧特征：互动热度（微博式权重）、时效新鲜度、作者权重、是否冷启内容。
  */
+// 样板 getter/setter 由 Lombok @Getter @Setter 生成（非核心 POJO；核心实体保留显式以便学习，见第 2 章）
+@Getter @Setter
 public class ItemFeature {
 
     private Long postId;
@@ -42,107 +46,4 @@ public class ItemFeature {
     public ItemFeature() {
     }
 
-    public Long getPostId() {
-        return postId;
-    }
-
-    public void setPostId(Long postId) {
-        this.postId = postId;
-    }
-
-    public List<String> getTopics() {
-        return topics;
-    }
-
-    public void setTopics(List<String> topics) {
-        this.topics = topics;
-    }
-
-    public String getCategory() {
-        return category;
-    }
-
-    public void setCategory(String category) {
-        this.category = category;
-    }
-
-    public int getRepostCount() {
-        return repostCount;
-    }
-
-    public void setRepostCount(int repostCount) {
-        this.repostCount = repostCount;
-    }
-
-    public int getCommentCount() {
-        return commentCount;
-    }
-
-    public void setCommentCount(int commentCount) {
-        this.commentCount = commentCount;
-    }
-
-    public int getLikeCount() {
-        return likeCount;
-    }
-
-    public void setLikeCount(int likeCount) {
-        this.likeCount = likeCount;
-    }
-
-    public int getFavoriteCount() {
-        return favoriteCount;
-    }
-
-    public void setFavoriteCount(int favoriteCount) {
-        this.favoriteCount = favoriteCount;
-    }
-
-    public int getViewCount() {
-        return viewCount;
-    }
-
-    public void setViewCount(int viewCount) {
-        this.viewCount = viewCount;
-    }
-
-    public double getHotScore() {
-        return hotScore;
-    }
-
-    public void setHotScore(double hotScore) {
-        this.hotScore = hotScore;
-    }
-
-    public double getReadTimeSec() {
-        return readTimeSec;
-    }
-
-    public void setReadTimeSec(double readTimeSec) {
-        this.readTimeSec = readTimeSec;
-    }
-
-    public double getAgeHours() {
-        return ageHours;
-    }
-
-    public void setAgeHours(double ageHours) {
-        this.ageHours = ageHours;
-    }
-
-    public double getFreshness() {
-        return freshness;
-    }
-
-    public void setFreshness(double freshness) {
-        this.freshness = freshness;
-    }
-
-    public boolean isInNewPool() {
-        return inNewPool;
-    }
-
-    public void setInNewPool(boolean inNewPool) {
-        this.inNewPool = inNewPool;
-    }
 }

@@ -1,4 +1,6 @@
 package com.tkzou.miniforum.dto;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -6,6 +8,8 @@ import java.util.List;
 /**
  * 推荐流视图对象：帖子 + 推荐理由 + 来源 + 排序分（可解释推荐）
  */
+// 样板 getter/setter 由 Lombok @Getter @Setter 生成（非核心 POJO；核心实体保留显式以便学习，见第 2 章）
+@Getter @Setter
 public class RecommendPostVO {
 
     private PostVO post;
@@ -29,35 +33,4 @@ public class RecommendPostVO {
         this.sources = new ArrayList<>(sources);
     }
 
-    public PostVO getPost() {
-        return post;
-    }
-
-    public void setPost(PostVO post) {
-        this.post = post;
-    }
-
-    public double getScore() {
-        return score;
-    }
-
-    public void setScore(double score) {
-        this.score = score;
-    }
-
-    public String getReason() {
-        return reason;
-    }
-
-    public void setReason(String reason) {
-        this.reason = reason;
-    }
-
-    public List<String> getSources() {
-        return sources;
-    }
-
-    public void setSources(List<String> sources) {
-        this.sources = sources;
-    }
 }

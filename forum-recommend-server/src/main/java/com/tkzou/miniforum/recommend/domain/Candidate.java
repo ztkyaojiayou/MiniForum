@@ -1,4 +1,5 @@
 package com.tkzou.miniforum.recommend.domain;
+import lombok.Getter;
 
 import java.util.Map;
 
@@ -8,6 +9,8 @@ import java.util.Map;
  * 多路召回结果经归一化+加权+去重后得到，保留每一路的得分构成（channelScores），
  * 用于排序特征与推荐理由（可解释性）。
  */
+// 样板 getter/setter 由 Lombok @Getter 生成（非核心 POJO；核心实体保留显式以便学习，见第 2 章）
+@Getter
 public class Candidate {
 
     private final Long itemId;
@@ -22,18 +25,6 @@ public class Candidate {
         this.itemId = itemId;
         this.channelScores = channelScores;
         this.mergeScore = mergeScore;
-    }
-
-    public Long getItemId() {
-        return itemId;
-    }
-
-    public Map<String, Double> getChannelScores() {
-        return channelScores;
-    }
-
-    public double getMergeScore() {
-        return mergeScore;
     }
 
     @Override

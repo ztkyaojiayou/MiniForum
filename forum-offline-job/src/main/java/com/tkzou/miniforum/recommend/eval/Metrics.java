@@ -1,8 +1,12 @@
 package com.tkzou.miniforum.recommend.eval;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * 推荐质量指标集合（离线评估结果）
  */
+// 样板 getter/setter 由 Lombok @Getter @Setter 生成（非核心 POJO；核心实体保留显式以便学习，见第 2 章）
+@Getter @Setter
 public class Metrics {
 
     private double auc;
@@ -24,75 +28,4 @@ public class Metrics {
                 auc, gauc, recallAtK, ndcgAtK, coverage, diversity, freshness);
     }
 
-    public double getAuc() {
-        return auc;
-    }
-
-    public void setAuc(double auc) {
-        this.auc = auc;
-    }
-
-    public double getGauc() {
-        return gauc;
-    }
-
-    public void setGauc(double gauc) {
-        this.gauc = gauc;
-    }
-
-    public double getRecallAtK() {
-        return recallAtK;
-    }
-
-    public void setRecallAtK(double recallAtK) {
-        this.recallAtK = recallAtK;
-    }
-
-    public double getNdcgAtK() {
-        return ndcgAtK;
-    }
-
-    public void setNdcgAtK(double ndcgAtK) {
-        this.ndcgAtK = ndcgAtK;
-    }
-
-    public double getCoverage() {
-        return coverage;
-    }
-
-    public void setCoverage(double coverage) {
-        this.coverage = coverage;
-    }
-
-    public double getDiversity() {
-        return diversity;
-    }
-
-    public void setDiversity(double diversity) {
-        this.diversity = diversity;
-    }
-
-    public double getFreshness() {
-        return freshness;
-    }
-
-    public void setFreshness(double freshness) {
-        this.freshness = freshness;
-    }
-
-    public int getEvaluatedUsers() {
-        return evaluatedUsers;
-    }
-
-    public void setEvaluatedUsers(int evaluatedUsers) {
-        this.evaluatedUsers = evaluatedUsers;
-    }
-
-    public int getTopK() {
-        return topK;
-    }
-
-    public void setTopK(int topK) {
-        this.topK = topK;
-    }
 }

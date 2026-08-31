@@ -1,4 +1,6 @@
 package com.tkzou.miniforum.dto;
+import lombok.Getter;
+import lombok.Setter;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
@@ -7,6 +9,8 @@ import java.util.List;
 /**
  * 发帖请求 DTO
  */
+// 样板 getter/setter 由 Lombok @Getter @Setter 生成（非核心 POJO；核心实体保留显式以便学习，见第 2 章）
+@Getter @Setter
 public class PostCreateDTO {
 
     /** 标题（可选：首页"发动态"可不填，仅内容；"发文章"需填写，由前端约束） */
@@ -26,43 +30,8 @@ public class PostCreateDTO {
     /** 是否立即发布（true=发布，false=存为草稿），默认 true */
     private Boolean publish = true;
 
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
-
-    public List<String> getTags() {
-        return tags;
-    }
-
-    public void setTags(List<String> tags) {
-        this.tags = tags;
-    }
-
-    public String getCategory() {
-        return category;
-    }
-
-    public void setCategory(String category) {
-        this.category = category;
-    }
-
     public Boolean getPublish() {
         return publish == null ? Boolean.TRUE : publish;
     }
 
-    public void setPublish(Boolean publish) {
-        this.publish = publish;
-    }
 }

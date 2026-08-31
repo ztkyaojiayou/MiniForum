@@ -1293,6 +1293,7 @@ pre[class*="language-"] {
 <h3 class="atx" id="part-5-进阶认知">Part 5 进阶认知</h3>
 <ul>
 <li>[18 概念串联]：搜广推/分布式治理/时序库/高并发思维</li>
+<li>[19 feed 流架构：推/拉/混合]：关注流的架构展开（写放大取舍 / 大V分流 / 游标分页）</li>
 </ul>
 <h2 class="atx" id="三、怎么读">三、怎么读</h2>
 <pre><code class="fenced-code-block">第一次通读：按 00 → 18 顺序，每章只看 §1 设计思路 + §2 核心类，理解主线
@@ -2014,6 +2015,9 @@ post<span class="token punctuation">.</span><span class="token function">setStat
 
 <span class="token comment">// ③ 关注时回填：新关注 → 把新作者近期帖补进 inbox（否则刚关注看不到内容）</span>
 followFeedStore<span class="token punctuation">.</span><span class="token function">onFollow</span><span class="token punctuation">(</span>followerId<span class="token punctuation">,</span> <span class="token function">recentPostIdsOf</span><span class="token punctuation">(</span>followeeId<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code></pre>
+<blockquote>
+<p>关注流的<strong>完整架构</strong>（推/拉/混合取舍、大 V 分流、游标分页、增量刷新）在第 19 章专题展开。</p>
+</blockquote>
 <h3 class="atx" id="32-二度社交信号（喂推荐）">3.2 二度社交信号（喂推荐）</h3>
 <pre><code class="fenced-code-block language-java"><span class="token comment">// FollowService.getFollowingIds(uid) → 我关注的人</span>
 <span class="token comment">// RuleRankService / FollowRecall 用：</span>
@@ -3795,8 +3799,189 @@ mvn -Pprod clean package
 <blockquote>
 <p><strong>推荐系统是一个大型系统工程——数据、工程、实验、监控占 80%，模型占 20%。</strong> 这本书带你走完了那 80% 的骨架；剩下的 20%，是等你把骨架跑熟之后，往"排序"这一层里填更聪明的模型。</p>
 </blockquote>
-<p><strong>全书结束。</strong> 现在你应该能：指着一个模块说出它的设计意图、指着一条数据流说出它从哪来到哪去、对着一个崩溃场景说出该限流还是该降级。下一步——回去改代码，把某个环节换一种实现，用第 13 章的评估验证它。</p>
+<p><strong>到这里，推荐系统的主线（从领域建模到生产形态）讲完了。</strong> 现在你应该能：指着一个模块说出它的设计意图、指着一条数据流说出它从哪来到哪去、对着一个崩溃场景说出该限流还是该降级。下一步——回去改代码，把某个环节换一种实现，用第 13 章的评估验证它。下一个专题：第 19 章把"关注流"这个核心业务展开成完整架构。</p>
 <hr>
+<h1 class="atx" id="第-19-章-·-feed-流架构：推--拉--混合（专题展开）">第 19 章 · feed 流架构：推 / 拉 / 混合（专题展开）</h1>
+<blockquote>
+<p>学习路线对应：《学习路线》04-在线链路（feed 概念）· 深度参考：docs/feed流架构调研与对比.md（讲透）
+本章目标：第 5 章讲了关注流"能用"，本章讲透它"为什么这么设计"——<strong>推/拉/混合三种模式怎么取舍、本项目怎么落地、大 V 瓶颈怎么破</strong>。这是理解微博"信息流"架构的关键，也是面试常考的经典题。</p>
+</blockquote>
+<hr>
+<h2 class="atx" id="1-设计思路：feed-流的本质是一个andquot读写放大andquot取舍">1. 设计思路：feed 流的本质是一个"读/写放大"取舍</h2>
+<p>feed 流（时间线）要解决的核心矛盾：</p>
+<blockquote>
+<p><strong>一个用户刷 feed 是"读"（高频），一个作者发帖要喂给"所有粉丝"是"写"（一次写、N 次读）。让谁承担成本？</strong></p>
+</blockquote>
+<p>两个极端 + 一个折中：</p>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>做法</th>
+<th>写成本</th>
+<th>读成本</th>
+<th>适合</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>推（fanout on write）</strong></td>
+<td>发帖时把 postId 写进<strong>每个粉丝的 inbox</strong></td>
+<td>高（写放大）</td>
+<td>低（读自己 inbox O(1)）</td>
+<td>粉丝少的作者 / 读多写少的普通用户</td>
+</tr>
+<tr>
+<td><strong>拉（pull on read）</strong></td>
+<td>读时实时查"所有关注的人的最新帖"再合并</td>
+<td>低</td>
+<td>高（每次读要聚合 N 人）</td>
+<td>大 V（粉丝海量，推不动）</td>
+</tr>
+<tr>
+<td><strong>混合</strong></td>
+<td>普通用户推、大 V 拉</td>
+<td>中</td>
+<td>中</td>
+<td><strong>微博/推特的真实方案</strong></td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>核心认知：推模式把"一次写的成本"摊给 N 次写（写放大），换来"读是 O(1)"——普通用户读多写少，赚；大 V 粉丝千万，推一次要写千万份 inbox（写爆炸），所以大 V 必须走拉。</strong></p>
+</blockquote>
+<h2 class="atx" id="2-核心类清单-12">2. 核心类清单</h2>
+<table>
+<thead>
+<tr>
+<th>类</th>
+<th>一句话职责</th>
+<th>关键方法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>FollowFeedStore</code></td>
+<td>推模式 inbox 接口</td>
+<td><code>fanout(authorId, postId)</code>, <code>getInbox(userId, maxId, maxCount)</code>, <code>getInboxAfter</code>, <code>onFollow</code>, <code>isBuilt</code>, <code>shouldSkipFanout</code></td>
+</tr>
+<tr>
+<td><code>InMemoryFollowFeedStore</code></td>
+<td>内存 inbox（每用户一个有序集合）</td>
+<td>@Profile("!prod")</td>
+</tr>
+<tr>
+<td><code>RedisFollowFeedStore</code></td>
+<td>生产 inbox（ZSET <code>feed:inbox:{uid}</code>）</td>
+<td>@Profile("prod")</td>
+</tr>
+<tr>
+<td><code>FanoutOnPostCreated</code></td>
+<td>发帖事件 → fanout 的订阅者</td>
+<td>构造器即订阅（第 3 章）</td>
+</tr>
+<tr>
+<td><code>FollowService.getFollowFeed</code></td>
+<td>读流 + 游标分页 + 首读建流</td>
+<td><code>CursorPage&lt;PostVO&gt;</code></td>
+</tr>
+</tbody></table>
+<h2 class="atx" id="3-关键逻辑-11">3. 关键逻辑</h2>
+<h3 class="atx" id="31-推模式全链路（本项目落地）">3.1 推模式全链路（本项目落地）</h3>
+<pre><code class="fenced-code-block">发帖（作者）
+  → Outbox → PostCreatedEvent（第 3 章）
+  → FanoutOnPostCreated 订阅 → followFeedStore.fanout(authorId, postId)
+  → 把 postId 写进每个【已建流】粉丝的 inbox
+  → 粉丝刷关注流：读自己 inbox（O(1)）→ 回源帖子 → 过滤可见 → 游标分页</code></pre>
+<h3 class="atx" id="32-真实代码（接口--内存--redis-双实现）">3.2 真实代码（接口 + 内存 + Redis 双实现）</h3>
+<pre><code class="fenced-code-block language-java"><span class="token comment">// forum-core/feed/FollowFeedStore —— 推模式 inbox 接口（第 16 章双实现的例子之一）</span>
+<span class="token keyword">public</span> <span class="token keyword">interface</span> <span class="token class-name">FollowFeedStore</span> <span class="token punctuation">{</span>
+    <span class="token keyword">void</span> <span class="token function">fanout</span><span class="token punctuation">(</span><span class="token class-name">Long</span> authorId<span class="token punctuation">,</span> <span class="token class-name">Long</span> postId<span class="token punctuation">)</span><span class="token punctuation">;</span>                      <span class="token comment">// 写侧：发帖喂粉丝</span>
+    <span class="token class-name">List</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token class-name">Long</span><span class="token punctuation">&gt;</span></span> <span class="token function">getInbox</span><span class="token punctuation">(</span><span class="token class-name">Long</span> userId<span class="token punctuation">,</span> <span class="token class-name">Long</span> maxId<span class="token punctuation">,</span> <span class="token keyword">int</span> maxCount<span class="token punctuation">)</span><span class="token punctuation">;</span>   <span class="token comment">// 读侧：向下游标翻页</span>
+    <span class="token class-name">List</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token class-name">Long</span><span class="token punctuation">&gt;</span></span> <span class="token function">getInboxAfter</span><span class="token punctuation">(</span><span class="token class-name">Long</span> userId<span class="token punctuation">,</span> <span class="token class-name">Long</span> sinceId<span class="token punctuation">,</span> <span class="token keyword">int</span> maxCount<span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// 增量刷新（新帖提示）</span>
+    <span class="token keyword">void</span> <span class="token function">onFollow</span><span class="token punctuation">(</span><span class="token class-name">Long</span> followerId<span class="token punctuation">,</span> <span class="token class-name">List</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token class-name">Long</span><span class="token punctuation">&gt;</span></span> recentPostIds<span class="token punctuation">)</span><span class="token punctuation">;</span>     <span class="token comment">// 关注回填</span>
+    <span class="token keyword">boolean</span> <span class="token function">isBuilt</span><span class="token punctuation">(</span><span class="token class-name">Long</span> userId<span class="token punctuation">)</span><span class="token punctuation">;</span>                                 <span class="token comment">// 建流标记（没建不扇出）</span>
+    <span class="token keyword">boolean</span> <span class="token function">shouldSkipFanout</span><span class="token punctuation">(</span><span class="token class-name">Long</span> userId<span class="token punctuation">)</span><span class="token punctuation">;</span>                        <span class="token comment">// 大V分流（预留）</span>
+<span class="token punctuation">}</span>
+
+<span class="token comment">// 内存实现：每用户一个有序集合（postId 升序 = 时间序）</span>
+<span class="token annotation punctuation">@Repository</span> <span class="token annotation punctuation">@Profile</span><span class="token punctuation">(</span><span class="token string">"!prod"</span><span class="token punctuation">)</span>
+<span class="token keyword">public</span> <span class="token keyword">class</span> <span class="token class-name">InMemoryFollowFeedStore</span> <span class="token keyword">implements</span> <span class="token class-name">FollowFeedStore</span> <span class="token punctuation">{</span>
+    <span class="token keyword">private</span> <span class="token keyword">final</span> <span class="token class-name">Map</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token class-name">Long</span><span class="token punctuation">,</span> <span class="token class-name">ConcurrentSkipListSet</span><span class="token punctuation">&lt;</span><span class="token class-name">Long</span><span class="token punctuation">&gt;</span><span class="token punctuation">&gt;</span></span> inbox <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">ConcurrentHashMap</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">public</span> <span class="token keyword">void</span> <span class="token function">fanout</span><span class="token punctuation">(</span><span class="token class-name">Long</span> authorId<span class="token punctuation">,</span> <span class="token class-name">Long</span> postId<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+        followRepository<span class="token punctuation">.</span><span class="token function">findByFolloweeId</span><span class="token punctuation">(</span>authorId<span class="token punctuation">)</span>              <span class="token comment">// 作者的全部粉丝</span>
+            <span class="token punctuation">.</span><span class="token function">forEach</span><span class="token punctuation">(</span>f <span class="token operator">-&gt;</span> <span class="token punctuation">{</span> <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token function">isBuilt</span><span class="token punctuation">(</span>f<span class="token punctuation">.</span><span class="token function">getFollowerId</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span>      <span class="token comment">// 只写给已建流（省内存）</span>
+                inbox<span class="token punctuation">.</span><span class="token function">computeIfAbsent</span><span class="token punctuation">(</span>f<span class="token punctuation">.</span><span class="token function">getFollowerId</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> k <span class="token operator">-&gt;</span> <span class="token keyword">new</span> <span class="token class-name">ConcurrentSkipListSet</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">add</span><span class="token punctuation">(</span>postId<span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+    <span class="token keyword">public</span> <span class="token class-name">List</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token class-name">Long</span><span class="token punctuation">&gt;</span></span> <span class="token function">getInbox</span><span class="token punctuation">(</span><span class="token class-name">Long</span> userId<span class="token punctuation">,</span> <span class="token class-name">Long</span> maxId<span class="token punctuation">,</span> <span class="token keyword">int</span> maxCount<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+        <span class="token keyword">return</span> inbox<span class="token punctuation">.</span><span class="token function">getOrDefault</span><span class="token punctuation">(</span>userId<span class="token punctuation">,</span> <span class="token keyword">new</span> <span class="token class-name">ConcurrentSkipListSet</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+            <span class="token punctuation">.</span><span class="token function">tailSet</span><span class="token punctuation">(</span>maxId<span class="token punctuation">,</span> <span class="token boolean">false</span><span class="token punctuation">)</span>                               <span class="token comment">// 严格 &lt; maxId（向下翻更早的）</span>
+            <span class="token punctuation">.</span><span class="token function">stream</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">sorted</span><span class="token punctuation">(</span><span class="token class-name">Collections</span><span class="token punctuation">.</span><span class="token function">reverseOrder</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>         <span class="token comment">// 最新的在前</span>
+            <span class="token punctuation">.</span><span class="token function">limit</span><span class="token punctuation">(</span>maxCount<span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">toList</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+<span class="token punctuation">}</span>
+
+<span class="token comment">// Redis 实现：ZSET feed:inbox:{uid}（member=postId, score=postId）——多实例共享 inbox</span>
+<span class="token annotation punctuation">@Repository</span> <span class="token annotation punctuation">@Profile</span><span class="token punctuation">(</span><span class="token string">"prod"</span><span class="token punctuation">)</span>
+<span class="token keyword">public</span> <span class="token keyword">class</span> <span class="token class-name">RedisFollowFeedStore</span> <span class="token keyword">implements</span> <span class="token class-name">FollowFeedStore</span> <span class="token punctuation">{</span>
+    <span class="token keyword">public</span> <span class="token keyword">void</span> <span class="token function">fanout</span><span class="token punctuation">(</span><span class="token class-name">Long</span> authorId<span class="token punctuation">,</span> <span class="token class-name">Long</span> postId<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+        <span class="token class-name">List</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token class-name">Long</span><span class="token punctuation">&gt;</span></span> followers <span class="token operator">=</span> <span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">;</span>                              <span class="token comment">// 作者粉丝</span>
+        <span class="token keyword">try</span> <span class="token punctuation">(</span><span class="token class-name">Jedis</span> jedis <span class="token operator">=</span> pool<span class="token punctuation">.</span><span class="token function">getResource</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+            <span class="token class-name">Pipeline</span> p <span class="token operator">=</span> jedis<span class="token punctuation">.</span><span class="token function">pipelined</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>                      <span class="token comment">// ★ pipeline 批量写（写放大也扛得住）</span>
+            followers<span class="token punctuation">.</span><span class="token function">forEach</span><span class="token punctuation">(</span>fid <span class="token operator">-&gt;</span> p<span class="token punctuation">.</span><span class="token function">zadd</span><span class="token punctuation">(</span><span class="token string">"feed:inbox:"</span> <span class="token operator">+</span> fid<span class="token punctuation">,</span> postId<span class="token punctuation">,</span> postId <span class="token operator">+</span> <span class="token string">""</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+            p<span class="token punctuation">.</span><span class="token function">sync</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token punctuation">}</span>
+    <span class="token punctuation">}</span>
+    <span class="token keyword">public</span> <span class="token class-name">List</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token class-name">Long</span><span class="token punctuation">&gt;</span></span> <span class="token function">getInbox</span><span class="token punctuation">(</span><span class="token class-name">Long</span> userId<span class="token punctuation">,</span> <span class="token class-name">Long</span> maxId<span class="token punctuation">,</span> <span class="token keyword">int</span> maxCount<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+        <span class="token keyword">try</span> <span class="token punctuation">(</span><span class="token class-name">Jedis</span> jedis <span class="token operator">=</span> pool<span class="token punctuation">.</span><span class="token function">getResource</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+            <span class="token keyword">return</span> jedis<span class="token punctuation">.</span><span class="token function">zrevrangeByScore</span><span class="token punctuation">(</span><span class="token string">"feed:inbox:"</span> <span class="token operator">+</span> userId<span class="token punctuation">,</span> maxId<span class="token punctuation">,</span> <span class="token string">"-inf"</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">,</span> maxCount<span class="token punctuation">)</span>
+                <span class="token punctuation">.</span><span class="token function">stream</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">map</span><span class="token punctuation">(</span><span class="token class-name">Long</span><span class="token operator">::</span><span class="token function">valueOf</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">toList</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>           <span class="token comment">// 按 score 倒序取（最新在前）</span>
+        <span class="token punctuation">}</span>
+    <span class="token punctuation">}</span>
+<span class="token punctuation">}</span></code></pre>
+<h3 class="atx" id="33-大-v-分流（写放大的解药，本项目预留开关）">3.3 大 V 分流（写放大的解药，本项目预留开关）</h3>
+<pre><code class="fenced-code-block language-java"><span class="token comment">// shouldSkipFanout：粉丝数超阈值 → 跳过扇出（大 V 的 inbox 写不动了）</span>
+<span class="token keyword">public</span> <span class="token keyword">boolean</span> <span class="token function">shouldSkipFanout</span><span class="token punctuation">(</span><span class="token class-name">Long</span> userId<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token keyword">return</span> followRepository<span class="token punctuation">.</span><span class="token function">countByFolloweeId</span><span class="token punctuation">(</span>userId<span class="token punctuation">)</span> <span class="token operator">&gt;=</span> bigVThreshold<span class="token punctuation">;</span>  <span class="token comment">// 默认 10 万</span>
+<span class="token punctuation">}</span>
+<span class="token comment">// 触发后：大 V 新帖不进粉丝 inbox → 读侧需要"拉模式合并"补回来</span>
+<span class="token comment">// ⚠️ 本项目只留了开关、未实现拉模式——真触发会丢大 V 新帖，属预留状态（docs/feed流架构调研与对比.md 有完整方案）</span></code></pre>
+<h3 class="atx" id="34-游标分页--首读建流--关注回填">3.4 游标分页 + 首读建流 + 关注回填</h3>
+<pre><code class="fenced-code-block language-java"><span class="token comment">// FollowService.getFollowFeed —— 游标分页（比页码更稳：新帖插入不影响翻页）</span>
+<span class="token keyword">public</span> <span class="token class-name">CursorPage</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token class-name">PostVO</span><span class="token punctuation">&gt;</span></span> <span class="token function">getFollowFeed</span><span class="token punctuation">(</span><span class="token class-name">Long</span> userId<span class="token punctuation">,</span> <span class="token class-name">Long</span> maxId<span class="token punctuation">,</span> <span class="token keyword">int</span> size<span class="token punctuation">,</span> <span class="token class-name">String</span> username<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span>followFeedStore<span class="token punctuation">.</span><span class="token function">isBuilt</span><span class="token punctuation">(</span>userId<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token function">buildFeed</span><span class="token punctuation">(</span>userId<span class="token punctuation">)</span><span class="token punctuation">;</span>    <span class="token comment">// ① 首读回填建流</span>
+    <span class="token class-name">List</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token class-name">Long</span><span class="token punctuation">&gt;</span></span> ids <span class="token operator">=</span> followFeedStore<span class="token punctuation">.</span><span class="token function">getInbox</span><span class="token punctuation">(</span>userId<span class="token punctuation">,</span> maxId<span class="token punctuation">,</span> size <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// ② 多取1条判断 hasMore</span>
+    <span class="token keyword">return</span> <span class="token keyword">new</span> <span class="token class-name">CursorPage</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token punctuation">&gt;</span></span><span class="token punctuation">(</span>ids<span class="token punctuation">.</span><span class="token function">stream</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+        <span class="token punctuation">.</span><span class="token function">map</span><span class="token punctuation">(</span>postRepository<span class="token operator">::</span><span class="token function">findById</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">filter</span><span class="token punctuation">(</span><span class="token class-name">Optional</span><span class="token operator">::</span><span class="token function">isPresent</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">map</span><span class="token punctuation">(</span><span class="token class-name">Optional</span><span class="token operator">::</span><span class="token function">get</span><span class="token punctuation">)</span>
+        <span class="token punctuation">.</span><span class="token function">filter</span><span class="token punctuation">(</span><span class="token keyword">this</span><span class="token operator">::</span><span class="token function">isVisible</span><span class="token punctuation">)</span>                                 <span class="token comment">// 过滤已删/不可见</span>
+        <span class="token punctuation">.</span><span class="token function">map</span><span class="token punctuation">(</span>p <span class="token operator">-&gt;</span> <span class="token function">toVO</span><span class="token punctuation">(</span>p<span class="token punctuation">,</span> username<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">toList</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token function">nextCursor</span><span class="token punctuation">(</span>ids<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// ③ 下一页游标 = 本页最小 postId</span>
+<span class="token punctuation">}</span>
+<span class="token comment">// 关注回填：新关注 → 把新作者近期帖补进 inbox（否则刚关注看不到内容）</span>
+followFeedStore<span class="token punctuation">.</span><span class="token function">onFollow</span><span class="token punctuation">(</span>followerId<span class="token punctuation">,</span> <span class="token function">recentPostIdsOf</span><span class="token punctuation">(</span>followeeId<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code></pre>
+<h2 class="atx" id="4-与工业界的对应-16">4. 与工业界的对应</h2>
+<ul>
+<li><strong>微博/推特的真实方案是"混合"</strong>：普通用户推（fanout on write）、大 V 拉（pull on read）——Twitter 的 "Timelines at Scale"（Raffi Krikorian）讲透了这套演进：早期全推 → 大 V 粉丝暴涨 → 引入拉模式混合；</li>
+<li><strong>每用户时间线</strong>：推模式 = 每个用户一个"时间线缓存"（inbox），Redis ZSET 是标配（score=时间戳）；本项目 <code>feed:inbox:{uid}</code> 就是它；</li>
+<li><strong>游标分页</strong>：大厂 feed 都用 <code>max_id</code>/<code>since_id</code> 游标（而非页码），因为新帖插入会打乱页码——本项目 <code>getFollowFeed(maxId)</code> 对齐了这个；</li>
+<li><strong>写放大是永恒的课题</strong>：本项目大 V 分流预留（<code>shouldSkipFanout</code>）是混合模式的骨架，完整实现（拉模式合并、粉丝数分档）见 docs/feed流架构调研与对比.md。</li>
+</ul>
+<h2 class="atx" id="5-动手-8">5. 动手</h2>
+<pre><code class="fenced-code-block language-bash"><span class="token comment"># 1. 关注一个人</span>
+POST /api/follows/<span class="token punctuation">{</span>userId<span class="token punctuation">}</span>
+<span class="token comment"># 2. 对方发帖 → 观察扇出（可加日志看 inbox 写入）</span>
+POST /api/posts <span class="token punctuation">{</span><span class="token string">"content"</span><span class="token builtin class-name">:</span><span class="token string">"#feed测试# 关注流能看到我"</span><span class="token punctuation">}</span>
+<span class="token comment"># 3. 刷关注流：游标翻页（max_id 向下翻更早的）</span>
+GET /api/follows/feed
+<span class="token comment"># 4. 增量刷新：since_id 拉新帖（新帖提示条）</span>
+GET /api/follows/feed?since_id<span class="token operator">=</span><span class="token operator">&lt;</span>上次最大id<span class="token operator">&gt;</span>
+<span class="token comment"># 5. 看 inbox（演示：内存；prod：Redis ZSET feed:inbox:{uid}）</span></code></pre>
+<h2 class="atx" id="6-常见坑-17">6. 常见坑</h2>
+<ol>
+<li><strong>全量推的写放大</strong>：每帖写给所有粉丝，大 V 千万粉丝直接写爆炸——必须大 V 分流（拉模式兜底）；</li>
+<li><strong>没建流也扇出</strong>：新用户没 inbox 也写入 = 浪费——<code>isBuilt</code> 判断，首读才建流；</li>
+<li><strong>关注后不回填</strong>：新关注的作者近期帖要补进 inbox（<code>onFollow</code>），否则"刚关注看不到"；</li>
+<li><strong>用页码分页</strong>：新帖插入会打乱页码（第一页重复/跳页）——必须 <code>max_id</code> 游标；</li>
+<li><strong>大 V 开关触发但没拉模式</strong>：<code>shouldSkipFanout</code> 触发会丢大 V 新帖——要么别触发（保持全推），要么实现拉模式合并。</li>
+</ol>
+<hr>
+<p><strong>全书结束。</strong> 至此，从领域建模、业务系统、推荐漏斗到 feed 流架构、工程化治理、生产形态——一本以 MiniForum 为教材的推荐系统实战手册完整收尾。下一步，挑一个环节动手改它、用第 13 章的评估验证它。</p>
 </article>
 </body>
 </html>

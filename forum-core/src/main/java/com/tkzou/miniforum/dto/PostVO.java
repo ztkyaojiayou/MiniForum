@@ -1,4 +1,6 @@
 package com.tkzou.miniforum.dto;
+import lombok.Getter;
+import lombok.Setter;
 
 import com.tkzou.miniforum.entity.Post;
 
@@ -12,6 +14,8 @@ import java.util.List;
  * 在 {@link Post} 基础上追加点赞数、当前用户是否已点赞、评论数等展示字段，
  * 避免将请求相关的状态写入实体。
  */
+// 样板 getter/setter 由 Lombok @Getter @Setter 生成（非核心 POJO；核心实体保留显式以便学习，见第 2 章）
+@Getter @Setter
 public class PostVO {
 
     private Long id;
@@ -85,163 +89,4 @@ public class PostVO {
         this.originalAuthor = post.getOriginalAuthor();
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
-
-    public String getAuthor() {
-        return author;
-    }
-
-    public void setAuthor(String author) {
-        this.author = author;
-    }
-
-    public Long getAuthorId() {
-        return authorId;
-    }
-
-    public void setAuthorId(Long authorId) {
-        this.authorId = authorId;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public List<String> getTags() {
-        return tags;
-    }
-
-    public void setTags(List<String> tags) {
-        this.tags = tags;
-    }
-
-    public List<String> getTopics() {
-        return topics;
-    }
-
-    public void setTopics(List<String> topics) {
-        this.topics = topics;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public String getCategory() {
-        return category;
-    }
-
-    public void setCategory(String category) {
-        this.category = category;
-    }
-
-    public long getLikeCount() {
-        return likeCount;
-    }
-
-    public void setLikeCount(long likeCount) {
-        this.likeCount = likeCount;
-    }
-
-    public boolean isLikedByMe() {
-        return likedByMe;
-    }
-
-    public void setLikedByMe(boolean likedByMe) {
-        this.likedByMe = likedByMe;
-    }
-
-    public boolean isFavoritedByMe() {
-        return favoritedByMe;
-    }
-
-    public void setFavoritedByMe(boolean favoritedByMe) {
-        this.favoritedByMe = favoritedByMe;
-    }
-
-    public long getCommentCount() {
-        return commentCount;
-    }
-
-    public void setCommentCount(long commentCount) {
-        this.commentCount = commentCount;
-    }
-
-    public long getViewCount() {
-        return viewCount;
-    }
-
-    public void setViewCount(long viewCount) {
-        this.viewCount = viewCount;
-    }
-
-    public Long getOriginalPostId() {
-        return originalPostId;
-    }
-
-    public void setOriginalPostId(Long originalPostId) {
-        this.originalPostId = originalPostId;
-    }
-
-    public String getOriginalAuthor() {
-        return originalAuthor;
-    }
-
-    public void setOriginalAuthor(String originalAuthor) {
-        this.originalAuthor = originalAuthor;
-    }
-
-    public String getOriginalTitle() {
-        return originalTitle;
-    }
-
-    public void setOriginalTitle(String originalTitle) {
-        this.originalTitle = originalTitle;
-    }
-
-    public String getOriginalContent() {
-        return originalContent;
-    }
-
-    public void setOriginalContent(String originalContent) {
-        this.originalContent = originalContent;
-    }
-
-    public long getRepostCount() {
-        return repostCount;
-    }
-
-    public void setRepostCount(long repostCount) {
-        this.repostCount = repostCount;
-    }
 }

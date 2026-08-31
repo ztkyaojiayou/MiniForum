@@ -1,4 +1,5 @@
 package com.tkzou.miniforum.recommend.config;
+import lombok.Getter;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -10,6 +11,8 @@ import java.util.Map;
  * 使用 Builder 构造；{@link #copy()} 可派生实验变体（AB 实验按分组走不同配置）。
  * 默认值对齐微博场景调研结论（见 docs/微博推荐调研.md）。
  */
+// 样板 getter/setter 由 Lombok @Getter 生成（非核心 POJO；核心实体保留显式以便学习，见第 2 章）
+@Getter
 public class RecConfig {
 
     /** 最终下发条数 */
@@ -76,74 +79,6 @@ public class RecConfig {
     /** 复制一份，供派生 AB 实验变体 */
     public Builder copy() {
         return new Builder(this);
-    }
-
-    public int getFinalTopN() {
-        return finalTopN;
-    }
-
-    public int getMergeTopN() {
-        return mergeTopN;
-    }
-
-    public int getRecallPerChannel() {
-        return recallPerChannel;
-    }
-
-    public double getColdStartRatio() {
-        return coldStartRatio;
-    }
-
-    public int getMinBehaviorForWarm() {
-        return minBehaviorForWarm;
-    }
-
-    public double getHalfLifeHours() {
-        return halfLifeHours;
-    }
-
-    public int getCategoryMaxCount() {
-        return categoryMaxCount;
-    }
-
-    public double getMmrLambda() {
-        return mmrLambda;
-    }
-
-    public int getMmrWindow() {
-        return mmrWindow;
-    }
-
-    public int getNewItemAgeHours() {
-        return newItemAgeHours;
-    }
-
-    public int getNewItemMinInteractions() {
-        return newItemMinInteractions;
-    }
-
-    public double getExploreLambdaNewUser() {
-        return exploreLambdaNewUser;
-    }
-
-    public double getExploreLambdaWarmUser() {
-        return exploreLambdaWarmUser;
-    }
-
-    public int getRealtimeWindowMinutes() {
-        return realtimeWindowMinutes;
-    }
-
-    public int getRealtimeWindowMaxEvents() {
-        return realtimeWindowMaxEvents;
-    }
-
-    public Map<String, Double> getChannelWeight() {
-        return channelWeight;
-    }
-
-    public Map<String, Double> getRankWeight() {
-        return rankWeight;
     }
 
     /** 查询某通道权重（缺失视为 0） */

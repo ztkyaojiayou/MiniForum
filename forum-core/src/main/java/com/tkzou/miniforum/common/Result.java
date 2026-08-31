@@ -1,4 +1,6 @@
 package com.tkzou.miniforum.common;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * 统一 API 响应体
@@ -8,6 +10,8 @@ package com.tkzou.miniforum.common;
  *
  * @param <T> 数据类型
  */
+// 样板 getter/setter 由 Lombok @Getter @Setter 生成（非核心 POJO；核心实体保留显式以便学习，见第 2 章）
+@Getter @Setter
 public class Result<T> {
 
     /** 业务状态码：0 表示成功 */
@@ -48,27 +52,4 @@ public class Result<T> {
         return new Result<>(code, message, null);
     }
 
-    public int getCode() {
-        return code;
-    }
-
-    public void setCode(int code) {
-        this.code = code;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
-    }
-
-    public T getData() {
-        return data;
-    }
-
-    public void setData(T data) {
-        this.data = data;
-    }
 }
