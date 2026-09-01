@@ -2,6 +2,7 @@ package com.tkzou.miniforum.repository;
 import com.tkzou.miniforum.repository.impl.InMemoryPostRepository;
 
 import com.tkzou.miniforum.entity.Post;
+import com.tkzou.miniforum.entity.PostStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -139,5 +140,16 @@ class PostRepositoryTest {
         pool.shutdownNow();
         Post stored = repository.findById(p.getId()).orElseThrow();
         assertEquals(n, stored.getLikeCount()); // computeIfPresent 原子累加：并发读-改-写不丢更新
+    }
+
+    @Test
+    void postStatus_legacyCompatibility() {
+        // P1-20 枚举化：name() 与旧 String 常量值一致 → JSON/DB 契约不变；from() 兼容旧数据/大小写/未知值
+        assertEquals("DRAFT", PostStatus.DRAFT.name());
+        assertEquals("PUBLISHED", PostStatus.PUBLISHED.name());
+        assertEquals(Post.STATUS_DRAFT, PostStatus.from("DRAFT"));
+        assertEquals(Post.STATUS_PUBLISHED, PostStatus.from("published"));
+        assertEquals(Post.STATUS_PUBLISHED, PostStatus.from("LEGACY"));
+        assertEquals(Post.STATUS_PUBLISHED, PostStatus.from(null));
     }
 }

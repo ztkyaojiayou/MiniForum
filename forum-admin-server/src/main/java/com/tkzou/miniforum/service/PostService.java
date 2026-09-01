@@ -12,6 +12,7 @@ import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.exception.BusinessException;
 import com.tkzou.miniforum.exception.ResourceNotFoundException;
+import com.tkzou.miniforum.idempotency.IdempotencyStore;
 import com.tkzou.miniforum.repository.CommentRepository;
 import com.tkzou.miniforum.repository.FavoriteRepository;
 import com.tkzou.miniforum.repository.LikeRepository;
@@ -52,6 +53,12 @@ public class PostService {
 
     private static final int MAX_TAGS = 5;
     private static final int MAX_TAG_LENGTH = 20;
+    /** 自动提取话题上限（内容中 #话题# 最多取该数） */
+    private static final int MAX_TOPICS = 5;
+    /** 分页每页上限（page size 安全钳制） */
+    private static final int MAX_PAGE_SIZE = 100;
+    /** 转发摘要截断长度（转发通知/泡展示原帖摘要） */
+    private static final int REPOST_BRIEF_MAX_LEN = 20;
     /** 回收站保留天数：删除超过该天数的帖子将被定时任务彻底清理 */
     private static final long RECYCLE_RETENTION_DAYS = 30;
     /** 管理员用户名（可编辑/删除任意帖子） */
@@ -89,6 +96,8 @@ public class PostService {
     private final BehaviorLogger behaviorLogger;
     /** 发帖事件 Outbox（演示同步发布 / 生产落表+Relayer 必达） */
     private final OutboxStore outboxStore;
+    /** 发帖幂等存储（Idempotency-Key 防重复提交；编排下沉在 Service，Controller 保持薄） */
+    private final IdempotencyStore idempotencyStore;
     /** 帖子视图装配（共享域，admin 与 recommend 共用） */
     private final PostAssembler postAssembler;
     /** 帖子倒排索引（事件驱动；测试/未装配为 null → 搜索回退全表扫） */
@@ -129,7 +138,8 @@ public class PostService {
                        UserRepository userRepository,
                        BehaviorLogger behaviorLogger,
                        OutboxStore outboxStore,
-                       PostAssembler postAssembler) {
+                       PostAssembler postAssembler,
+                       IdempotencyStore idempotencyStore) {
         this.postRepository = postRepository;
         this.likeRepository = likeRepository;
         this.commentRepository = commentRepository;
@@ -139,6 +149,7 @@ public class PostService {
         this.behaviorLogger = behaviorLogger;
         this.outboxStore = outboxStore;
         this.postAssembler = postAssembler;
+        this.idempotencyStore = idempotencyStore;
     }
 
     /** 发帖（publish=false 时存为草稿） */
@@ -160,6 +171,54 @@ public class PostService {
             outboxStore.enqueue(toPostCreatedEvent(saved));
         }
         return toVO(saved, author);
+    }
+
+    /**
+     * 发帖（幂等版，P1-18）：带 {@code Idempotency-Key} 时编排"查完成→acquire→创建→complete→失败释放"，
+     * 下沉到 Service，Controller 保持薄（不再直接操作 IdempotencyStore）。
+     *
+     * @return 创建结果（replayed=true 表示命中已完成 key，返回首次结果且不重复发帖）
+     */
+    public CreateResult createPost(PostCreateDTO dto, String author, Long authorId, String idempotencyKey) {
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            return new CreateResult(createPost(dto, author, authorId), false);
+        }
+        // 同 key 已发过 → 返回首次结果（不增加阅读量、不重复发帖）
+        Optional<Long> existing = idempotencyStore.getCompleted(idempotencyKey);
+        if (existing.isPresent()) {
+            return new CreateResult(getPostVOQuietly(existing.get(), author), true);
+        }
+        // 同 key 正在处理 → 拒绝重复提交（acquire 原子：并发下只有一个成功）
+        if (!idempotencyStore.acquire(idempotencyKey)) {
+            throw new BusinessException("正在提交，请勿重复操作");
+        }
+        try {
+            PostVO created = createPost(dto, author, authorId);
+            idempotencyStore.complete(idempotencyKey, created.getId());
+            return new CreateResult(created, false);
+        } catch (Exception e) {
+            idempotencyStore.release(idempotencyKey); // 创建失败释放 key，允许重试
+            throw e;
+        }
+    }
+
+    /** 发帖幂等结果：vo + 是否命中已完成 key（供 Controller 区分 200 重放 / 201 新建） */
+    public static class CreateResult {
+        private final PostVO vo;
+        private final boolean replayed;
+
+        public CreateResult(PostVO vo, boolean replayed) {
+            this.vo = vo;
+            this.replayed = replayed;
+        }
+
+        public PostVO getVo() {
+            return vo;
+        }
+
+        public boolean isReplayed() {
+            return replayed;
+        }
     }
 
     /** 帖子实体 → 创建事件 */
@@ -216,7 +275,7 @@ public class PostService {
         }
         List<String> topics = new ArrayList<>();
         Matcher m = Pattern.compile("#([^#\\s]{1,30})#").matcher(content);
-        while (m.find() && topics.size() < 5) {
+        while (m.find() && topics.size() < MAX_TOPICS) {
             String t = m.group(1).trim();
             if (!t.isEmpty() && !topics.contains(t)) {
                 topics.add(t);
@@ -289,7 +348,7 @@ public class PostService {
      * 因为 PostVO 带 likedByMe/favoritedByMe（用户相关），不能整页缓存 VO，只能缓存 ID 顺序。
      */
     public List<PostVO> getHotPosts(int limit, String username) {
-        int safeLimit = Math.min(Math.max(limit, 1), 100);
+        int safeLimit = Math.min(Math.max(limit, 1), MAX_PAGE_SIZE);
         List<Long> topIds = hotPostIdsCache.get(HOT_POST_KEY, this::computeHotPostIds);
         List<Long> slice = topIds.size() > safeLimit
                 ? new ArrayList<>(topIds.subList(0, safeLimit)) : new ArrayList<>(topIds);
@@ -309,7 +368,7 @@ public class PostService {
                     int cmp = Long.compare(b.getViewCount(), a.getViewCount());
                     return cmp != 0 ? cmp : b.getCreatedAt().compareTo(a.getCreatedAt());
                 })
-                .limit(100)
+                .limit(MAX_PAGE_SIZE)
                 .map(Post::getId)
                 .collect(Collectors.toList());
     }
@@ -317,7 +376,7 @@ public class PostService {
     /** 分页查询已发布帖子（最新在前），支持按标签、分类筛选 */
     public PageResult<PostVO> getPosts(int page, int size, String tag, String category, String username) {
         int safePage = Math.max(page, 1);
-        int safeSize = Math.min(Math.max(size, 1), 100);
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         List<Post> all = postRepository.findAll().stream()
                 .filter(this::isVisible)
                 .collect(Collectors.toList());
@@ -362,7 +421,7 @@ public class PostService {
     /** 个人主页：某用户的全部已发布帖子（分页，最新在前） */
     public PageResult<PostVO> getPostsByAuthor(Long authorId, int page, int size, String username) {
         int safePage = Math.max(page, 1);
-        int safeSize = Math.min(Math.max(size, 1), 100);
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         List<Post> all = postRepository.findByAuthorId(authorId).stream()
                 .filter(this::isVisible)
                 .collect(Collectors.toList());
@@ -372,11 +431,12 @@ public class PostService {
     /** 我的文章：当前用户自己的文章（默认全部，可按 status=DRAFT/PUBLISHED 过滤，分页） */
     public PageResult<PostVO> getMyPosts(String username, String status, int page, int size) {
         int safePage = Math.max(page, 1);
-        int safeSize = Math.min(Math.max(size, 1), 100);
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         List<Post> all = postRepository.findAll().stream()
                 .filter(p -> p.getAuthor().equals(username))
                 .filter(p -> !p.isDeleted())
-                .filter(p -> status == null || status.isBlank() || status.equals(p.getStatus()))
+                .filter(p -> status == null || status.isBlank()
+                        || (p.getStatus() != null && status.equalsIgnoreCase(p.getStatus().name())))
                 .collect(Collectors.toList());
         return paginate(all, safePage, safeSize, username);
     }
@@ -443,7 +503,7 @@ public class PostService {
     /** 我的回收站：当前用户已删除的帖子（分页，按删除时间倒序） */
     public PageResult<PostVO> getRecycleBin(String username, int page, int size) {
         int safePage = Math.max(page, 1);
-        int safeSize = Math.min(Math.max(size, 1), 100);
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         List<Post> all = postRepository.findAll().stream()
                 .filter(p -> p.getAuthor().equals(username) || ADMIN_USERNAME.equals(username))
                 .filter(Post::isDeleted)
@@ -660,7 +720,7 @@ public class PostService {
         behaviorLogger.log(actorId, saved.getId(), BehaviorType.REPOST, "POST", null);
         // 通知原帖作者（转发自己的帖子不通知）
         String brief = originalTitle.isBlank() && original.getContent() != null
-                ? original.getContent().substring(0, Math.min(20, original.getContent().length()))
+                ? original.getContent().substring(0, Math.min(REPOST_BRIEF_MAX_LEN, original.getContent().length()))
                 : originalTitle;
         notificationService.notify(original.getAuthorId(), actorId, username,
                 Notification.TYPE_REPOST, original.getId(), "转发了你的帖子《" + brief + "》");

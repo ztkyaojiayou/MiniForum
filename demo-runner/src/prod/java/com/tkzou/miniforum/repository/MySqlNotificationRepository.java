@@ -1,6 +1,7 @@
 package com.tkzou.miniforum.repository;
 
 import com.tkzou.miniforum.entity.Notification;
+import com.tkzou.miniforum.entity.NotificationType;
 import com.tkzou.miniforum.util.EntityIdProvider;
 import com.tkzou.miniforum.util.IdProvider;
 import org.slf4j.Logger;
@@ -64,7 +65,7 @@ public class MySqlNotificationRepository implements NotificationRepository {
                         + "ON DUPLICATE KEY UPDATE recipient_id=VALUES(recipient_id),actor_id=VALUES(actor_id),"
                         + "actor_username=VALUES(actor_username),type=VALUES(type),post_id=VALUES(post_id),"
                         + "content=VALUES(content),is_read=VALUES(is_read),created_at=VALUES(created_at)",
-                n.getId(), n.getRecipientId(), n.getActorId(), n.getActorUsername(), n.getType(), n.getPostId(),
+                n.getId(), n.getRecipientId(), n.getActorId(), n.getActorUsername(), n.getType().name(), n.getPostId(),
                 n.getContent(), n.isRead(), n.getCreatedAt());
         return n;
     }
@@ -118,7 +119,7 @@ public class MySqlNotificationRepository implements NotificationRepository {
         n.setRecipientId(rs.getLong("recipient_id"));
         n.setActorId(getLong(rs, "actor_id"));
         n.setActorUsername(rs.getString("actor_username"));
-        n.setType(rs.getString("type"));
+        n.setType(NotificationType.from(rs.getString("type")));
         n.setPostId(getLong(rs, "post_id"));
         n.setContent(rs.getString("content"));
         n.setRead(rs.getBoolean("is_read"));

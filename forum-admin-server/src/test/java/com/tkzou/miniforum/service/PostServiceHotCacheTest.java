@@ -9,6 +9,7 @@ import com.tkzou.miniforum.repository.LikeRepository;
 import com.tkzou.miniforum.repository.PostRepository;
 import com.tkzou.miniforum.repository.UserRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
+import com.tkzou.miniforum.idempotency.IdempotencyStore;
 import com.tkzou.miniforum.recommend.stream.OutboxStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,7 +45,7 @@ class PostServiceHotCacheTest {
         postAssembler = mock(PostAssembler.class);
         postService = new PostService(postRepository, mock(LikeRepository.class), mock(CommentRepository.class),
                 mock(FavoriteRepository.class), mock(NotificationService.class), mock(UserRepository.class),
-                mock(BehaviorLogger.class), mock(OutboxStore.class), postAssembler);
+                mock(BehaviorLogger.class), mock(OutboxStore.class), postAssembler, mock(IdempotencyStore.class));
         postService.setHotPostIdsCacheTtlMs(10_000L); // 默认启用：对齐 application.yml
     }
 

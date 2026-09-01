@@ -3,6 +3,7 @@ package com.tkzou.miniforum.repository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tkzou.miniforum.entity.Post;
+import com.tkzou.miniforum.entity.PostStatus;
 import com.tkzou.miniforum.util.EntityIdProvider;
 import com.tkzou.miniforum.util.IdProvider;
 import org.slf4j.Logger;
@@ -89,7 +90,7 @@ public class MySqlPostRepository implements PostRepository {
                         + "original_post_id=VALUES(original_post_id),original_author_id=VALUES(original_author_id),"
                         + "original_author=VALUES(original_author)",
                 post.getId(), post.getTitle(), post.getContent(), post.getAuthor(), post.getAuthorId(), post.getCreatedAt(),
-                toJson(post.getTags()), toJson(post.getTopics()), post.getCategory(), post.getStatus(),
+                toJson(post.getTags()), toJson(post.getTopics()), post.getCategory(), post.getStatus().name(),
                 post.getLikeCount(), post.getViewCount(), post.isDeleted(), post.getDeletedAt(),
                 post.getOriginalPostId(), post.getOriginalAuthorId(), post.getOriginalAuthor());
         return post;
@@ -166,7 +167,7 @@ public class MySqlPostRepository implements PostRepository {
         p.setTags(fromJson(rs.getString("tags")));
         p.setTopics(fromJson(rs.getString("topics")));
         p.setCategory(rs.getString("category"));
-        p.setStatus(rs.getString("status"));
+        p.setStatus(PostStatus.from(rs.getString("status")));
         p.setLikeCount(rs.getLong("like_count"));
         p.setViewCount(rs.getLong("view_count"));
         p.setDeleted(rs.getBoolean("deleted"));

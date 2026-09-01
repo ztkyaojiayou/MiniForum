@@ -16,6 +16,7 @@ import com.tkzou.miniforum.repository.impl.InMemoryLikeRepository;
 import com.tkzou.miniforum.repository.impl.InMemoryNotificationRepository;
 import com.tkzou.miniforum.repository.impl.InMemoryPostRepository;
 import com.tkzou.miniforum.repository.impl.InMemoryUserRepository;
+import com.tkzou.miniforum.idempotency.IdempotencyStore;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
 import com.tkzou.miniforum.recommend.behavior.impl.InMemoryBehaviorLogger;
@@ -60,7 +61,7 @@ class PostServiceConcurrencyTest {
         postService = new PostService(postRepository, likeRepository, commentRepository,
                 favoriteRepository, notificationService, userRepository, behaviorLogger,
                 mock(OutboxStore.class), // 并发点赞不涉及发帖 Outbox，用 mock 隔离 recommend-server 依赖
-                postAssembler);
+                postAssembler, mock(IdempotencyStore.class));
     }
 
     private PostVO createPublishedPost() {

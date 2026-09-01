@@ -42,6 +42,18 @@ import java.util.Set;
 @Component
 public class RuleRankService implements RankService {
 
+    /** 兴趣融合权重：话题重叠 × 0.6 + ItemCF 相似度 × 0.4（微博兴趣 = 内容语义 + 行为相似） */
+    private static final double INTEREST_TOPIC_WEIGHT = 0.6;
+    private static final double INTEREST_ITEMCF_WEIGHT = 0.4;
+    /** 社交分构成：基础 1 + 关注作者 +1 + 我关注的人转发了 +0.5（微博二度关系） */
+    private static final double SOCIAL_BASE = 1.0;
+    private static final double SOCIAL_FOLLOWING_BONUS = 1.0;
+    private static final double SOCIAL_FOLLOWED_REPOST_BONUS = 0.5;
+    /** 可解释推荐理由判定阈值 */
+    private static final double EXPLAIN_SOCIAL_THRESHOLD = 1.5;
+    private static final double EXPLAIN_TOPIC_THRESHOLD = 0.1;
+    private static final double EXPLAIN_INTEREST_THRESHOLD = 0.5;
+
     private final UserProfileService userProfileService;
     private final ItemFeatureService itemFeatureService;
     private final ItemCfModelStore itemCfModelStore;
@@ -147,17 +159,17 @@ public class RuleRankService implements RankService {
         }
         double itemcf = cache.computeIfAbsent(f.getPostId(),
                 pid -> itemCfScorer.score(pid, model, history));
-        return 0.6 * topicOverlap + 0.4 * itemcf;
+        return INTEREST_TOPIC_WEIGHT * topicOverlap + INTEREST_ITEMCF_WEIGHT * itemcf;
     }
 
-    /** 关注关系：基础 1 + 作者被我关注 +1 + 我关注的人转发了 +0.5（微博二度关系；社交信号取自图域 SocialGraphService） */
+    /** 关注关系：基础分 + 作者被我关注加分 + 我关注的人转发加分（微博二度关系；社交信号取自图域 SocialGraphService） */
     private double social(Long userId, Long authorId, Long postId, Set<Long> followedRepostedIds) {
-        double score = 1.0;
+        double score = SOCIAL_BASE;
         if (socialGraphService.isFollowing(userId, authorId)) {
-            score += 1.0;
+            score += SOCIAL_FOLLOWING_BONUS;
         }
         if (followedRepostedIds.contains(postId)) {
-            score += 0.5;
+            score += SOCIAL_FOLLOWED_REPOST_BONUS;
         }
         return score;
     }
@@ -165,15 +177,15 @@ public class RuleRankService implements RankService {
     /** 可解释推荐理由（微博式：关注/话题/互动/热点/新内容） */
     private String buildExplain(ItemFeature f, UserProfile profile, double social,
                                 double interest, List<String> sources) {
-        if (social > 1.5) {
+        if (social > EXPLAIN_SOCIAL_THRESHOLD) {
             return "你关注的人发布了/转发了";
         }
         for (String topic : f.getTopics()) {
-            if (profile.getTopicWeight().getOrDefault(topic, 0.0) > 0.1) {
+            if (profile.getTopicWeight().getOrDefault(topic, 0.0) > EXPLAIN_TOPIC_THRESHOLD) {
                 return "因为你看过 #" + topic + "#";
             }
         }
-        if (interest > 0.5) {
+        if (interest > EXPLAIN_INTEREST_THRESHOLD) {
             return "和你互动过的帖子相似";
         }
         if (sources.contains("hot")) {

@@ -31,6 +31,11 @@ import java.util.Map;
 @Profile("prod")
 public class MySqlOutboxStore implements OutboxStore {
 
+    /** Outbox 投递状态（P1-20 String 裸值 → 枚举化；落库仍为 name() 字符串） */
+    private enum OutboxStatus {
+        PENDING, DONE
+    }
+
     private static final Logger log = LoggerFactory.getLogger(MySqlOutboxStore.class);
 
     private final JdbcTemplate jdbcTemplate;
@@ -64,7 +69,7 @@ public class MySqlOutboxStore implements OutboxStore {
     public void enqueue(PostCreatedEvent event) {
         try {
             jdbcTemplate.update(
-                    "INSERT INTO post_outbox(post_id, status, payload) VALUES(?, 'PENDING', ?)",
+                    "INSERT INTO post_outbox(post_id, status, payload) VALUES(?, '" + OutboxStatus.PENDING.name() + "', ?)",
                     event.getPostId(), objectMapper.writeValueAsString(event));
         } catch (Exception e) {
             log.warn("Outbox 写入失败：postId={}", event.getPostId(), e);
@@ -77,7 +82,7 @@ public class MySqlOutboxStore implements OutboxStore {
         List<Map<String, Object>> pending;
         try {
             pending = jdbcTemplate.queryForList(
-                    "SELECT id, post_id, payload FROM post_outbox WHERE status = 'PENDING' ORDER BY id LIMIT " + batchSize);
+                    "SELECT id, post_id, payload FROM post_outbox WHERE status = '" + OutboxStatus.PENDING.name() + "' ORDER BY id LIMIT " + batchSize);
         } catch (Exception e) {
             log.warn("Outbox 轮询失败", e);
             return;
@@ -88,7 +93,7 @@ public class MySqlOutboxStore implements OutboxStore {
             try {
                 PostCreatedEvent event = objectMapper.readValue((String) row.get("payload"), PostCreatedEvent.class);
                 postCreatedNotifier.notify(event);
-                jdbcTemplate.update("UPDATE post_outbox SET status = 'DONE' WHERE id = ?", id);
+                jdbcTemplate.update("UPDATE post_outbox SET status = '" + OutboxStatus.DONE.name() + "' WHERE id = ?", id);
             } catch (Exception e) {
                 // 保留 PENDING，下轮重试（at-least-once；下游 fanout/冷启以 postId 幂等）
                 log.warn("Outbox 投递失败，保留 PENDING 重试：id={} postId={}", id, postId, e);

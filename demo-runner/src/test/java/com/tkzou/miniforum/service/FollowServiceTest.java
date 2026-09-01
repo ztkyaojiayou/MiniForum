@@ -19,6 +19,7 @@ import com.tkzou.miniforum.repository.UserRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
 import com.tkzou.miniforum.recommend.behavior.impl.InMemoryBehaviorLogger;
+import com.tkzou.miniforum.idempotency.impl.InMemoryIdempotencyStore;
 import com.tkzou.miniforum.recommend.stream.BehaviorEventQueue;
 import com.tkzou.miniforum.recommend.stream.impl.InMemoryOutboxStore;
 import com.tkzou.miniforum.recommend.stream.impl.InMemoryPostCreatedNotifier;
@@ -73,7 +74,8 @@ class FollowServiceTest {
         OutboxStore outboxStore = new InMemoryOutboxStore(new InMemoryPostCreatedNotifier(eventBus));
         PostAssembler postAssembler = new PostAssembler(postRepository, likeRepository, commentRepository, favoriteRepository);
         postService = new PostService(postRepository, likeRepository, commentRepository,
-                favoriteRepository, notificationService, userRepository, behaviorLogger, outboxStore, postAssembler);
+                favoriteRepository, notificationService, userRepository, behaviorLogger, outboxStore, postAssembler,
+                new InMemoryIdempotencyStore(300_000L));
         followService = new FollowService(followRepository, userRepository, postRepository,
                 likeRepository, commentRepository, favoriteRepository, notificationService, behaviorLogger,
                 followFeedStore, 500);

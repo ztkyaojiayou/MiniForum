@@ -10,16 +10,16 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class Notification {
 
-    /** 通知类型：点赞 */
-    public static final String TYPE_LIKE = "LIKE";
+    /** 通知类型：点赞（P1-20 枚举化；落库仍为 name() 字符串） */
+    public static final NotificationType TYPE_LIKE = NotificationType.LIKE;
     /** 通知类型：评论 */
-    public static final String TYPE_COMMENT = "COMMENT";
+    public static final NotificationType TYPE_COMMENT = NotificationType.COMMENT;
     /** 通知类型：关注 */
-    public static final String TYPE_FOLLOW = "FOLLOW";
+    public static final NotificationType TYPE_FOLLOW = NotificationType.FOLLOW;
     /** 通知类型：转发 */
-    public static final String TYPE_REPOST = "REPOST";
+    public static final NotificationType TYPE_REPOST = NotificationType.REPOST;
     /** 通知类型：@提及 */
-    public static final String TYPE_MENTION = "MENTION";
+    public static final NotificationType TYPE_MENTION = NotificationType.MENTION;
 
     /** 自增 ID 生成器（内存存储用） */
     private static final AtomicLong ID_GENERATOR = new AtomicLong(1);
@@ -35,8 +35,8 @@ public class Notification {
     /** 触发通知的用户名 */
     private String actorUsername;
 
-    /** 通知类型：LIKE / COMMENT / FOLLOW */
-    private String type;
+    /** 通知类型：LIKE / COMMENT / FOLLOW（枚举，落库为 name()） */
+    private NotificationType type;
 
     /** 关联帖子 ID（点赞/评论类通知，可为空） */
     private Long postId;
@@ -97,11 +97,11 @@ public class Notification {
         this.actorUsername = actorUsername;
     }
 
-    public String getType() {
+    public NotificationType getType() {
         return type;
     }
 
-    public void setType(String type) {
+    public void setType(NotificationType type) {
         this.type = type;
     }
 

@@ -43,7 +43,7 @@ public class NotificationVO {
         this.id = n.getId();
         this.actorId = n.getActorId();
         this.actorUsername = n.getActorUsername();
-        this.type = n.getType();
+        this.type = n.getType() == null ? null : n.getType().name(); // 枚举 → 字符串展示（前端契约不变）
         this.postId = n.getPostId();
         this.content = n.getContent();
         this.read = n.isRead();

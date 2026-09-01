@@ -2,6 +2,7 @@ package com.tkzou.miniforum.service;
 
 import com.tkzou.miniforum.dto.response.NotificationVO;
 import com.tkzou.miniforum.entity.Notification;
+import com.tkzou.miniforum.entity.NotificationType;
 import com.tkzou.miniforum.exception.ResourceNotFoundException;
 import com.tkzou.miniforum.repository.NotificationRepository;
 import org.springframework.stereotype.Service;
@@ -31,11 +32,11 @@ public class NotificationService {
      * @param recipientId   接收者用户 ID
      * @param actorId       触发者用户 ID
      * @param actorUsername 触发者用户名
-     * @param type          通知类型（LIKE / COMMENT / FOLLOW）
+     * @param type          通知类型（LIKE / COMMENT / FOLLOW，P1-20 枚举化）
      * @param postId        关联帖子 ID（可为空）
      * @param content       内容摘要
      */
-    public void notify(Long recipientId, Long actorId, String actorUsername, String type,
+    public void notify(Long recipientId, Long actorId, String actorUsername, NotificationType type,
                        Long postId, String content) {
         // 不给自己发通知
         if (recipientId.equals(actorId)) {

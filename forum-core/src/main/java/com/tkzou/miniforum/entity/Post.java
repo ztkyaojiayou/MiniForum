@@ -24,10 +24,10 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class Post {
 
-    /** 草稿状态 */
-    public static final String STATUS_DRAFT = "DRAFT";
+    /** 草稿状态（P1-20 枚举化；落库/落盘仍为 name() 字符串） */
+    public static final PostStatus STATUS_DRAFT = PostStatus.DRAFT;
     /** 已发布状态 */
-    public static final String STATUS_PUBLISHED = "PUBLISHED";
+    public static final PostStatus STATUS_PUBLISHED = PostStatus.PUBLISHED;
 
     /** 自增 ID 生成器（内存存储用） */
     private static final AtomicLong ID_GENERATOR = new AtomicLong(1);
@@ -59,7 +59,7 @@ public class Post {
     private String category;
 
     /** 状态：DRAFT=草稿 / PUBLISHED=已发布（默认） */
-    private String status = STATUS_PUBLISHED;
+    private PostStatus status = STATUS_PUBLISHED;
 
     /** 点赞总数（volatile：P0-2 由仓储原子自增，读侧（缓存/排序/装配）要求可见性，读-改-写仍在仓储串行化） */
     private volatile long likeCount;
@@ -161,11 +161,11 @@ public class Post {
         this.createdAt = createdAt;
     }
 
-    public String getStatus() {
+    public PostStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(PostStatus status) {
         this.status = status;
     }
 

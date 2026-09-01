@@ -84,7 +84,7 @@ public class PostVO {
         this.createdAt = post.getCreatedAt();
         this.tags = post.getTags() == null ? new ArrayList<>() : new ArrayList<>(post.getTags());
         this.topics = post.getTopics() == null ? new ArrayList<>() : new ArrayList<>(post.getTopics());
-        this.status = post.getStatus();
+        this.status = post.getStatus() == null ? null : post.getStatus().name(); // 枚举 → 字符串展示（前端契约不变）
         this.originalPostId = post.getOriginalPostId();
         this.originalAuthor = post.getOriginalAuthor();
     }

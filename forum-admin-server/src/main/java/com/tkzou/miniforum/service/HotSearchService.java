@@ -35,6 +35,18 @@ public class HotSearchService {
     private static final long WINDOW_DAYS = 30;
     /** 搜索词热度权重：搜索次数 × 该值，使高频搜索能进入热搜榜 */
     private static final long SEARCH_KEYWORD_WEIGHT = 50;
+    /** 榜单上限（Top-N，整榜缓存 + 按 limit 现场切片） */
+    private static final int BOARD_MAX = 50;
+    /** 无行为信号时按关联帖子数兜底的热度系数（帖子数 × 该值） */
+    private static final double POST_COUNT_HEAT_FACTOR = 10;
+    /** 热度等级阈值：≥90% 榜首热度 = 爆，≥60% = 沸，其余 = 热 */
+    private static final double LEVEL_BOIL_RATIO = 0.9;
+    private static final double LEVEL_FIRE_RATIO = 0.6;
+    /** 帖子热度权重：阅读×1 + 点赞×该值 + 评论×该值 */
+    private static final long LIKE_WEIGHT = 2;
+    private static final long COMMENT_WEIGHT = 3;
+    /** 分钟/天（时间衰减换算） */
+    private static final double MINUTES_PER_DAY = 1440.0;
     /** 榜单缓存单 key：整榜缓存 Top-50 一次算好，按请求 limit 现场切片（避免按 limit 建多个 key） */
     private static final String BOARD_KEY = "hot-search-board";
     /** 榜单缓存 TTL 打散幅度（ms）：单 key 榜单本无需打散，保留以与统一模式一致 */
@@ -74,7 +86,7 @@ public class HotSearchService {
      * 降为"每 TTL 算一次"。
      */
     public List<HotSearchVO> getHotSearches(int limit) {
-        int safeLimit = Math.min(Math.max(limit, 1), 50);
+        int safeLimit = Math.min(Math.max(limit, 1), BOARD_MAX);
         List<HotSearchVO> top50 = boardCache.get(BOARD_KEY, this::computeTop50);
         // 防御性拷贝（列表级）：不把缓存 list 直接外泄，调用方 add/remove/clear 不影响缓存
         return top50.size() > safeLimit ? new ArrayList<>(top50.subList(0, safeLimit)) : new ArrayList<>(top50);
@@ -87,7 +99,7 @@ public class HotSearchService {
         Map<String, double[]> cur = aggregateHeat(now.minusDays(WINDOW_DAYS), now);
         Map<String, double[]> prev = aggregateHeat(now.minusDays(WINDOW_DAYS * 2), now.minusDays(WINDOW_DAYS));
         // 合并搜索词热度（搜索词只计当前窗口，趋势按新上榜处理）
-        for (SearchRecord r : searchRecordRepository.findTopKeywords(50)) {
+        for (SearchRecord r : searchRecordRepository.findTopKeywords(BOARD_MAX)) {
             double[] v = cur.computeIfAbsent(r.getKeyword(), k -> new double[]{0, 0});
             v[0] += r.getCount() * SEARCH_KEYWORD_WEIGHT;
             v[1] += r.getCount();
@@ -103,7 +115,7 @@ public class HotSearchService {
         // 组装 VO 并按热度降序、帖子数降序排序
         List<HotSearchVO> result = new ArrayList<>();
         cur.forEach((tag, v) -> {
-            double heat = v[0] > 0 ? v[0] : v[1] * 10;
+            double heat = v[0] > 0 ? v[0] : v[1] * POST_COUNT_HEAT_FACTOR;
             result.add(new HotSearchVO(tag, Math.round(heat), (long) v[1], 0));
         });
         result.sort((a, b) -> {
@@ -113,9 +125,9 @@ public class HotSearchService {
         // 上一窗口排序列表（用于趋势对比）
         List<String> prevRanked = new ArrayList<>(prev.keySet());
         prevRanked.sort((x, y) -> Double.compare(
-                prev.get(y)[0] > 0 ? prev.get(y)[0] : prev.get(y)[1] * 10,
-                prev.get(x)[0] > 0 ? prev.get(x)[0] : prev.get(x)[1] * 10));
-        List<HotSearchVO> topN = result.size() > 50 ? new ArrayList<>(result.subList(0, 50)) : result;
+                prev.get(y)[0] > 0 ? prev.get(y)[0] : prev.get(y)[1] * POST_COUNT_HEAT_FACTOR,
+                prev.get(x)[0] > 0 ? prev.get(x)[0] : prev.get(x)[1] * POST_COUNT_HEAT_FACTOR));
+        List<HotSearchVO> topN = result.size() > BOARD_MAX ? new ArrayList<>(result.subList(0, BOARD_MAX)) : result;
         for (int i = 0; i < topN.size(); i++) {
             HotSearchVO vo = topN.get(i);
             vo.setRank(i + 1);
@@ -149,10 +161,10 @@ public class HotSearchService {
             return "热";
         }
         double ratio = (double) vo.getHeat() / maxHeat;
-        if (ratio >= 0.9) {
+        if (ratio >= LEVEL_BOIL_RATIO) {
             return "爆";
         }
-        if (ratio >= 0.6) {
+        if (ratio >= LEVEL_FIRE_RATIO) {
             return "沸";
         }
         return "热";
@@ -173,10 +185,10 @@ public class HotSearchService {
             if (createdAt == null || createdAt.isBefore(from) || !createdAt.isBefore(to)) {
                 continue;
             }
-            double ageDays = Duration.between(createdAt, now).toMinutes() / 1440.0;
+            double ageDays = Duration.between(createdAt, now).toMinutes() / MINUTES_PER_DAY;
             double weight = 1.0 / (1.0 + Math.max(0, ageDays));
             long commentCount = commentRepository.countByPostId(p.getId());
-            double postHeat = (p.getViewCount() + p.getLikeCount() * 2 + commentCount * 3) * weight;
+            double postHeat = (p.getViewCount() + p.getLikeCount() * LIKE_WEIGHT + commentCount * COMMENT_WEIGHT) * weight;
             if (p.getTags() != null) {
                 for (String tag : p.getTags()) {
                     double[] v = agg.computeIfAbsent(tag, k -> new double[]{0, 0});

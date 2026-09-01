@@ -4,8 +4,6 @@ import com.tkzou.miniforum.common.Result;
 import com.tkzou.miniforum.dto.common.PageResult;
 import com.tkzou.miniforum.dto.request.PostCreateDTO;
 import com.tkzou.miniforum.dto.response.PostVO;
-import com.tkzou.miniforum.exception.BusinessException;
-import com.tkzou.miniforum.idempotency.IdempotencyStore;
 import com.tkzou.miniforum.service.PostService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +22,6 @@ import javax.servlet.http.HttpSession;
 import javax.validation.Valid;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * 帖子接口（/api/posts）
@@ -40,41 +37,24 @@ import java.util.Optional;
 public class PostController {
 
     private final PostService postService;
-    private final IdempotencyStore idempotencyStore;
 
-    public PostController(PostService postService, IdempotencyStore idempotencyStore) {
+    public PostController(PostService postService) {
         this.postService = postService;
-        this.idempotencyStore = idempotencyStore;
     }
 
-    /** 发帖（body 中 publish=false 时存为草稿；带 Idempotency-Key 时幂等防重复） */
+    /** 发帖（body 中 publish=false 时存为草稿；带 Idempotency-Key 时幂等防重复，编排在 Service） */
     @PostMapping
     public ResponseEntity<Result<PostVO>> createPost(@Valid @RequestBody PostCreateDTO dto,
                                                      @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
                                                      HttpSession session) {
         String author = (String) session.getAttribute("username");
         Long authorId = (Long) session.getAttribute("userId");
-        PostVO created;
-        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            // 幂等：同 key 已发过 → 返回首次结果（不增加阅读量）；已在处理 → 拒绝重复提交
-            Optional<Long> existing = idempotencyStore.getCompleted(idempotencyKey);
-            if (existing.isPresent()) {
-                return ResponseEntity.ok(Result.success("发帖成功", postService.getPostVOQuietly(existing.get(), author)));
-            }
-            if (!idempotencyStore.acquire(idempotencyKey)) {
-                throw new BusinessException("正在提交，请勿重复操作");
-            }
-            try {
-                created = postService.createPost(dto, author, authorId);
-            } catch (Exception e) {
-                idempotencyStore.release(idempotencyKey);
-                throw e;
-            }
-            idempotencyStore.complete(idempotencyKey, created.getId());
-        } else {
-            created = postService.createPost(dto, author, authorId);
+        PostService.CreateResult result = postService.createPost(dto, author, authorId, idempotencyKey);
+        // 命中已完成 key → 200 重放；新建 → 201 Created（幂等语义：重复提交不重复发帖）
+        if (result.isReplayed()) {
+            return ResponseEntity.ok(Result.success("发帖成功", result.getVo()));
         }
-        return ResponseEntity.status(HttpStatus.CREATED).body(Result.success("发帖成功", created));
+        return ResponseEntity.status(HttpStatus.CREATED).body(Result.success("发帖成功", result.getVo()));
     }
 
     /** 查看所有已发布帖子（支持分页、按标签/分类/话题筛选、status=DRAFT 查看自己的草稿） */
