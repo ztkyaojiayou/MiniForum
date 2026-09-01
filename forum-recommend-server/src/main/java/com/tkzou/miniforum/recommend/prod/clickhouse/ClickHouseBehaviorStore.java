@@ -2,6 +2,7 @@ package com.tkzou.miniforum.recommend.prod.clickhouse;
 
 import com.tkzou.miniforum.recommend.behavior.BehaviorLog;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
+import com.zaxxer.hikari.HikariDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,8 +10,8 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.time.LocalDateTime;
@@ -37,6 +38,8 @@ public class ClickHouseBehaviorStore {
 
     private final String jdbcUrl;
     private final String kafkaBootstrap;
+    /** Hikari 连接池（P2-23）：复用 TCP 连接，替代每次查询 DriverManager 新建 */
+    private final HikariDataSource dataSource;
 
     public ClickHouseBehaviorStore(
             @Value("${app.rec.clickhouse.host:localhost}") String host,
@@ -44,7 +47,23 @@ public class ClickHouseBehaviorStore {
             @Value("${app.rec.kafka.bootstrap-servers:localhost:9092}") String kafkaBootstrap) {
         this.jdbcUrl = "jdbc:clickhouse://" + host + ":" + port;
         this.kafkaBootstrap = kafkaBootstrap;
-        log.info("ClickHouse 行为日志存储初始化：{}（Kafka 摄入 {}）", jdbcUrl, kafkaBootstrap);
+        try {
+            Class.forName("com.clickhouse.jdbc.ClickHouseDriver"); // 注册驱动一次（Hikari 按驱动名/URL 探测）
+        } catch (ClassNotFoundException e) {
+            throw new IllegalStateException("ClickHouse 驱动未找到：" + jdbcUrl, e);
+        }
+        this.dataSource = new HikariDataSource();
+        dataSource.setJdbcUrl(jdbcUrl);
+        dataSource.setDriverClassName("com.clickhouse.jdbc.ClickHouseDriver");
+        dataSource.setMaximumPoolSize(10); // ClickHouse 查询并发不高，小池即可
+        dataSource.setPoolName("clickhouse-behavior");
+        log.info("ClickHouse 行为日志存储初始化：{}（Kafka 摄入 {}，Hikari 连接池）", jdbcUrl, kafkaBootstrap);
+    }
+
+    @PreDestroy
+    public void close() {
+        dataSource.close();
+        log.info("ClickHouse 行为日志存储连接池已关闭");
     }
 
     @PostConstruct
@@ -138,8 +157,7 @@ public class ClickHouseBehaviorStore {
     }
 
     private Connection connect() throws Exception {
-        Class.forName("com.clickhouse.jdbc.ClickHouseDriver");
-        return DriverManager.getConnection(jdbcUrl);
+        return dataSource.getConnection(); // Hikari 池化连接（P2-23）
     }
 
     private BehaviorType parseType(String type) {

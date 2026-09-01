@@ -36,6 +36,11 @@
             <artifactId>clickhouse-jdbc</artifactId>
             <version>0.4.6</version>
         </dependency>
+        <!-- ClickHouse 连接池（P2-23）：ClickHouseBehaviorStore 在 recommend-server 为 optional 不传递，这里显式补上 -->
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+        </dependency>
         <!-- XXL-Job 中心化调度（生产）：离线评估由调度中心派发，演示保持 @Scheduled 自调度 -->
         <dependency>
             <groupId>com.xuxueli</groupId>
