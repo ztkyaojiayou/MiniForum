@@ -1,10 +1,10 @@
 package com.tkzou.miniforum.service;
 
-import com.tkzou.miniforum.dto.CursorPage;
+import com.tkzou.miniforum.dto.common.CursorPage;
 import com.tkzou.miniforum.dto.PostAssembler;
-import com.tkzou.miniforum.dto.PostCreateDTO;
-import com.tkzou.miniforum.dto.PostVO;
-import com.tkzou.miniforum.dto.RecommendUserVO;
+import com.tkzou.miniforum.dto.request.PostCreateDTO;
+import com.tkzou.miniforum.dto.response.PostVO;
+import com.tkzou.miniforum.dto.response.RecommendUserVO;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.feed.FollowFeedStore;
 import com.tkzou.miniforum.feed.impl.InMemoryFollowFeedStore;

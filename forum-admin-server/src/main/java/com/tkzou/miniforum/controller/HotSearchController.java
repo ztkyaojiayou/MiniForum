@@ -1,7 +1,7 @@
 package com.tkzou.miniforum.controller;
 
 import com.tkzou.miniforum.common.Result;
-import com.tkzou.miniforum.dto.HotSearchVO;
+import com.tkzou.miniforum.dto.response.HotSearchVO;
 import com.tkzou.miniforum.service.HotSearchService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

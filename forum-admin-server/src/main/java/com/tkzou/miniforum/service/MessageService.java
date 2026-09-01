@@ -1,7 +1,7 @@
 package com.tkzou.miniforum.service;
 
-import com.tkzou.miniforum.dto.ConversationVO;
-import com.tkzou.miniforum.dto.MessageVO;
+import com.tkzou.miniforum.dto.response.ConversationVO;
+import com.tkzou.miniforum.dto.response.MessageVO;
 import com.tkzou.miniforum.entity.Conversation;
 import com.tkzou.miniforum.entity.Message;
 import com.tkzou.miniforum.entity.User;

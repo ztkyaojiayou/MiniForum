@@ -1,9 +1,9 @@
 package com.tkzou.miniforum.controller;
 
 import com.tkzou.miniforum.common.Result;
-import com.tkzou.miniforum.dto.PageResult;
-import com.tkzou.miniforum.dto.RecommendPostVO;
-import com.tkzou.miniforum.dto.TrackRequest;
+import com.tkzou.miniforum.dto.common.PageResult;
+import com.tkzou.miniforum.dto.response.RecommendPostVO;
+import com.tkzou.miniforum.dto.request.TrackRequest;
 import com.tkzou.miniforum.exception.UnauthorizedException;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;

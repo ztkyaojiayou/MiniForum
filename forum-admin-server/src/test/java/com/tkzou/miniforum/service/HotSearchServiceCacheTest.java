@@ -1,6 +1,6 @@
 package com.tkzou.miniforum.service;
 
-import com.tkzou.miniforum.dto.HotSearchVO;
+import com.tkzou.miniforum.dto.response.HotSearchVO;
 import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.repository.CommentRepository;
 import com.tkzou.miniforum.repository.PostRepository;

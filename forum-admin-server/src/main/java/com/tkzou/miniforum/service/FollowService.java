@@ -1,9 +1,9 @@
 package com.tkzou.miniforum.service;
 
-import com.tkzou.miniforum.dto.CursorPage;
-import com.tkzou.miniforum.dto.PostVO;
-import com.tkzou.miniforum.dto.RecommendUserVO;
-import com.tkzou.miniforum.dto.UserBriefVO;
+import com.tkzou.miniforum.dto.common.CursorPage;
+import com.tkzou.miniforum.dto.response.PostVO;
+import com.tkzou.miniforum.dto.response.RecommendUserVO;
+import com.tkzou.miniforum.dto.response.UserBriefVO;
 import com.tkzou.miniforum.entity.Follow;
 import com.tkzou.miniforum.entity.Notification;
 import com.tkzou.miniforum.entity.Post;

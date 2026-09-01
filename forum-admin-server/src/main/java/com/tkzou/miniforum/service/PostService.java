@@ -1,11 +1,11 @@
 package com.tkzou.miniforum.service;
 
-import com.tkzou.miniforum.dto.CategoryInfo;
-import com.tkzou.miniforum.dto.PageResult;
+import com.tkzou.miniforum.dto.response.CategoryVO;
+import com.tkzou.miniforum.dto.common.PageResult;
 import com.tkzou.miniforum.dto.PostAssembler;
-import com.tkzou.miniforum.dto.PostCreateDTO;
-import com.tkzou.miniforum.dto.PostVO;
-import com.tkzou.miniforum.dto.TagInfo;
+import com.tkzou.miniforum.dto.request.PostCreateDTO;
+import com.tkzou.miniforum.dto.response.PostVO;
+import com.tkzou.miniforum.dto.response.TagVO;
 import com.tkzou.miniforum.entity.Like;
 import com.tkzou.miniforum.entity.Notification;
 import com.tkzou.miniforum.entity.Post;
@@ -342,7 +342,7 @@ public class PostService {
     }
 
     /** 获取全部固定分类及各分类已发布帖子数（含"全部动态"虚拟分类，置顶） */
-    public List<CategoryInfo> getAllCategories() {
+    public List<CategoryVO> getAllCategories() {
         Map<String, Long> countMap = new HashMap<>();
         for (Post p : postRepository.findAll()) {
             if (!isVisible(p)) {
@@ -351,10 +351,10 @@ public class PostService {
             String c = resolveCategory(p);
             countMap.merge(c, 1L, Long::sum);
         }
-        List<CategoryInfo> result = new ArrayList<>();
-        result.add(new CategoryInfo("全部动态", countMap.values().stream().mapToLong(Long::longValue).sum(), "🌐"));
+        List<CategoryVO> result = new ArrayList<>();
+        result.add(new CategoryVO("全部动态", countMap.values().stream().mapToLong(Long::longValue).sum(), "🌐"));
         for (String name : CATEGORIES) {
-            result.add(new CategoryInfo(name, countMap.getOrDefault(name, 0L), CATEGORY_ICONS.getOrDefault(name, "✨")));
+            result.add(new CategoryVO(name, countMap.getOrDefault(name, 0L), CATEGORY_ICONS.getOrDefault(name, "✨")));
         }
         return result;
     }
@@ -535,7 +535,7 @@ public class PostService {
     }
 
     /** 统计所有标签及其已发布帖子数（按帖子数降序） */
-    public List<TagInfo> getAllTags() {
+    public List<TagVO> getAllTags() {
         Map<String, Long> counter = new HashMap<>();
         for (Post p : postRepository.findAll()) {
             if (!isVisible(p) || p.getTags() == null) {
@@ -546,13 +546,13 @@ public class PostService {
             }
         }
         return counter.entrySet().stream()
-                .map(e -> new TagInfo(e.getKey(), e.getValue()))
+                .map(e -> new TagVO(e.getKey(), e.getValue()))
                 .sorted((a, b) -> Long.compare(b.getCount(), a.getCount()))
                 .collect(Collectors.toList());
     }
 
     /** 统计所有话题及其已发布帖子数（按帖子数降序） */
-    public List<TagInfo> getAllTopics() {
+    public List<TagVO> getAllTopics() {
         Map<String, Long> counter = new HashMap<>();
         for (Post p : postRepository.findAll()) {
             if (!isVisible(p) || p.getTopics() == null) {
@@ -563,7 +563,7 @@ public class PostService {
             }
         }
         return counter.entrySet().stream()
-                .map(e -> new TagInfo(e.getKey(), e.getValue()))
+                .map(e -> new TagVO(e.getKey(), e.getValue()))
                 .sorted((a, b) -> Long.compare(b.getCount(), a.getCount()))
                 .collect(Collectors.toList());
     }

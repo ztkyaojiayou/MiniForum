@@ -1,14 +1,14 @@
 package com.tkzou.miniforum.controller;
 
 import com.tkzou.miniforum.common.Result;
-import com.tkzou.miniforum.dto.ChangePasswordDTO;
-import com.tkzou.miniforum.dto.PageResult;
-import com.tkzou.miniforum.dto.PostVO;
-import com.tkzou.miniforum.dto.ProfileUpdateDTO;
-import com.tkzou.miniforum.dto.ProfileVO;
-import com.tkzou.miniforum.dto.UserBriefVO;
-import com.tkzou.miniforum.dto.UserCreateDTO;
-import com.tkzou.miniforum.dto.UserUpdateDTO;
+import com.tkzou.miniforum.dto.request.ChangePasswordDTO;
+import com.tkzou.miniforum.dto.common.PageResult;
+import com.tkzou.miniforum.dto.response.PostVO;
+import com.tkzou.miniforum.dto.request.ProfileUpdateDTO;
+import com.tkzou.miniforum.dto.response.ProfileVO;
+import com.tkzou.miniforum.dto.response.UserBriefVO;
+import com.tkzou.miniforum.dto.request.UserCreateDTO;
+import com.tkzou.miniforum.dto.request.UserUpdateDTO;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.exception.BusinessException;
 import com.tkzou.miniforum.service.PostService;

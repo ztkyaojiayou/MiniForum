@@ -1,8 +1,8 @@
 package com.tkzou.miniforum.recommend;
 
-import com.tkzou.miniforum.dto.PostCreateDTO;
-import com.tkzou.miniforum.dto.PostVO;
-import com.tkzou.miniforum.dto.RecommendPostVO;
+import com.tkzou.miniforum.dto.request.PostCreateDTO;
+import com.tkzou.miniforum.dto.response.PostVO;
+import com.tkzou.miniforum.dto.response.RecommendPostVO;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLog;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;

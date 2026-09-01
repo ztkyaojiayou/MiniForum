@@ -1,9 +1,9 @@
 package com.tkzou.miniforum.service;
 
 import com.tkzou.miniforum.dto.PostAssembler;
-import com.tkzou.miniforum.dto.PostCreateDTO;
-import com.tkzou.miniforum.dto.PostVO;
-import com.tkzou.miniforum.dto.SearchResultVO;
+import com.tkzou.miniforum.dto.request.PostCreateDTO;
+import com.tkzou.miniforum.dto.response.PostVO;
+import com.tkzou.miniforum.dto.response.SearchResultVO;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.feed.impl.InMemoryFollowFeedStore;
 import com.tkzou.miniforum.repository.CommentRepository;

@@ -1,7 +1,7 @@
 package com.tkzou.miniforum.service;
 
-import com.tkzou.miniforum.dto.PageResult;
-import com.tkzou.miniforum.dto.PostVO;
+import com.tkzou.miniforum.dto.common.PageResult;
+import com.tkzou.miniforum.dto.response.PostVO;
 import com.tkzou.miniforum.entity.Favorite;
 import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.exception.BusinessException;

@@ -1,8 +1,8 @@
 package com.tkzou.miniforum.service;
 
 import com.tkzou.miniforum.dto.PostAssembler;
-import com.tkzou.miniforum.dto.PostCreateDTO;
-import com.tkzou.miniforum.dto.PostVO;
+import com.tkzou.miniforum.dto.request.PostCreateDTO;
+import com.tkzou.miniforum.dto.response.PostVO;
 import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.exception.ResourceNotFoundException;
 import com.tkzou.miniforum.repository.CommentRepository;

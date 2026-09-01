@@ -1,7 +1,7 @@
 package com.tkzou.miniforum.controller;
 
 import com.tkzou.miniforum.common.Result;
-import com.tkzou.miniforum.dto.UserCreateDTO;
+import com.tkzou.miniforum.dto.request.UserCreateDTO;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.service.AuthService;
 import com.tkzou.miniforum.service.UserService;

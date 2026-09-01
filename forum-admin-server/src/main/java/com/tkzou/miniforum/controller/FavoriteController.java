@@ -1,8 +1,8 @@
 package com.tkzou.miniforum.controller;
 
 import com.tkzou.miniforum.common.Result;
-import com.tkzou.miniforum.dto.PageResult;
-import com.tkzou.miniforum.dto.PostVO;
+import com.tkzou.miniforum.dto.common.PageResult;
+import com.tkzou.miniforum.dto.response.PostVO;
 import com.tkzou.miniforum.service.FavoriteService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;

@@ -1,4 +1,4 @@
-package com.tkzou.miniforum.dto;
+package com.tkzou.miniforum.dto.response;
 import lombok.Getter;
 import lombok.Setter;
 

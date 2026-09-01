@@ -1,7 +1,7 @@
 package com.tkzou.miniforum.controller;
 
 import com.tkzou.miniforum.common.Result;
-import com.tkzou.miniforum.dto.SearchResultVO;
+import com.tkzou.miniforum.dto.response.SearchResultVO;
 import com.tkzou.miniforum.service.SearchService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

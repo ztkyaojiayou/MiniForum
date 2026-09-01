@@ -1,7 +1,7 @@
 package com.tkzou.miniforum.controller;
 
 import com.tkzou.miniforum.common.Result;
-import com.tkzou.miniforum.dto.TagInfo;
+import com.tkzou.miniforum.dto.response.TagVO;
 import com.tkzou.miniforum.service.PostService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,13 +26,13 @@ public class TagController {
     }
 
     @GetMapping
-    public ResponseEntity<Result<List<TagInfo>>> getTags() {
+    public ResponseEntity<Result<List<TagVO>>> getTags() {
         return ResponseEntity.ok(Result.success(postService.getAllTags()));
     }
 
     /** 话题列表（内容中 #话题# 聚合，按帖子数降序） */
     @GetMapping("/topics")
-    public ResponseEntity<Result<List<TagInfo>>> getTopics() {
+    public ResponseEntity<Result<List<TagVO>>> getTopics() {
         return ResponseEntity.ok(Result.success(postService.getAllTopics()));
     }
 }

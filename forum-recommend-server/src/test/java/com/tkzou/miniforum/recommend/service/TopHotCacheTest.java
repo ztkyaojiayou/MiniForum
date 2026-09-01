@@ -1,7 +1,7 @@
 package com.tkzou.miniforum.recommend.service;
 
 import com.tkzou.miniforum.dto.PostAssembler;
-import com.tkzou.miniforum.dto.PostVO;
+import com.tkzou.miniforum.dto.response.PostVO;
 import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.recommend.ab.AbExperimentService;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;

@@ -1,7 +1,7 @@
 package com.tkzou.miniforum.controller;
 
 import com.tkzou.miniforum.common.Result;
-import com.tkzou.miniforum.dto.CategoryInfo;
+import com.tkzou.miniforum.dto.response.CategoryVO;
 import com.tkzou.miniforum.service.PostService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,7 +27,7 @@ public class CategoryController {
 
     /** 获取全部固定分类及各分类已发布帖子数（含"全部动态"虚拟分类） */
     @GetMapping
-    public ResponseEntity<Result<List<CategoryInfo>>> getCategories() {
+    public ResponseEntity<Result<List<CategoryVO>>> getCategories() {
         return ResponseEntity.ok(Result.success(postService.getAllCategories()));
     }
 }

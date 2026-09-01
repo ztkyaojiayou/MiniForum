@@ -1,4 +1,4 @@
-package com.tkzou.miniforum.dto;
+package com.tkzou.miniforum.dto.response;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -7,7 +7,7 @@ import lombok.Setter;
  */
 // 样板 getter/setter 由 Lombok @Getter @Setter 生成（非核心 POJO；核心实体保留显式以便学习，见第 2 章）
 @Getter @Setter
-public class CategoryInfo {
+public class CategoryVO {
 
     /** 分类名（"全部动态"为虚拟分类，表示不过滤） */
     private String name;
@@ -18,10 +18,10 @@ public class CategoryInfo {
     /** 分类图标（emoji） */
     private String icon;
 
-    public CategoryInfo() {
+    public CategoryVO() {
     }
 
-    public CategoryInfo(String name, long count, String icon) {
+    public CategoryVO(String name, long count, String icon) {
         this.name = name;
         this.count = count;
         this.icon = icon;

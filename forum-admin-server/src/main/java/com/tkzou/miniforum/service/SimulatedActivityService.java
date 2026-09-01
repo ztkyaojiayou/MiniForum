@@ -1,7 +1,7 @@
 package com.tkzou.miniforum.service;
 
-import com.tkzou.miniforum.dto.CommentCreateDTO;
-import com.tkzou.miniforum.dto.PostCreateDTO;
+import com.tkzou.miniforum.dto.request.CommentCreateDTO;
+import com.tkzou.miniforum.dto.request.PostCreateDTO;
 import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.repository.PostRepository;

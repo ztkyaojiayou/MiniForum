@@ -1,8 +1,8 @@
 package com.tkzou.miniforum.controller;
 
 import com.tkzou.miniforum.common.Result;
-import com.tkzou.miniforum.dto.ConversationVO;
-import com.tkzou.miniforum.dto.MessageVO;
+import com.tkzou.miniforum.dto.response.ConversationVO;
+import com.tkzou.miniforum.dto.response.MessageVO;
 import com.tkzou.miniforum.service.MessageService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

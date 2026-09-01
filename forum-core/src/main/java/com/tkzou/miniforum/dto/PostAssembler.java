@@ -1,5 +1,6 @@
 package com.tkzou.miniforum.dto;
 
+import com.tkzou.miniforum.dto.response.PostVO;
 import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.repository.CommentRepository;
 import com.tkzou.miniforum.repository.FavoriteRepository;

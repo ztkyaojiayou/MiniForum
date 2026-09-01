@@ -1,4 +1,4 @@
-package com.tkzou.miniforum.dto;
+package com.tkzou.miniforum.dto.response;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -7,16 +7,16 @@ import lombok.Setter;
  */
 // 样板 getter/setter 由 Lombok @Getter @Setter 生成（非核心 POJO；核心实体保留显式以便学习，见第 2 章）
 @Getter @Setter
-public class TagInfo {
+public class TagVO {
 
     private String name;
 
     private long count;
 
-    public TagInfo() {
+    public TagVO() {
     }
 
-    public TagInfo(String name, long count) {
+    public TagVO(String name, long count) {
         this.name = name;
         this.count = count;
     }

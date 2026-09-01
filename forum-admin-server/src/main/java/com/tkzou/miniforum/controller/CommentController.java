@@ -1,8 +1,8 @@
 package com.tkzou.miniforum.controller;
 
 import com.tkzou.miniforum.common.Result;
-import com.tkzou.miniforum.dto.CommentCreateDTO;
-import com.tkzou.miniforum.dto.CommentVO;
+import com.tkzou.miniforum.dto.request.CommentCreateDTO;
+import com.tkzou.miniforum.dto.response.CommentVO;
 import com.tkzou.miniforum.service.CommentService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

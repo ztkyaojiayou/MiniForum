@@ -1,9 +1,9 @@
 package com.tkzou.miniforum.controller;
 
 import com.tkzou.miniforum.common.Result;
-import com.tkzou.miniforum.dto.PageResult;
-import com.tkzou.miniforum.dto.PostCreateDTO;
-import com.tkzou.miniforum.dto.PostVO;
+import com.tkzou.miniforum.dto.common.PageResult;
+import com.tkzou.miniforum.dto.request.PostCreateDTO;
+import com.tkzou.miniforum.dto.response.PostVO;
 import com.tkzou.miniforum.exception.BusinessException;
 import com.tkzou.miniforum.idempotency.IdempotencyStore;
 import com.tkzou.miniforum.service.PostService;

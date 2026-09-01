@@ -1,7 +1,7 @@
 package com.tkzou.miniforum.service;
 
-import com.tkzou.miniforum.dto.UserCreateDTO;
-import com.tkzou.miniforum.dto.UserUpdateDTO;
+import com.tkzou.miniforum.dto.request.UserCreateDTO;
+import com.tkzou.miniforum.dto.request.UserUpdateDTO;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.exception.DuplicateUsernameException;
 import com.tkzou.miniforum.exception.ResourceNotFoundException;

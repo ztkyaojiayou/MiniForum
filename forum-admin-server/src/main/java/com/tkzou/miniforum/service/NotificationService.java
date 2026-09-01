@@ -1,6 +1,6 @@
 package com.tkzou.miniforum.service;
 
-import com.tkzou.miniforum.dto.NotificationVO;
+import com.tkzou.miniforum.dto.response.NotificationVO;
 import com.tkzou.miniforum.entity.Notification;
 import com.tkzou.miniforum.exception.ResourceNotFoundException;
 import com.tkzou.miniforum.repository.NotificationRepository;

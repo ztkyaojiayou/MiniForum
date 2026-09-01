@@ -1,6 +1,8 @@
 package com.tkzou.miniforum.repository;
 
 import com.tkzou.miniforum.entity.Like;
+import com.tkzou.miniforum.repository.impl.InMemoryLikeRepository;
+
 import java.util.List;
 import java.util.Optional;
 

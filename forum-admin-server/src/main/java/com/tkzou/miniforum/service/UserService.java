@@ -1,10 +1,10 @@
 package com.tkzou.miniforum.service;
 
-import com.tkzou.miniforum.dto.ChangePasswordDTO;
-import com.tkzou.miniforum.dto.ProfileUpdateDTO;
-import com.tkzou.miniforum.dto.ProfileVO;
-import com.tkzou.miniforum.dto.UserCreateDTO;
-import com.tkzou.miniforum.dto.UserUpdateDTO;
+import com.tkzou.miniforum.dto.request.ChangePasswordDTO;
+import com.tkzou.miniforum.dto.request.ProfileUpdateDTO;
+import com.tkzou.miniforum.dto.response.ProfileVO;
+import com.tkzou.miniforum.dto.request.UserCreateDTO;
+import com.tkzou.miniforum.dto.request.UserUpdateDTO;
 import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.exception.BusinessException;

@@ -1,10 +1,10 @@
 package com.tkzou.miniforum.controller;
 
 import com.tkzou.miniforum.common.Result;
-import com.tkzou.miniforum.dto.CursorPage;
-import com.tkzou.miniforum.dto.PostVO;
-import com.tkzou.miniforum.dto.RecommendUserVO;
-import com.tkzou.miniforum.dto.UserBriefVO;
+import com.tkzou.miniforum.dto.common.CursorPage;
+import com.tkzou.miniforum.dto.response.PostVO;
+import com.tkzou.miniforum.dto.response.RecommendUserVO;
+import com.tkzou.miniforum.dto.response.UserBriefVO;
 import com.tkzou.miniforum.service.FollowService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
