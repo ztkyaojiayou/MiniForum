@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.PostConstruct;
 import java.sql.ResultSet;
@@ -107,6 +108,7 @@ public class MySqlLikeRepository implements LikeRepository {
     }
 
     @Override
+    @Transactional
     public void importAll(List<Like> likes) {
         jdbcTemplate.update("DELETE FROM likes");
         if (likes == null) {

@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -121,6 +122,7 @@ public class MySqlPostRepository implements PostRepository {
     }
 
     @Override
+    @Transactional
     public void importAll(List<Post> posts) {
         jdbcTemplate.update("DELETE FROM posts");
         if (posts == null) {

@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.Pipeline;
@@ -175,6 +176,7 @@ public class MySqlFollowRepository implements FollowRepository {
     }
 
     @Override
+    @Transactional
     public void importAll(List<Follow> follows) {
         jdbcTemplate.update("DELETE FROM user_follow");
         if (follows == null) {

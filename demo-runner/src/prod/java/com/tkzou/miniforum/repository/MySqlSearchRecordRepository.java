@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.PostConstruct;
 import java.sql.ResultSet;
@@ -88,6 +89,7 @@ public class MySqlSearchRecordRepository implements SearchRecordRepository {
     }
 
     @Override
+    @Transactional
     public void importAll(List<SearchRecord> records) {
         jdbcTemplate.update("DELETE FROM search_records");
         if (records == null) {
