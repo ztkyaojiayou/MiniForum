@@ -9,13 +9,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PreDestroy;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -32,20 +35,17 @@ public class RecallService {
 
     private static final Logger log = LoggerFactory.getLogger(RecallService.class);
 
-    /**
-     * 召回并行线程池：六路召回互不依赖 → 并行执行（腾讯"并发化"方法论）。
-     * 独立小池（而非占用 Tomcat 请求线程），避免慢召回通道拖住整条请求；daemon 线程不影响 JVM 退出。
-     */
-    private static final ExecutorService CHANNEL_EXECUTOR = Executors.newFixedThreadPool(6,
-            r -> {
-                Thread t = new Thread(r, "recall-channel");
-                t.setDaemon(true);
-                return t;
-            });
-
     private final List<RecallChannel> channels;
     private final MergeRecallService merger;
     private final ConfigService configService;
+
+    /**
+     * 召回并行线程池：六路召回互不依赖 → 并行执行（腾讯"并发化"方法论）。
+     * 独立小池（而非占用 Tomcat 请求线程），避免慢召回通道拖住整条请求；daemon 线程不影响 JVM 退出。
+     * 禁止 {@code Executors.newFixedThreadPool}（手册点名）：改显式 {@link ThreadPoolExecutor}，
+     * core/max 与通道数绑定 + 有界队列 + CallerRuns（队满时请求线程内联执行，宁可拖慢单请求、不无界堆积 OOM）。
+     */
+    private final ExecutorService channelExecutor;
 
     public RecallService(List<RecallChannel> channels,
                          MergeRecallService merger,
@@ -53,6 +53,22 @@ public class RecallService {
         this.channels = channels;
         this.merger = merger;
         this.configService = configService;
+        int poolSize = Math.max(1, channels.size()); // core/max 与通道数绑定（ThreadPoolExecutor 要求 max>=1）
+        this.channelExecutor = new ThreadPoolExecutor(
+                poolSize, poolSize, 60L, TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(poolSize),
+                r -> {
+                    Thread t = new Thread(r, "recall-channel");
+                    t.setDaemon(true);
+                    return t;
+                },
+                new ThreadPoolExecutor.CallerRunsPolicy());
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        channelExecutor.shutdown();
+        log.info("召回并行线程池已关闭");
     }
 
     /**
@@ -67,10 +83,9 @@ public class RecallService {
         // 单路失败只丢弃该路（多路召回互为兜底，大厂容灾原则），不拖垮整次召回。
         List<CompletableFuture<List<RecallHit>>> futures = channels.stream()
                 .map(channel -> CompletableFuture
-                        .supplyAsync(() -> channel.recall(ctx, cfg.getRecallPerChannel()), CHANNEL_EXECUTOR)
+                        .supplyAsync(() -> channel.recall(ctx, cfg.getRecallPerChannel()), channelExecutor)
                         .exceptionally(e -> {
-                            log.warn("召回通道失败（丢弃该路，其余继续）：source={}, err={}",
-                                    channel.name(), e.getMessage());
+                            log.warn("召回通道失败（丢弃该路，其余继续）：source={}", channel.name(), e);
                             return List.<RecallHit>of();
                         }))
                 .collect(Collectors.toList());

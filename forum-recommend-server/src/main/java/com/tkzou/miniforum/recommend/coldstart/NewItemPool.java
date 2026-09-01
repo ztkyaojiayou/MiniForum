@@ -76,14 +76,18 @@ public class NewItemPool {
      */
     public void recordOutcome(long itemId, boolean success) {
         AlphaBeta ab = getOrCreate(itemId);
-        if (success) {
-            ab.setAlpha(ab.getAlpha() + 1);
-            ab.setPendingExposures(0);
-        } else {
-            ab.setPendingExposures(ab.getPendingExposures() + 1);
-            if (ab.getPendingExposures() >= EXPOSE_FAIL_THRESHOLD) {
-                ab.setBeta(ab.getBeta() + 1);
+        // 按 item 持锁串行化读-改-写（单 JVM 内原子：α/β/待惩罚曝光不丢更新）；
+        // 跨 pod 需走 Redis Hash + HINCRBY / Lua（见 RedisNewItemPoolStore 注释）
+        synchronized (ab) {
+            if (success) {
+                ab.setAlpha(ab.getAlpha() + 1);
                 ab.setPendingExposures(0);
+            } else {
+                ab.setPendingExposures(ab.getPendingExposures() + 1);
+                if (ab.getPendingExposures() >= EXPOSE_FAIL_THRESHOLD) {
+                    ab.setBeta(ab.getBeta() + 1);
+                    ab.setPendingExposures(0);
+                }
             }
         }
         store.put(itemId, ab);

@@ -91,15 +91,16 @@ class PostServicePostCacheTest {
 
     @Test
     void getById_viewCountIncrementsOnEachRead() {
-        // 缓存的是实体引用：两次读同一实例，viewCount 各自原子 +1（走 incrementViewCount 落库，返回新计数回写本地对象）
+        // 缓存的是防御性拷贝（与存储引用分离）：每次读 viewCount 原子 +1 落库（incrementViewCount），
+        // 读线程不再原地改共享存储实体（P1-15 读-写竞态修复）。
         Post p = publishedPost(1L);
         stubReadOf(p);
         when(postRepository.incrementViewCount(1L, 1)).thenReturn(1L, 2L);
 
         postService.getById(1L, "alice");
         postService.getById(1L, "alice");
-        verify(postRepository, times(2)).incrementViewCount(1L, 1); // 每次读 viewCount 原子 +1
-        assertEquals(2L, p.getViewCount());
+        verify(postRepository, times(2)).incrementViewCount(1L, 1); // 每次读 viewCount 原子 +1 落库
+        assertEquals(0L, p.getViewCount()); // 防御性拷贝：存储实体未被读路径原地改动
     }
 
     @Test

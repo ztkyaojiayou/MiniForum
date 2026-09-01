@@ -61,11 +61,11 @@ public class Post {
     /** 状态：DRAFT=草稿 / PUBLISHED=已发布（默认） */
     private String status = STATUS_PUBLISHED;
 
-    /** 点赞总数 */
-    private long likeCount;
+    /** 点赞总数（volatile：P0-2 由仓储原子自增，读侧（缓存/排序/装配）要求可见性，读-改-写仍在仓储串行化） */
+    private volatile long likeCount;
 
-    /** 阅读量（进入详情页时自增） */
-    private long viewCount;
+    /** 阅读量（进入详情页时自增；同上 volatile） */
+    private volatile long viewCount;
 
     /** 是否已删除（回收站软删除标记） */
     private boolean deleted;

@@ -93,15 +93,19 @@ public class TrafficPool {
                 return;
             }
         }
-        if (st.isStopped()) {
-            return;
+        // 按帖持锁串行化读-改-写（单 JVM 内原子：计数不丢、晋级不双触发）；
+        // 跨 pod 的原子性需走 Redis Lua/HINCRBY 升级路径（见 RedisTrafficPoolStore 注释）
+        synchronized (st) {
+            if (st.isStopped()) {
+                return;
+            }
+            if (b.getType() == BehaviorType.EXPOSE) {
+                st.setExposures(st.getExposures() + 1);
+            } else if (isDeepInteraction(b.getType())) {
+                st.setSuccesses(st.getSuccesses() + 1);
+            }
+            maybePromote(b.getPostId(), st);
         }
-        if (b.getType() == BehaviorType.EXPOSE) {
-            st.setExposures(st.getExposures() + 1);
-        } else if (isDeepInteraction(b.getType())) {
-            st.setSuccesses(st.getSuccesses() + 1);
-        }
-        maybePromote(b.getPostId(), st);
         store.put(b.getPostId(), st);
     }
 
@@ -117,7 +121,7 @@ public class TrafficPool {
         store.putIfAbsent(postId, new PostState(), DEFAULT_TTL_SECONDS);
     }
 
-    /** 当前档位曝光达标 → Wilson 下界 vs 基线 判定晋级/停止 */
+    /** 当前档位曝光达标 → Wilson 下界 vs 基线 判定晋级/停止（须在 {@code onBehavior} 的 synchronized(st) 内调用） */
     private void maybePromote(Long postId, PostState st) {
         int[] tiers = tiers();
         if (st.getTier() >= tiers.length) {

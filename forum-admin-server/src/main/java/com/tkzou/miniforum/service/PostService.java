@@ -266,7 +266,7 @@ public class PostService {
      * 写路径（update/delete/restore/like/unlike）主动失效 + 短 TTL 兜底，接受轻微过期。
      */
     public PostVO getById(Long id, String username) {
-        Post post = postCache.get(id, () -> getPostOrThrow(id));
+        Post post = postCache.get(id, () -> copyPost(getPostOrThrow(id))); // 防御性拷贝：缓存与存储引用分离，读线程不再改共享实体（P1-15）
         if (post.isDeleted()) {
             throw new ResourceNotFoundException("帖子不存在：id=" + id);
         }
@@ -683,6 +683,32 @@ public class PostService {
     private Post getPostOrThrow(Long postId) {
         return postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("帖子不存在：id=" + postId));
+    }
+
+    /**
+     * 深拷贝帖子（单帖缓存用）：缓存与存储引用分离。
+     * 避免读缓存线程看到写路径（update/delete 等原地改字段）的半更新实体；tags/topics 列表也拷贝，杜绝共享可变引用。
+     */
+    private Post copyPost(Post src) {
+        Post copy = new Post();
+        copy.setId(src.getId());
+        copy.setTitle(src.getTitle());
+        copy.setContent(src.getContent());
+        copy.setAuthor(src.getAuthor());
+        copy.setAuthorId(src.getAuthorId());
+        copy.setCreatedAt(src.getCreatedAt());
+        copy.setTags(src.getTags() == null ? null : new ArrayList<>(src.getTags()));
+        copy.setTopics(src.getTopics() == null ? null : new ArrayList<>(src.getTopics()));
+        copy.setCategory(src.getCategory());
+        copy.setStatus(src.getStatus());
+        copy.setLikeCount(src.getLikeCount());
+        copy.setViewCount(src.getViewCount());
+        copy.setDeleted(src.isDeleted());
+        copy.setDeletedAt(src.getDeletedAt());
+        copy.setOriginalPostId(src.getOriginalPostId());
+        copy.setOriginalAuthorId(src.getOriginalAuthorId());
+        copy.setOriginalAuthor(src.getOriginalAuthor());
+        return copy;
     }
 
     private boolean isPublished(Post p) {

@@ -6,7 +6,12 @@ import com.tkzou.miniforum.repository.PostRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -52,5 +57,29 @@ class NewItemPoolTest {
     void contains_afterOutcome() {
         pool.recordOutcome(1L, true);
         assertTrue(pool.contains(1L), "回灌后应在池内（store 已跟踪）");
+    }
+
+    @Test
+    void concurrentSuccesses_shouldNotLoseCount() throws Exception {
+        // P1-16：并发成功回灌（α+1）按 item 持锁串行化，不丢更新
+        int n = 30;
+        ExecutorService es = Executors.newFixedThreadPool(8);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<?>> futures = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            futures.add(es.submit(() -> {
+                start.await();
+                pool.recordOutcome(1L, true);
+                return null;
+            }));
+        }
+        start.countDown();
+        for (Future<?> f : futures) {
+            f.get();
+        }
+        es.shutdownNow();
+
+        // α = 1 + 30 = 31，β = 1 → expect = 31/32 ≈ 0.969；丢更新会显著偏低
+        assertTrue(pool.expect(1L) > 0.9, "并发成功回灌不得丢更新（α 累加）");
     }
 }

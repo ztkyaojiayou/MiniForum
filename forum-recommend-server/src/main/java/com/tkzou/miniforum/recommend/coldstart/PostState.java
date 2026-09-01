@@ -14,16 +14,16 @@ import java.time.LocalDateTime;
 @Getter @Setter
 public class PostState {
 
-    /** 当前档位下标 */
-    private int tier;
-    /** 当前档位内曝光数 */
-    private int exposures;
-    /** 当前档位内深度互动数 */
-    private int successes;
-    /** 是否停止探索（未达标） */
-    private boolean stopped;
+    /** 当前档位下标（volatile：tierBonus 并发读，晋级写入要可见） */
+    private volatile int tier;
+    /** 当前档位内曝光数（volatile：读-改-写在 TrafficPool 持锁串行化） */
+    private volatile int exposures;
+    /** 当前档位内深度互动数（volatile，同上） */
+    private volatile int successes;
+    /** 是否停止探索（未达标）（volatile：请求线程 tierBonus 读） */
+    private volatile boolean stopped;
     /** 停止时间（用于清理） */
-    private LocalDateTime stoppedAt;
+    private volatile LocalDateTime stoppedAt;
 
     public PostState() {
     }

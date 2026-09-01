@@ -13,12 +13,12 @@ import lombok.Setter;
 @Getter @Setter
 public class AlphaBeta {
 
-    /** 成功次数 + 1（后验 Beta 分布的 alpha 参数） */
-    private double alpha = 1.0;
+    /** 成功次数 + 1（后验 Beta 分布的 alpha 参数）（volatile：读-改-写在 NewItemPool 持锁串行化） */
+    private volatile double alpha = 1.0;
     /** 失败次数 + 1（后验 Beta 分布的 beta 参数） */
-    private double beta = 1.0;
+    private volatile double beta = 1.0;
     /** 待惩罚曝光数（连续曝光无互动，达阈值后 beta+1） */
-    private int pendingExposures;
+    private volatile int pendingExposures;
 
     public AlphaBeta() {
     }
