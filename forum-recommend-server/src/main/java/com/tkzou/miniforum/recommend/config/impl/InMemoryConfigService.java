@@ -33,6 +33,7 @@ public class InMemoryConfigService implements ConfigService {
     public InMemoryConfigService(
             @Value("${app.rec.final-top-n:20}") int finalTopN,
             @Value("${app.rec.merge-top-n:200}") int mergeTopN,
+            @Value("${app.rec.coarse-top-n:200}") int coarseTopN,
             @Value("${app.rec.recall-per-channel:100}") int recallPerChannel,
             @Value("${app.rec.cold-start-ratio:0.15}") double coldStartRatio,
             @Value("${app.rec.min-behavior-for-warm:5}") int minBehaviorForWarm,
@@ -53,6 +54,7 @@ public class InMemoryConfigService implements ConfigService {
         RecConfig.Builder b = RecConfig.defaults().copy()
                 .finalTopN(finalTopN)
                 .mergeTopN(mergeTopN)
+                .coarseTopN(coarseTopN)
                 .recallPerChannel(recallPerChannel)
                 .coldStartRatio(coldStartRatio)
                 .minBehaviorForWarm(minBehaviorForWarm)

@@ -14,6 +14,7 @@ import com.tkzou.miniforum.recommend.feature.ItemFeature;
 import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
 import com.tkzou.miniforum.recommend.profile.UserProfileService;
 import com.tkzou.miniforum.recommend.model.ItemCfModelStore;
+import com.tkzou.miniforum.recommend.rank.CoarseRankService;
 import com.tkzou.miniforum.recommend.rank.RankService;
 import com.tkzou.miniforum.recommend.recall.RecallService;
 import com.tkzou.miniforum.recommend.rerank.RerankService;
@@ -44,6 +45,7 @@ class RecommendServiceFallbackTest {
         UserProfileService userProfileService = mock(UserProfileService.class);
         ItemFeatureService itemFeatureService = mock(ItemFeatureService.class);
         RecallService recallService = mock(RecallService.class);
+        CoarseRankService coarseRankService = mock(CoarseRankService.class);
         RankService rankService = mock(RankService.class);
         RerankService rerankService = mock(RerankService.class);
         ColdStartService coldStartService = mock(ColdStartService.class);
@@ -55,6 +57,8 @@ class RecommendServiceFallbackTest {
         ItemCfModelStore itemCfModelStore = mock(ItemCfModelStore.class);
 
         when(abExperimentService.configFor(any(), anyLong())).thenReturn(RecConfig.defaults());
+        // 粗排简化实现：默认透传候选（候选量小，粗排不实际缩，保证 rank 拿到完整候选）
+        when(coarseRankService.coarseRank(any(), any())).thenAnswer(inv -> inv.getArgument(1));
         // 召回通道全部故障：模拟主链路抛异常
         when(recallService.recall(any())).thenThrow(new IllegalStateException("召回通道全部故障"));
 
@@ -69,7 +73,7 @@ class RecommendServiceFallbackTest {
         when(postRepository.findById(100L)).thenReturn(Optional.of(hotPost));
         when(postAssembler.toVO(hotPost, "alice")).thenReturn(mock(PostVO.class));
 
-        RecommendService service = new RecommendService(userProfileService, itemFeatureService, recallService, rankService, rerankService,
+        RecommendService service = new RecommendService(userProfileService, itemFeatureService, recallService, coarseRankService, rankService, rerankService,
                 coldStartService, configService, abExperimentService, behaviorLogger, postAssembler,
                 postRepository, itemCfModelStore);
 

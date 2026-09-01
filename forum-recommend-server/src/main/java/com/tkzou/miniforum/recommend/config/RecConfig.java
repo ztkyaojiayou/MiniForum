@@ -19,6 +19,8 @@ public class RecConfig {
     private final int finalTopN;
     /** 融合后候选上限 */
     private final int mergeTopN;
+    /** 粗排候选上限（融合后缩到该数再进精排；默认=mergeTopN 即透传，架构对齐大厂"粗排千→百"） */
+    private final int coarseTopN;
     /** 每路召回上限 */
     private final int recallPerChannel;
     /** 冷启动探索混入比例 */
@@ -54,6 +56,7 @@ public class RecConfig {
     private RecConfig(Builder b) {
         this.finalTopN = b.finalTopN;
         this.mergeTopN = b.mergeTopN;
+        this.coarseTopN = b.coarseTopN;
         this.recallPerChannel = b.recallPerChannel;
         this.coldStartRatio = b.coldStartRatio;
         this.minBehaviorForWarm = b.minBehaviorForWarm;
@@ -95,6 +98,7 @@ public class RecConfig {
     public static class Builder {
         private int finalTopN = 20;
         private int mergeTopN = 200;
+        private int coarseTopN = 200;
         private int recallPerChannel = 100;
         private double coldStartRatio = 0.15;
         private int minBehaviorForWarm = 5;
@@ -121,6 +125,7 @@ public class RecConfig {
         private Builder(RecConfig src) {
             this.finalTopN = src.finalTopN;
             this.mergeTopN = src.mergeTopN;
+            this.coarseTopN = src.coarseTopN;
             this.recallPerChannel = src.recallPerChannel;
             this.coldStartRatio = src.coldStartRatio;
             this.minBehaviorForWarm = src.minBehaviorForWarm;
@@ -145,6 +150,11 @@ public class RecConfig {
 
         public Builder mergeTopN(int v) {
             this.mergeTopN = v;
+            return this;
+        }
+
+        public Builder coarseTopN(int v) {
+            this.coarseTopN = v;
             return this;
         }
 

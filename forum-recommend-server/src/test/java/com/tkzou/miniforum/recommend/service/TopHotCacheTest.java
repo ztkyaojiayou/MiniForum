@@ -13,6 +13,7 @@ import com.tkzou.miniforum.recommend.feature.ItemFeature;
 import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
 import com.tkzou.miniforum.recommend.profile.UserProfileService;
 import com.tkzou.miniforum.recommend.model.ItemCfModelStore;
+import com.tkzou.miniforum.recommend.rank.CoarseRankService;
 import com.tkzou.miniforum.recommend.rank.RankService;
 import com.tkzou.miniforum.recommend.recall.RecallService;
 import com.tkzou.miniforum.recommend.rerank.RerankService;
@@ -45,6 +46,7 @@ class TopHotCacheTest {
     private UserProfileService userProfileService;
     private ItemFeatureService itemFeatureService;
     private RecallService recallService;
+    private CoarseRankService coarseRankService;
     private RankService rankService;
     private RerankService rerankService;
     private ColdStartService coldStartService;
@@ -61,6 +63,7 @@ class TopHotCacheTest {
         userProfileService = mock(UserProfileService.class);
         itemFeatureService = mock(ItemFeatureService.class);
         recallService = mock(RecallService.class);
+        coarseRankService = mock(CoarseRankService.class);
         rankService = mock(RankService.class);
         rerankService = mock(RerankService.class);
         coldStartService = mock(ColdStartService.class);
@@ -71,10 +74,12 @@ class TopHotCacheTest {
         postRepository = mock(PostRepository.class);
         itemCfModelStore = mock(ItemCfModelStore.class);
         when(abExperimentService.configFor(any(), anyLong())).thenReturn(RecConfig.defaults());
+        // 粗排简化实现：默认透传候选
+        when(coarseRankService.coarseRank(any(), any())).thenAnswer(inv -> inv.getArgument(1));
         // 主链路抛异常 → 走热门兜底（本测试验证的就是兜底路径的热门缓存）
         when(recallService.recall(any())).thenThrow(new IllegalStateException("召回通道故障"));
         when(postAssembler.toVO(any(), any())).thenReturn(mock(PostVO.class));
-        service = new RecommendService(userProfileService, itemFeatureService, recallService, rankService, rerankService,
+        service = new RecommendService(userProfileService, itemFeatureService, recallService, coarseRankService, rankService, rerankService,
                 coldStartService, configService, abExperimentService, behaviorLogger, postAssembler,
                 postRepository, itemCfModelStore);
         service.setTopHotCacheTtlMs(10_000L); // 默认启用：对齐 application.yml

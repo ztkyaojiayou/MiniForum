@@ -74,6 +74,7 @@ public class NacosConfigService implements ConfigService {
             RecConfig.Builder b = RecConfig.defaults().copy()
                     .finalTopN(orDefault(dto.finalTopN, 20))
                     .mergeTopN(orDefault(dto.mergeTopN, 200))
+                    .coarseTopN(orDefault(dto.coarseTopN, 200))
                     .coldStartRatio(orDefault(dto.coldStartRatio, 0.15))
                     .halfLifeHours(orDefault(dto.halfLifeHours, 4.0))
                     .mmrLambda(orDefault(dto.mmrLambda, 0.6))
@@ -120,6 +121,7 @@ public class NacosConfigService implements ConfigService {
     public static class RecConfigJson {
         public Integer finalTopN;
         public Integer mergeTopN;
+        public Integer coarseTopN;
         public Double coldStartRatio;
         public Double halfLifeHours;
         public Double mmrLambda;

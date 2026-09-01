@@ -22,6 +22,7 @@ import com.tkzou.miniforum.recommend.profile.UserProfile;
 import com.tkzou.miniforum.recommend.profile.UserProfileService;
 import com.tkzou.miniforum.recommend.model.ItemCfModel;
 import com.tkzou.miniforum.recommend.model.ItemCfModelStore;
+import com.tkzou.miniforum.recommend.rank.CoarseRankService;
 import com.tkzou.miniforum.recommend.rank.RankService;
 import com.tkzou.miniforum.recommend.recall.RecallService;
 import com.tkzou.miniforum.recommend.rerank.RerankService;
@@ -76,6 +77,7 @@ public class RecommendService {
     private final UserProfileService userProfileService;
     private final ItemFeatureService itemFeatureService;
     private final RecallService recallService;
+    private final CoarseRankService coarseRankService;
     private final RankService rankService;
     private final RerankService rerankService;
     private final ColdStartService coldStartService;
@@ -89,6 +91,7 @@ public class RecommendService {
     public RecommendService(UserProfileService userProfileService,
                             ItemFeatureService itemFeatureService,
                             RecallService recallService,
+                            CoarseRankService coarseRankService,
                             RankService rankService,
                             RerankService rerankService,
                             ColdStartService coldStartService,
@@ -101,6 +104,7 @@ public class RecommendService {
         this.userProfileService = userProfileService;
         this.itemFeatureService = itemFeatureService;
         this.recallService = recallService;
+        this.coarseRankService = coarseRankService;
         this.rankService = rankService;
         this.rerankService = rerankService;
         this.coldStartService = coldStartService;
@@ -158,8 +162,10 @@ public class RecommendService {
                                               RecConfig cfg, int topN) {
         // 1. 多路召回 → 融合候选
         List<Candidate> candidates = recallService.recall(ctx);
-        // 2. 规则排序
-        List<RankedItem> ranked = rankService.rank(ctx, candidates);
+        // 1.5 粗排（架构对齐大厂"召回→粗排→精排"；简化实现按融合分截断到 coarseTopN，默认透传）
+        List<Candidate> coarse = coarseRankService.coarseRank(ctx, candidates);
+        // 2. 规则排序（精排）
+        List<RankedItem> ranked = rankService.rank(ctx, coarse);
         // 3. 重排（打散 + MMR）
         List<RankedItem> reranked = rerankService.rerank(ctx, ranked, topN);
         // 4. 冷启动兜底（新用户补热门）

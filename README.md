@@ -2,14 +2,14 @@
 
 一个基于 **Spring Boot 2.7 + Java 17**、**以生产级推荐系统为核心**的**微博风格轻量博客系统**。**演示模式开箱即用、零中间件服务**（内存实现 + JSON 持久化）；**生产适配齐备**（Kafka / Redis / MySQL / ClickHouse / Nacos / Flink / Sentinel，`-Pprod` + prod profile 激活）。支持发帖、分类、标签、话题、关注流、点赞、评论、收藏、转发、@提及、消息通知、站内私信、热搜榜、全文搜索、数据看板、深色模式等 **40+ 项功能**，全部前后端闭环，内置 12 个原生静态页面。
 
-> 🎯 **推荐是本项目的核心**——完整生产级推荐系统（业务侧全链路）：多路召回（热门 / 话题 / 类目 / ItemCF / 新内容 / 关注）→ 微博式排序 → MMR 打散重排 → Thompson 冷启动 → 实时特征 → AB 实验 → 离线评估。每条推荐带可解释理由，行为全量回流闭环，生产适配代码齐备；微服务拆分后独立为在线（forum-recommend-server）/ 离线（forum-offline-job）/ 近线（forum-flink-nearline）三模块。弱训练侧（ItemCF + 规则加权），纯 Java 实现。详见 [推荐系统](#-推荐系统)。
+> 🎯 **推荐是本项目的核心**——完整生产级推荐系统（业务侧全链路）：多路召回（热门 / 话题 / 类目 / ItemCF / 新内容 / 关注）→ 粗排 → 微博式排序 → MMR 打散重排 → Thompson 冷启动 → 实时特征 → AB 实验 → 离线评估。每条推荐带可解释理由，行为全量回流闭环，生产适配代码齐备；微服务拆分后独立为在线（forum-recommend-server）/ 离线（forum-offline-job）/ 近线（forum-flink-nearline）三模块。弱训练侧（ItemCF + 规则加权），纯 Java 实现。详见 [推荐系统](#-推荐系统)。
 
 > 🚀 **本项目由自研的 [nanocode](https://github.com/ztkyaojiayou/my-first-nanobot-build-server) 编程 Agent 开发完成** —— 通过自然语言对话驱动需求规划、代码生成、重构、调试与迭代，展示了 AI 辅助编程在实际项目中的完整落地。
 
 ## 功能特性
 
 ### 🎯 推荐系统
-- ✅ **个性化推荐流**（✨ 推荐 Tab）：6 路召回（热门 / 话题 / 类目 / ItemCF / 新内容 / 关注）+ rank 归一化融合 + 微博式排序 + MMR 打散重排
+- ✅ **个性化推荐流**（✨ 推荐 Tab）：6 路召回（热门 / 话题 / 类目 / ItemCF / 新内容 / 关注）+ rank 归一化融合 + 粗排 + 微博式排序 + MMR 打散重排
 - ✅ **可解释推荐**：每条带推荐理由（"因为你看过 #话题#" / "你关注的人发布了" / "和大家互动过的帖子相似" / "大家都在看"）与召回路来源
 - ✅ **行为闭环**：点赞/收藏/评论/转发/搜索/关注/浏览/曝光/点击/负反馈 → 统一行为日志 → 画像 / ItemCF / 实时特征（模拟 Kafka→Flink→Redis 链路）
 - ✅ **冷启动**：新内容 Thompson bandit 探索 + 曝光惩罚；新用户热门兜底
@@ -90,7 +90,8 @@ GET /api/recommend/feed?page&size      (session: userId)
   │             / itemcf(历史相似) / newitem(冷启池) / follow(关注+二度转发)
   │            └ MergeRecallService: 每路 rank归一化 1/(rank+60)
   │                 + 通道加权(RecConfig) + 去重 → List<Candidate>
-  ├─③ 排序      RuleRankService.rank(ctx, candidates)
+  ├─②.5 粗排    CoarseRankService: 按融合分截断到 coarseTopN（默认 200 即透传，架构对齐大厂"千→百"）
+  ├─③ 排序(精排) RuleRankService.rank(ctx, coarse)
   │            rankScore = (Σ w_f·f + explore) × 时效衰减(半衰期4h)
   │            特征: interact·quality·interest·social·author·hot·realtime
   │            → List<RankedItem>(携带特征分构成 + 推荐理由)

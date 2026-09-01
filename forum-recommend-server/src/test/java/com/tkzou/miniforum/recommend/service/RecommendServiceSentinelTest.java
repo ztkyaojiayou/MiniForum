@@ -20,6 +20,7 @@ import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
 import com.tkzou.miniforum.recommend.profile.UserProfile;
 import com.tkzou.miniforum.recommend.profile.UserProfileService;
 import com.tkzou.miniforum.recommend.model.ItemCfModelStore;
+import com.tkzou.miniforum.recommend.rank.CoarseRankService;
 import com.tkzou.miniforum.recommend.rank.RankService;
 import com.tkzou.miniforum.recommend.recall.RecallService;
 import com.tkzou.miniforum.recommend.rerank.RerankService;
@@ -59,6 +60,7 @@ class RecommendServiceSentinelTest {
     private UserProfileService userProfileService;
     private ItemFeatureService itemFeatureService;
     private RecallService recallService;
+    private CoarseRankService coarseRankService;
     private RankService rankService;
     private RerankService rerankService;
     private ColdStartService coldStartService;
@@ -75,6 +77,7 @@ class RecommendServiceSentinelTest {
         userProfileService = mock(UserProfileService.class);
         itemFeatureService = mock(ItemFeatureService.class);
         recallService = mock(RecallService.class);
+        coarseRankService = mock(CoarseRankService.class);
         rankService = mock(RankService.class);
         rerankService = mock(RerankService.class);
         coldStartService = mock(ColdStartService.class);
@@ -86,6 +89,8 @@ class RecommendServiceSentinelTest {
         itemCfModelStore = mock(ItemCfModelStore.class);
 
         when(abExperimentService.configFor(any(), anyLong())).thenReturn(RecConfig.defaults());
+        // 粗排简化实现：默认透传候选（候选量小，粗排不实际缩）
+        when(coarseRankService.coarseRank(any(), any())).thenAnswer(inv -> inv.getArgument(1));
         // 完整漏斗桩：recall → rank → rerank → 冷启动（暖用户，不再补热门）→ 逐条 toVO
         UserProfile warm = new UserProfile();
         warm.setBehaviorCount(10); // 行为数 ≥ min-behavior-for-warm(5) → 非冷用户，冷启动兜底直接返回重排结果
@@ -105,7 +110,7 @@ class RecommendServiceSentinelTest {
         when(itemFeatureService.itemFeature(100L)).thenReturn(hotFeature);
         when(postAssembler.toVO(any(), any())).thenReturn(mock(PostVO.class));
 
-        service = new RecommendService(userProfileService, itemFeatureService, recallService, rankService, rerankService,
+        service = new RecommendService(userProfileService, itemFeatureService, recallService, coarseRankService, rankService, rerankService,
                 coldStartService, configService, abExperimentService, behaviorLogger, postAssembler,
                 postRepository, itemCfModelStore);
     }
