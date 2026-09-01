@@ -4,6 +4,7 @@ import com.tkzou.miniforum.common.Result;
 import com.tkzou.miniforum.dto.common.PageResult;
 import com.tkzou.miniforum.dto.request.PostCreateDTO;
 import com.tkzou.miniforum.dto.response.PostVO;
+import com.tkzou.miniforum.service.PostCommandService;
 import com.tkzou.miniforum.service.PostService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -49,7 +50,7 @@ public class PostController {
                                                      HttpSession session) {
         String author = (String) session.getAttribute("username");
         Long authorId = (Long) session.getAttribute("userId");
-        PostService.CreateResult result = postService.createPost(dto, author, authorId, idempotencyKey);
+        PostCommandService.CreateResult result = postService.createPost(dto, author, authorId, idempotencyKey);
         // 命中已完成 key → 200 重放；新建 → 201 Created（幂等语义：重复提交不重复发帖）
         if (result.isReplayed()) {
             return ResponseEntity.ok(Result.success("发帖成功", result.getVo()));
