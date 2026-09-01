@@ -1,7 +1,9 @@
 package com.tkzou.miniforum.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tkzou.miniforum.dto.request.UserCreateDTO;
 import com.tkzou.miniforum.dto.request.UserUpdateDTO;
+import com.tkzou.miniforum.dto.response.UserVO;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.exception.DuplicateUsernameException;
 import com.tkzou.miniforum.exception.ResourceNotFoundException;
@@ -40,10 +42,11 @@ import com.tkzou.miniforum.repository.impl.InMemoryUserRepository;
 class UserServiceTest {
 
     private UserService userService;
+    private UserRepository userRepository;
 
     @BeforeEach
     void setUp() {
-        UserRepository userRepository = new InMemoryUserRepository();
+        userRepository = new InMemoryUserRepository();
         PostRepository postRepository = new InMemoryPostRepository();
         FollowRepository followRepository = new InMemoryFollowRepository();
         LikeRepository likeRepository = new InMemoryLikeRepository();
@@ -69,13 +72,24 @@ class UserServiceTest {
 
     @Test
     void createUser_shouldPersistAndEncodePassword() {
-        User user = userService.createUser(createDTO("zhangsan", "zs@test.com", "password123", 25));
+        UserVO user = userService.createUser(createDTO("zhangsan", "zs@test.com", "password123", 25));
 
         assertNotNull(user.getId());
         assertEquals("zhangsan", user.getUsername());
-        // 密码应加密存储，非明文
-        assertFalse("password123".equals(user.getPassword()));
-        assertTrue(PasswordEncoder.matches("password123", user.getPassword()));
+        // 密码加密存储于存储层（服务返回的 UserVO 不含 password）
+        User stored = userRepository.findByUsername("zhangsan").orElseThrow();
+        assertFalse("password123".equals(stored.getPassword()));
+        assertTrue(PasswordEncoder.matches("password123", stored.getPassword()));
+    }
+
+    @Test
+    void userVO_shouldNotExposePassword() throws Exception {
+        UserVO user = userService.createUser(createDTO("zhangsan", "zs@test.com", "password123", 25));
+
+        // API 边界脱敏：序列化结果不含 password / 密码散列
+        String json = new ObjectMapper().writeValueAsString(user);
+        assertFalse(json.contains("password"));
+        assertFalse(json.contains(PasswordEncoder.encode("password123")));
     }
 
     @Test
@@ -87,8 +101,8 @@ class UserServiceTest {
 
     @Test
     void getUserById_shouldReturnUser() {
-        User created = userService.createUser(createDTO("zhangsan", "zs@test.com", "password123", 25));
-        User found = userService.getUserById(created.getId());
+        UserVO created = userService.createUser(createDTO("zhangsan", "zs@test.com", "password123", 25));
+        UserVO found = userService.getUserById(created.getId());
         assertEquals("zhangsan", found.getUsername());
     }
 
@@ -99,7 +113,7 @@ class UserServiceTest {
 
     @Test
     void updateUser_shouldUpdateFields() {
-        User created = userService.createUser(createDTO("zhangsan", "zs@test.com", "password123", 25));
+        UserVO created = userService.createUser(createDTO("zhangsan", "zs@test.com", "password123", 25));
 
         UserUpdateDTO update = new UserUpdateDTO();
         update.setUsername("zhangsan");
@@ -107,15 +121,17 @@ class UserServiceTest {
         update.setPassword("newpass123");
         update.setAge(26);
 
-        User updated = userService.updateUser(created.getId(), update);
+        UserVO updated = userService.updateUser(created.getId(), update);
         assertEquals("new@test.com", updated.getEmail());
         assertEquals(26, updated.getAge());
-        assertTrue(PasswordEncoder.matches("newpass123", updated.getPassword()));
+        // 新密码加密存储于存储层
+        User stored = userRepository.findByUsername("zhangsan").orElseThrow();
+        assertTrue(PasswordEncoder.matches("newpass123", stored.getPassword()));
     }
 
     @Test
     void deleteUser_shouldRemoveUser() {
-        User created = userService.createUser(createDTO("zhangsan", "zs@test.com", "password123", 25));
+        UserVO created = userService.createUser(createDTO("zhangsan", "zs@test.com", "password123", 25));
         userService.deleteUser(created.getId());
         assertThrows(ResourceNotFoundException.class, () -> userService.getUserById(created.getId()));
     }

@@ -5,6 +5,7 @@ import com.tkzou.miniforum.dto.request.ProfileUpdateDTO;
 import com.tkzou.miniforum.dto.response.ProfileVO;
 import com.tkzou.miniforum.dto.request.UserCreateDTO;
 import com.tkzou.miniforum.dto.request.UserUpdateDTO;
+import com.tkzou.miniforum.dto.response.UserVO;
 import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.exception.BusinessException;
@@ -16,6 +17,7 @@ import com.tkzou.miniforum.util.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 用户服务
@@ -35,7 +37,12 @@ public class UserService {
         this.followService = followService;
     }
 
-    public User createUser(UserCreateDTO dto) {
+    /** 实体 → 视图对象（API 边界脱敏：不含 password） */
+    private UserVO toVO(User user) {
+        return new UserVO(user);
+    }
+
+    public UserVO createUser(UserCreateDTO dto) {
         if (userRepository.findByUsername(dto.getUsername()).isPresent()) {
             throw new DuplicateUsernameException("用户名已存在: " + dto.getUsername());
         }
@@ -44,23 +51,26 @@ public class UserService {
         user.setEmail(dto.getEmail());
         user.setPassword(PasswordEncoder.encode(dto.getPassword()));
         user.setAge(dto.getAge());
-        return userRepository.save(user);
+        return toVO(userRepository.save(user));
     }
 
-    public User getUserById(Long id) {
+    public UserVO getUserById(Long id) {
         return userRepository.findById(id)
+                .map(this::toVO)
                 .orElseThrow(() -> new ResourceNotFoundException("用户不存在: id=" + id));
     }
 
     /** 按用户名查询用户（@提及 跳转用） */
-    public User getUserByUsername(String username) {
+    public UserVO getUserByUsername(String username) {
         return userRepository.findByUsername(username)
+                .map(this::toVO)
                 .orElseThrow(() -> new ResourceNotFoundException("用户不存在: " + username));
     }
 
     /** 个人主页聚合信息：用户资料 + 粉丝数 + 关注数 + 已发布帖子数 */
     public ProfileVO getProfile(Long id) {
-        User user = getUserById(id);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("用户不存在: id=" + id));
         ProfileVO vo = new ProfileVO(user);
         vo.setFollowerCount(followService.countFollowers(id));
         vo.setFollowingCount(followService.countFollowing(id));
@@ -70,12 +80,14 @@ public class UserService {
         return vo;
     }
 
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
+    public List<UserVO> getAllUsers() {
+        return userRepository.findAll().stream()
+                .map(this::toVO)
+                .collect(Collectors.toList());
     }
 
-    public User updateUser(Long id, UserUpdateDTO dto) {
-        User existing = getUserById(id);
+    public UserVO updateUser(Long id, UserUpdateDTO dto) {
+        User existing = getUserByIdEntity(id);
         // 用户名不允许修改，若修改了用户名则校验唯一性
         if (!existing.getUsername().equals(dto.getUsername())
                 && userRepository.findByUsername(dto.getUsername()).isPresent()) {
@@ -85,14 +97,14 @@ public class UserService {
         existing.setEmail(dto.getEmail());
         existing.setPassword(PasswordEncoder.encode(dto.getPassword()));
         existing.setAge(dto.getAge());
-        return userRepository.save(existing);
+        return toVO(userRepository.save(existing));
     }
 
     /**
      * 修改个人资料（昵称 / 简介 / 头像 / 邮箱 / 年龄，传 null 的字段保持不变；用户名不可修改）
      */
-    public User updateProfile(Long id, ProfileUpdateDTO dto) {
-        User existing = getUserById(id);
+    public UserVO updateProfile(Long id, ProfileUpdateDTO dto) {
+        User existing = getUserByIdEntity(id);
         if (dto.getNickname() != null && !dto.getNickname().isBlank()) {
             existing.setNickname(dto.getNickname().trim());
         }
@@ -104,17 +116,23 @@ public class UserService {
         if (dto.getAge() != null) {
             existing.setAge(dto.getAge());
         }
-        return userRepository.save(existing);
+        return toVO(userRepository.save(existing));
     }
 
     /** 修改密码：校验旧密码正确后设置新密码 */
     public void changePassword(Long id, ChangePasswordDTO dto) {
-        User user = getUserById(id);
+        User user = getUserByIdEntity(id);
         if (!PasswordEncoder.matches(dto.getOldPassword(), user.getPassword())) {
             throw new BusinessException("旧密码不正确");
         }
         user.setPassword(PasswordEncoder.encode(dto.getNewPassword()));
         userRepository.save(user);
+    }
+
+    /** 按 id 取实体（内部使用：写操作需要实体上的 password 等敏感字段） */
+    private User getUserByIdEntity(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("用户不存在: id=" + id));
     }
 
     public void deleteUser(Long id) {

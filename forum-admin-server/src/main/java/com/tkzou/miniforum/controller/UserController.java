@@ -9,7 +9,7 @@ import com.tkzou.miniforum.dto.response.ProfileVO;
 import com.tkzou.miniforum.dto.response.UserBriefVO;
 import com.tkzou.miniforum.dto.request.UserCreateDTO;
 import com.tkzou.miniforum.dto.request.UserUpdateDTO;
-import com.tkzou.miniforum.entity.User;
+import com.tkzou.miniforum.dto.response.UserVO;
 import com.tkzou.miniforum.exception.BusinessException;
 import com.tkzou.miniforum.service.PostService;
 import com.tkzou.miniforum.service.UserService;
@@ -49,23 +49,24 @@ public class UserController {
 
     /** 新增用户（仅管理员；注册走公开的 /api/auth/register） */
     @PostMapping
-    public ResponseEntity<Result<User>> createUser(@Valid @RequestBody UserCreateDTO dto,
-                                                   HttpSession session) {
+    public ResponseEntity<Result<UserVO>> createUser(@Valid @RequestBody UserCreateDTO dto,
+                                                     HttpSession session) {
         requireAdmin(session);
-        User created = userService.createUser(dto);
+        UserVO created = userService.createUser(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(Result.success(created));
     }
 
     /** 查询单个用户 */
     @GetMapping("/{id}")
-    public ResponseEntity<Result<User>> getUserById(@PathVariable Long id) {
+    public ResponseEntity<Result<UserVO>> getUserById(@PathVariable Long id) {
         return ResponseEntity.ok(Result.success(userService.getUserById(id)));
     }
 
     /** 按用户名查询用户（@提及 跳转用） */
     @GetMapping("/by-username/{username}")
     public ResponseEntity<Result<UserBriefVO>> getUserByUsername(@PathVariable String username) {
-        return ResponseEntity.ok(Result.success(new UserBriefVO(userService.getUserByUsername(username))));
+        UserVO vo = userService.getUserByUsername(username);
+        return ResponseEntity.ok(Result.success(new UserBriefVO(vo.getId(), vo.getUsername())));
     }
 
     /** 个人主页聚合信息：用户资料 + 粉丝数 + 关注数 + 帖子数 */
@@ -76,25 +77,25 @@ public class UserController {
 
     /** 查询所有用户（仅管理员，用户管理弹窗用） */
     @GetMapping
-    public ResponseEntity<Result<List<User>>> getAllUsers(HttpSession session) {
+    public ResponseEntity<Result<List<UserVO>>> getAllUsers(HttpSession session) {
         requireAdmin(session);
         return ResponseEntity.ok(Result.success(userService.getAllUsers()));
     }
 
     /** 修改用户（仅管理员） */
     @PutMapping("/{id}")
-    public ResponseEntity<Result<User>> updateUser(@PathVariable Long id,
-                                                   @Valid @RequestBody UserUpdateDTO dto,
-                                                   HttpSession session) {
+    public ResponseEntity<Result<UserVO>> updateUser(@PathVariable Long id,
+                                                     @Valid @RequestBody UserUpdateDTO dto,
+                                                     HttpSession session) {
         requireAdmin(session);
         return ResponseEntity.ok(Result.success(userService.updateUser(id, dto)));
     }
 
     /** 修改个人资料（昵称 / 简介 / 头像 / 邮箱 / 年龄，仅本人或管理员可操作） */
     @PutMapping("/{id}/profile")
-    public ResponseEntity<Result<User>> updateProfile(@PathVariable Long id,
-                                                      @Valid @RequestBody ProfileUpdateDTO dto,
-                                                      HttpSession session) {
+    public ResponseEntity<Result<UserVO>> updateProfile(@PathVariable Long id,
+                                                        @Valid @RequestBody ProfileUpdateDTO dto,
+                                                        HttpSession session) {
         ensureSelfOrAdmin(id, session);
         return ResponseEntity.ok(Result.success("资料已更新", userService.updateProfile(id, dto)));
     }

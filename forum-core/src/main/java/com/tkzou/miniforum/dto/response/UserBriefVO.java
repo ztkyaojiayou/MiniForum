@@ -23,4 +23,9 @@ public class UserBriefVO {
         this.username = user.getUsername();
     }
 
+    public UserBriefVO(Long id, String username) {
+        this.id = id;
+        this.username = username;
+    }
+
 }

@@ -2,7 +2,7 @@ package com.tkzou.miniforum.controller;
 
 import com.tkzou.miniforum.common.Result;
 import com.tkzou.miniforum.dto.request.UserCreateDTO;
-import com.tkzou.miniforum.entity.User;
+import com.tkzou.miniforum.dto.response.UserVO;
 import com.tkzou.miniforum.service.AuthService;
 import com.tkzou.miniforum.service.UserService;
 import org.springframework.http.ResponseEntity;
@@ -52,7 +52,7 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<Result<LoginResponse>> login(@Valid @RequestBody LoginRequest request,
                                                        HttpSession session) {
-        User user = authService.login(request.getUsername(), request.getPassword());
+        UserVO user = authService.login(request.getUsername(), request.getPassword());
         session.setAttribute("userId", user.getId());
         session.setAttribute("username", user.getUsername());
         LoginResponse data = new LoginResponse(user);
@@ -63,7 +63,7 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<Result<LoginResponse>> register(@Valid @RequestBody UserCreateDTO dto,
                                                           HttpSession session) {
-        User user = userService.createUser(dto);
+        UserVO user = userService.createUser(dto);
         session.setAttribute("userId", user.getId());
         session.setAttribute("username", user.getUsername());
         return ResponseEntity.ok(Result.success("注册成功", new LoginResponse(user)));
@@ -94,7 +94,7 @@ public class AuthController {
         private final String nickname;
         private final String avatar;
 
-        public LoginResponse(User user) {
+        public LoginResponse(UserVO user) {
             this.username = user.getUsername();
             this.id = user.getId();
             this.nickname = user.getNickname();

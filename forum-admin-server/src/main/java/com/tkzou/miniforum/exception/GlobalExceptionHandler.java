@@ -1,6 +1,8 @@
 package com.tkzou.miniforum.exception;
 
 import com.tkzou.miniforum.common.Result;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -16,6 +18,8 @@ import java.util.stream.Collectors;
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<Result<Void>> handleNotFound(ResourceNotFoundException ex) {
@@ -48,6 +52,16 @@ public class GlobalExceptionHandler {
                 .map(FieldError::getDefaultMessage)
                 .collect(Collectors.joining("; "));
         return buildResponse(HttpStatus.BAD_REQUEST, message);
+    }
+
+    /**
+     * 未预期异常兜底：避免默认 500 响应体非统一结构 / 可能泄露内部信息；
+     * 异常必须带堆栈记日志，便于排查，但响应只给通用文案。
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Result<Void>> handleUnexpected(Exception ex) {
+        log.error("未预期异常", ex);
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "服务器内部错误，请稍后重试");
     }
 
     /**
