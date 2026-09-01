@@ -58,11 +58,11 @@ forum-core（纯库，无 main、无 web 依赖）
 2. 一个 `@Profile("prod")` 的**真实适配**——仅在 `-Pprod` 下编译（demo-runner 的 `src/prod/java`，或 recommend-server 的 `src/main/java/.../prod/`），仅在 `SPRING_PROFILES_ACTIVE=prod` 下激活。
 3. Spring 按 profile 选择对应 bean；其余代码只依赖接口，两种模式下行为一致。
 
-示例：`KafkaBehaviorLogger` / `KafkaBehaviorConsumer` / `KafkaPostCreated*`、`RedisRealtimeFeatureStore`、`RedisFollowRepository` / `RedisFollowFeedStore`、`NacosConfigService`、`FlinkRealtimeWindow`、`MySqlDataStore` / `MySqlOutboxStore`。已知的生产环境取舍见 README §6（如 Flink 未聚合用户 topicClicks、单实例假设、≤30s 数据丢失窗口）。
+示例：`KafkaBehaviorLogger` / `KafkaBehaviorConsumer` / `KafkaPostCreated*`、`RedisRealtimeFeatureStore`、`MySqlFollowRepository`（MySQL 事实 + Redis ZSET 热缓存） / `RedisFollowFeedStore`、`NacosConfigService`、`FlinkRealtimeWindow`、`MySqlDataStore` / `MySqlOutboxStore`。已知的生产环境取舍见 README §6（如 Flink 未聚合用户 topicClicks、单实例假设、≤30s 数据丢失窗口）。
 
 ### 推荐管道（在线，每次 `/api/recommend/feed`）
 
-由 `RecommendService` 编排 → `FeatureService.userProfile` → `RecallService.recall`（6 路并行召回：热门/话题/类目/ItemCF/新内容/关注）→ `MergeRecallService`（每路 `1/(rank+60)` 归一化 + 通道加权 `RecConfig` + 去重）→ `RuleRankService.rank`（加权特征求和 × 时效衰减半衰期 4h）→ `DiversifyRerankService`（同类连续 ≤2 打散 + MMR）→ 冷启动（新内容 Thompson、新用户热门兜底）→ 曝光打点。每条候选携带可解释理由 + 召回路来源。标注调用链见 `README.md`。
+由 `RecommendService` 编排 → `UserProfileService.userProfile`（画像，三域之一，见 `forum-recommend-server/recommend/profile|feature|graph`）→ `RecallService.recall`（6 路并行召回：热门/话题/类目/ItemCF/新内容/关注）→ `MergeRecallService`（每路 `1/(rank+60)` 归一化 + 通道加权 `RecConfig` + 去重）→ `RuleRankService.rank`（加权特征求和 × 时效衰减半衰期 4h）→ `DiversifyRerankService`（同类连续 ≤2 打散 + MMR）→ 冷启动（新内容 Thompson、新用户热门兜底）→ 曝光打点。每条候选携带可解释理由 + 召回路来源。标注调用链见 `README.md`。
 
 ### 行为回流闭环（数据回流以改进推荐）
 
@@ -95,4 +95,4 @@ forum-core（纯库，无 main、无 web 依赖）
 
 ## 测试
 
-共 87 个测试（core 24 / admin 14 / recommend 16 / offline 6 / demo-runner 27，含端到端集成测试）。`forum-core` 的 test-jar 提供 `TestBehaviors`，供 recommend/offline 测试共用。运行单个测试需加 `-pl <module> -Dtest=<ClassName>`；因模块可能不含该测试，请使用 `-DfailIfNoTests=false`。
+共 **176 个测试**（core 44 / admin 39 / recommend 57 / offline 8 / demo-runner 28，含端到端集成测试）。`forum-core` 的 test-jar 提供 `TestBehaviors`，供 recommend/offline 测试共用。运行单个测试需加 `-pl <module> -Dtest=<ClassName>`；因模块可能不含该测试，请使用 `-DfailIfNoTests=false`。
