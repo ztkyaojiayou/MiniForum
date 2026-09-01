@@ -73,7 +73,7 @@
 | 层 | 时效 | 本模块对应 | 职责 |
 |---|---|---|---|
 | **离线层** | 小时 ~ 天 | `recommend/model`、`recommend/eval` | 行为日志 → ItemCF 相似度表；时间切分离线评估 |
-| **近线层** | 秒 ~ 分 | `recommend/mq`、`recommend/feature` | 实时特征窗口聚合（模拟 Kafka → Flink → Redis） |
+| **近线层** | 秒 ~ 分 | `recommend/mq`、`recommend/feature` | 实时特征窗口聚合（内存扮演 Kafka → Flink → Redis 的角色） |
 | **在线层** | 毫秒 | `recommend/service` + `recall/rank/rerank/coldstart` | 漏斗编排，低延迟下发；配置 / AB 分流 |
 
 ### 2. 在线请求链路（一次 `/api/recommend/feed`）
@@ -108,7 +108,7 @@ GET /api/recommend/feed?page&size      (session: userId)
 用户行为(赞/藏/评/转/搜/关注/浏览/曝光/点击/负反馈)
   → BehaviorLogger（InMemoryBehaviorLogger）
      ├→ BehaviorLogRepository → data/behavior-log.json   ← 画像/评估事实源
-     └→ BehaviorEventQueue（模拟 Kafka）
+     └→ BehaviorEventQueue（内存版事件总线）
           ├→ RealtimeFeatureWindow（模拟 Flink, 每 5s flush）
           │    └→ RealtimeFeatureStore（模拟 Redis）
           │         └→ 下次排序特征 realtime（用户话题投影 + 物品热度爆发）

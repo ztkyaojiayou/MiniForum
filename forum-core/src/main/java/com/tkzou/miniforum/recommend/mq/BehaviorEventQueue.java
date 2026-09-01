@@ -11,7 +11,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 /**
- * 行为事件队列（模拟 Kafka）
+ * 行为事件总线（进程内同步发布-订阅——扮演生产环境 Kafka 的角色）
  * <p>
  * <b>数据流程</b>：{@code InMemoryBehaviorLogger} 写行为时 {@link #publish} 广播给所有订阅者
  * （实时特征窗口 {@code RealtimeFeatureWindow}、冷启动反馈 {@code ColdStartFeedbackListener} 等近线消费者），

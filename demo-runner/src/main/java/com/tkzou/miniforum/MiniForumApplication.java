@@ -9,7 +9,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * <p>
  * 微服务拆分后，本类是唯一可运行的 Spring Boot 应用：聚合
  * <b>forum-core（共享域）+ forum-admin-server（主业务）+ forum-recommend-server（推荐核心）</b>
- * 为一个<b>单进程、零中间件</b>的演示（内存仓库 + JSON 持久化，行为/事件用进程内模拟 Kafka）。
+ * 为一个<b>单进程、零中间件</b>的演示（内存仓库 + JSON 持久化，行为/事件用进程内事件总线——同步发布-订阅）。
  *
  * <h3>装配与扫描</h3>
  * <ul>

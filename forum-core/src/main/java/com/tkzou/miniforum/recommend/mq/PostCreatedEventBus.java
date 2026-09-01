@@ -9,11 +9,14 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 /**
- * 帖子创建事件总线（进程内多订阅者广播，模拟 Kafka topic "post-created"）
+ * 帖子创建事件总线（进程内同步发布-订阅——扮演生产环境 Kafka topic "post-created" 的角色）
  * <p>
  * 内存发帖（InMemoryPostCreatedProducer）与生产 Kafka 消费（KafkaPostCreatedConsumer）
  * 都 publish 到这里，下游（关注流扇出 / 搜索索引 / 内容管道）subscribe——
- * <b>一份事件、多路消费</b>，@!prod/@prod 通吃。模式对齐行为事件队列 {@link BehaviorEventQueue}。
+ * <b>一份事件、多路消费</b>，@!prod/@prod 通吃。模式对齐行为事件总线 {@link BehaviorEventQueue}。
+ * <p>
+ * <b>无队列缓冲</b>：{@link #publish} 在调用线程内同步回调全部订阅者（观察者模式）——一个订阅者抛异常会中断
+ * 后续订阅者并上抛给调用方；与真实 Kafka 的异步投递 / 消费组隔离 / 重试语义不同，这里保的只是<b>发布侧解耦</b>。
  * <p>
  * <b>消费者装配收进总线</b>：{@code @Autowired} 构造器用 Spring 的 {@code List<PostCreatedConsumer>}
  * 自动收集全部实现并逐个订阅（新增 {@code @Component} 实现即自动接入，零改动）；无参构造供测试/手动订阅。

@@ -24,7 +24,7 @@ import java.util.Map;
 /**
  * 实时特征窗口（模拟 Flink 滑动窗口）
  * <p>
- * <b>数据流程</b>：订阅 {@link BehaviorEventQueue}（模拟 Kafka）→ 维护最近 N 条行为 → {@link #flush}
+ * <b>数据流程</b>：订阅 {@link BehaviorEventQueue}（内存版事件总线，同步发布-订阅）→ 维护最近 N 条行为 → {@link #flush}
  * 按时间窗口（近 realtimeWindowMinutes 分钟）聚合：用户侧记"user:{id}"的点击数/曝光/点击过的话题分布，
  * 物品侧记"post:{id}"的互动/曝光 → 写入 {@link RealtimeFeatureStore}（模拟 Redis）→ 在线排序特征 realtime 读取。
  * 生产形态为 Flink 窗口算子（见 prod.flink.FlinkRealtimeWindow），本内存实现默认（!prod）生效，

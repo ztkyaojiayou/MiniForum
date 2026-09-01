@@ -10,7 +10,7 @@
  * <pre>
  * 业务打点 → BehaviorLogger.log(userId, postId, type, ...)
  *     └→ BehaviorLogRepository（内存 + data/behavior-log.json 持久化）  ← 画像/ItemCF/评估事实源
- *     └→ BehaviorEventQueue（模拟 Kafka）→ RealtimeFeatureWindow → RealtimeFeatureStore
+ *     └→ BehaviorEventQueue（内存版事件总线）→ RealtimeFeatureWindow → RealtimeFeatureStore
  * </pre>
  *
  * <b>双实现</b>：{@link com.tkzou.miniforum.recommend.behavior.InMemoryBehaviorLogger}（@Profile("!prod")）

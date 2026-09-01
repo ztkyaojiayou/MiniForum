@@ -69,7 +69,7 @@ forum-core（纯库，无 main、无 web 依赖）
 每个互动（赞/藏/评/转/搜/关注/浏览/曝光/点击/负反馈）→ `BehaviorLogger` → 同一事件的两种消费方：
 
 - `BehaviorLogRepository` → `data/behavior-log.json` → 用户画像 + 离线评估 + ItemCF 相似度表（随行为数变化自动重建）。
-- `BehaviorEventQueue`（模拟 Kafka）→ `RealtimeFeatureWindow`（模拟 Flink，每 5s flush）→ `RealtimeFeatureStore`（模拟 Redis）→ 下次排序的实时特征；以及 → `ColdStartFeedbackListener` → `NewItemPool` 的 Thompson 后验更新。
+- `BehaviorEventQueue`（内存版事件总线，同步发布-订阅）→ `RealtimeFeatureWindow`（模拟 Flink，每 5s flush）→ `RealtimeFeatureStore`（模拟 Redis）→ 下次排序的实时特征；以及 → `ColdStartFeedbackListener` → `NewItemPool` 的 Thompson 后验更新。
 
 生产模式下消费组拓扑会变化（见 README §3-4）：一个 Kafka topic 被 Flink 作业（group `mini-forum-realtime`）与一个应用内消费者（group `mini-forum-offline`）分别消费。
 

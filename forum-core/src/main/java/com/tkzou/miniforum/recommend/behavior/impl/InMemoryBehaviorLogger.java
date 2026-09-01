@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
  * <p>
  * <b>数据流程</b>：{@link #log(...)} 只把行为投入<b>异步队列</b>（微秒级返回，不阻塞请求线程），
  * 由后台单线程按序消费：①存 {@code BehaviorLogRepository}（JSON 落盘，画像/评估的事实源）；
- * ②发布到 {@code BehaviorEventQueue}（模拟 Kafka），供近线消费者（实时特征/冷启动反馈/热搜/赛马）处理。
+ * ②发布到 {@code BehaviorEventQueue}（内存版事件总线，同步发布-订阅），供近线消费者（实时特征/冷启动反馈/热搜/赛马）处理。
  * <p>
  * <b>为什么异步</b>：曝光/点击是最频繁的写操作，同步落库+同步广播会随 QPS 线性吃掉请求线程。
  * 对齐生产形态——prod 下本就走 Kafka 异步，这里把内存版也统一为"近线"语义（行为最终一致）。
