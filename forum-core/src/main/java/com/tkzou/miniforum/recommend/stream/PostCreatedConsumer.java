@@ -9,7 +9,7 @@ package com.tkzou.miniforum.recommend.stream;
  * <p>
  * <b>对齐 Kafka consumer 心智</b>：每个实现 = 一个独立消费组，{@link #name()} 是该组的标识
  * （用于日志 / 监控 / 顺序控制）。@!prod/@prod 通吃：内存发帖（InMemoryPostCreatedProducer）
- * 与生产 Kafka 消费（KafkaPostCreatedConsumer）最终都 publish 到总线，本接口实现者无需感知来源。
+ * 与生产 Kafka 消费（KafkaPostCreatedIngestor）最终都 publish 到总线，本接口实现者无需感知来源。
  */
 public interface PostCreatedConsumer {
 

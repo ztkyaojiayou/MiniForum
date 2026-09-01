@@ -3,7 +3,7 @@
  * <p>
  * 把推荐链路的内存实现替换为真实中间件（全部 @Profile("prod") 激活，默认内存实现）。
  * <ul>
- *   <li>kafka：KafkaBehaviorLogger（行为→topic "behavior-log"）、KafkaBehaviorConsumer（回灌离线侧）、
+ *   <li>kafka：KafkaBehaviorLogger（行为→topic "behavior-log"）、KafkaBehaviorIngestor（回灌离线侧）、
  *       KafkaPostCreatedProducer/Consumer（发帖事件 topic "post-created" → 扇出 + 冷启池）；</li>
  *   <li>redis：RedisRealtimeFeatureStore（实时特征，TTL 60s）；</li>
  *   <li>nacos：NacosConfigService（配置中心热刷新）。</li>

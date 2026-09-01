@@ -1,9 +1,8 @@
 package com.tkzou.miniforum.recommend.prod.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tkzou.miniforum.recommend.behavior.BehaviorLog;
-import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;
-import com.tkzou.miniforum.recommend.stream.BehaviorEventQueue;
+import com.tkzou.miniforum.recommend.stream.PostCreatedEventBus;
+import com.tkzou.miniforum.recommend.stream.PostCreatedEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -22,22 +21,20 @@ import java.util.List;
 import java.util.Properties;
 
 /**
- * Kafka 行为消费者（生产适配，@Profile("prod") 激活）
+ * Kafka 帖子创建事件消费者（生产适配，@Profile("prod") 激活）
  * <p>
- * <b>数据流程</b>：订阅 topic "behavior-log"（由 {@code KafkaBehaviorLogger} 写入）→ 后台线程轮询消费
- * → 反序列化为 {@link BehaviorLog} → ①保存到 {@link BehaviorLogRepository}（喂给画像/ItemCF/离线评估）；
- * ②发布到 {@link BehaviorEventQueue}（喂给冷启动反馈等近线消费者）。
- * 与 Flink 作业（近线实时特征）构成"一份行为、两处消费"：Flink 做实时特征，本消费者做离线侧落库。
+ * <b>数据流程</b>：订阅 topic "post-created"（由 {@code KafkaPostCreatedProducer} 写入）→ 后台线程轮询消费
+ * → 反序列化为 {@link PostCreatedEvent} → 广播到事件总线（冷启流量池/扇出/搜索索引等订阅者消费）。
+ * 其余下游（搜索索引 / feed 扇出 / 内容管道）可按需在此扩展订阅。
  * 生产启用：-Pprod 构建 + spring.profiles.active=prod + 配置 app.rec.kafka.bootstrap-servers。
  */
 @Component
 @Profile("prod")
-public class KafkaBehaviorConsumer {
+public class KafkaPostCreatedIngestor {
 
-    private static final Logger log = LoggerFactory.getLogger(KafkaBehaviorConsumer.class);
+    private static final Logger log = LoggerFactory.getLogger(KafkaPostCreatedIngestor.class);
 
-    private final BehaviorLogRepository behaviorLogRepository;
-    private final BehaviorEventQueue eventQueue;
+    private final PostCreatedEventBus eventBus;
     private final ObjectMapper objectMapper;
 
     @Value("${app.rec.kafka.bootstrap-servers:localhost:9092}")
@@ -47,11 +44,9 @@ public class KafkaBehaviorConsumer {
     private KafkaConsumer<String, String> consumer;
     private Thread thread;
 
-    public KafkaBehaviorConsumer(BehaviorLogRepository behaviorLogRepository,
-                                 BehaviorEventQueue eventQueue,
-                                 ObjectMapper objectMapper) {
-        this.behaviorLogRepository = behaviorLogRepository;
-        this.eventQueue = eventQueue;
+    public KafkaPostCreatedIngestor(PostCreatedEventBus eventBus,
+                                    ObjectMapper objectMapper) {
+        this.eventBus = eventBus;
         this.objectMapper = objectMapper;
     }
 
@@ -60,16 +55,16 @@ public class KafkaBehaviorConsumer {
     public void start() {
         Properties props = new Properties();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "mini-forum-offline");
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "mini-forum-post-created");
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         consumer = new KafkaConsumer<>(props);
-        consumer.subscribe(List.of("behavior-log"));
-        thread = new Thread(this::consumeLoop, "kafka-behavior-consumer");
+        consumer.subscribe(List.of("post-created"));
+        thread = new Thread(this::consumeLoop, "kafka-post-created-consumer");
         thread.setDaemon(true);
         thread.start();
-        log.info("Kafka 行为消费者已启动，bootstrap={}, topic=behavior-log", bootstrapServers);
+        log.info("Kafka 帖子创建事件消费者已启动，bootstrap={}, topic=post-created", bootstrapServers);
     }
 
     private void consumeLoop() {
@@ -78,16 +73,16 @@ public class KafkaBehaviorConsumer {
                 ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(500));
                 for (ConsumerRecord<String, String> record : records) {
                     try {
-                        BehaviorLog behavior = objectMapper.readValue(record.value(), BehaviorLog.class);
-                        behaviorLogRepository.save(behavior);
-                        eventQueue.publish(behavior);
+                        PostCreatedEvent event = objectMapper.readValue(record.value(), PostCreatedEvent.class);
+                        // 广播到进程内事件总线：扇出/冷启流量池/搜索索引/内容管道等订阅者异步消费（避免发帖请求被拖慢）
+                        eventBus.publish(event);
                     } catch (Exception e) {
                         // 异常必须带堆栈（手册硬性要求）；带 topic/offset 便于定位坏消息
-                        log.warn("解析行为消息失败：topic={} offset={}", record.topic(), record.offset(), e);
+                        log.warn("解析帖子创建事件失败：topic={} offset={}", record.topic(), record.offset(), e);
                     }
                 }
             } catch (Exception e) {
-                log.warn("Kafka 消费异常", e);
+                log.warn("Kafka 帖子创建事件消费异常", e);
             }
         }
     }
@@ -105,6 +100,6 @@ public class KafkaBehaviorConsumer {
         if (consumer != null) {
             consumer.close();
         }
-        log.info("Kafka 行为消费者已停止");
+        log.info("Kafka 帖子创建事件消费者已停止");
     }
 }

@@ -58,7 +58,7 @@ forum-core（纯库，无 main、无 web 依赖）
 2. 一个 `@Profile("prod")` 的**真实适配**——仅在 `-Pprod` 下编译（demo-runner 的 `src/prod/java`，或 recommend-server 的 `src/main/java/.../prod/`），仅在 `SPRING_PROFILES_ACTIVE=prod` 下激活。
 3. Spring 按 profile 选择对应 bean；其余代码只依赖接口，两种模式下行为一致。
 
-示例：`KafkaBehaviorLogger` / `KafkaBehaviorConsumer` / `KafkaPostCreated*`、`RedisRealtimeFeatureStore`、`MySqlFollowRepository`（MySQL 事实 + Redis ZSET 热缓存） / `RedisFollowFeedStore`、`NacosConfigService`、`FlinkRealtimeWindow`、`MySqlDataStore` / `MySqlOutboxStore`。已知的生产环境取舍见 README §6（如 Flink 未聚合用户 topicClicks、单实例假设、≤30s 数据丢失窗口）。
+示例：`KafkaBehaviorLogger` / `KafkaBehaviorIngestor` / `KafkaPostCreated*`、`RedisRealtimeFeatureStore`、`MySqlFollowRepository`（MySQL 事实 + Redis ZSET 热缓存） / `RedisFollowFeedStore`、`NacosConfigService`、`FlinkRealtimeWindow`、`MySqlDataStore` / `MySqlOutboxStore`。已知的生产环境取舍见 README §6（如 Flink 未聚合用户 topicClicks、单实例假设、≤30s 数据丢失窗口）。
 
 ### 推荐管道（在线，每次 `/api/recommend/feed`）
 
