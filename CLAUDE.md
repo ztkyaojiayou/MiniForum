@@ -62,7 +62,7 @@ forum-core（纯库，无 main、无 web 依赖）
 
 ### 推荐管道（在线，每次 `/api/recommend/feed`）
 
-由 `RecommendService` 编排 → `UserProfileService.userProfile`（画像，三域之一，见 `forum-recommend-server/recommend/profile|feature|graph`）→ `RecallService.recall`（6 路并行召回：热门/话题/类目/ItemCF/新内容/关注）→ `MergeRecallService`（每路 `1/(rank+60)` 归一化 + 通道加权 `RecConfig` + 去重）→ `CoarseRankService`（粗排，简化实现按融合分截断到 `coarseTopN`，默认 200 即透传）→ `RuleRankService.rank`（加权特征求和 × 时效衰减半衰期 4h）→ `DiversifyRerankService`（同类连续 ≤2 打散 + MMR）→ 冷启动（新内容 Thompson、新用户热门兜底）→ 曝光打点。每条候选携带可解释理由 + 召回路来源。标注调用链见 `README.md`。
+由 `RecommendService` 编排 → `UserProfileService.userProfile`（画像，三域之一，见 `forum-recommend-server/recommend/profile|feature|graph`）→ `RecallService.recall`（6 路并行召回：热门/话题/类目/ItemCF/新内容/关注）→ `MergeRecallService`（每路 `1/(rank+60)` 归一化 + 通道加权 `RecConfig` + 去重）→ `CoarseRankService`（粗排，简化实现按融合分截断到 `coarseTopN`，默认 200 即透传）→ `RuleFineRankService.rank`（加权特征求和 × 时效衰减半衰期 4h）→ `DiversifyRerankService`（同类连续 ≤2 打散 + MMR）→ 冷启动（新内容 Thompson、新用户热门兜底）→ 曝光打点。每条候选携带可解释理由 + 召回路来源。标注调用链见 `README.md`。
 
 ### 行为回流闭环（数据回流以改进推荐）
 

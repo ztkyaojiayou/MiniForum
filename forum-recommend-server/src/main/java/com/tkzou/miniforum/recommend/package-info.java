@@ -15,7 +15,7 @@
  *        ├→ graph.InMemorySocialGraphService      社交图谱(followingIds/social/authorFollowers)
  *        ├→ recall.RecallService            6 路召回（hot/topic/category/itemcf/newitem/follow）
  *        │    └→ MergeRecallService         各路 rank 归一化 + 通道加权 + 去重 → Candidate
- *        ├→ rank.RuleRankService            微博式 rankScore（interact/quality/interest/social/author/hot/realtime × 时效）
+ *        ├→ rank.RuleFineRankService            微博式 rankScore（interact/quality/interest/social/author/hot/realtime × 时效）
  *        ├→ rerank.DiversifyRerankService   同类打散(硬约束) + MMR 多样性 → TopN
  *        ├→ coldstart.ColdStartService      Thompson 探索加分 + 新用户热门兜底
  *        └→ behavior.InMemoryBehaviorLogger 下发即记 EXPOSE → 事件队列

@@ -23,10 +23,10 @@ import com.tkzou.miniforum.recommend.profile.UserProfileService;
 import com.tkzou.miniforum.recommend.model.ItemCfModel;
 import com.tkzou.miniforum.recommend.model.ItemCfModelStore;
 import com.tkzou.miniforum.recommend.rank.CoarseRankService;
-import com.tkzou.miniforum.recommend.rank.RankService;
+import com.tkzou.miniforum.recommend.rank.FineRankService;
+import com.tkzou.miniforum.recommend.rank.RerankService;
 import com.tkzou.miniforum.recommend.recall.RecallService;
-import com.tkzou.miniforum.recommend.rerank.RerankService;
-import com.tkzou.miniforum.repository.PostRepository;
+import com.tkzou.miniforum.recommend.rank.RerankService;import com.tkzou.miniforum.repository.PostRepository;
 import com.tkzou.miniforum.util.TtlCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +47,7 @@ import java.util.stream.Collectors;
  * 推荐服务（漏斗编排核心）
  * <p>
  * <b>数据流程</b>：{@code RecommendContext(uid, scene, size)} → 画像 {@link UserProfileService#userProfile}
- * → {@link RecallService#recall} 多路召回+融合(Candidate) → {@link RuleRankService#rank} 微博式排序(RankedItem+推荐理由)
+ * → {@link RecallService#recall} 多路召回+融合(Candidate) → {@link FineRankService#rank} 微博式排序(RankedItem+推荐理由)
  * → {@link DiversifyRerankService#rerank} 打散/MMR(TopN) → 冷启动兜底(新用户补热门) → 逐条记 EXPOSE 行为日志
  * → 组装带理由的 {@link RecommendPostVO} 下发。
  * <p>
@@ -78,7 +78,7 @@ public class RecommendService {
     private final ItemFeatureService itemFeatureService;
     private final RecallService recallService;
     private final CoarseRankService coarseRankService;
-    private final RankService rankService;
+    private final FineRankService fineRankService;
     private final RerankService rerankService;
     private final ColdStartService coldStartService;
     private final ConfigService configService;
@@ -92,7 +92,7 @@ public class RecommendService {
                             ItemFeatureService itemFeatureService,
                             RecallService recallService,
                             CoarseRankService coarseRankService,
-                            RankService rankService,
+                            FineRankService fineRankService,
                             RerankService rerankService,
                             ColdStartService coldStartService,
                             ConfigService configService,
@@ -105,7 +105,7 @@ public class RecommendService {
         this.itemFeatureService = itemFeatureService;
         this.recallService = recallService;
         this.coarseRankService = coarseRankService;
-        this.rankService = rankService;
+        this.fineRankService = fineRankService;
         this.rerankService = rerankService;
         this.coldStartService = coldStartService;
         this.configService = configService;
@@ -165,7 +165,7 @@ public class RecommendService {
         // 1.5 粗排（架构对齐大厂"召回→粗排→精排"；简化实现按融合分截断到 coarseTopN，默认透传）
         List<Candidate> coarse = coarseRankService.coarseRank(ctx, candidates);
         // 2. 规则排序（精排）
-        List<RankedItem> ranked = rankService.rank(ctx, coarse);
+        List<RankedItem> ranked = fineRankService.rank(ctx, coarse);
         // 3. 重排（打散 + MMR）
         List<RankedItem> reranked = rerankService.rerank(ctx, ranked, topN);
         // 4. 冷启动兜底（新用户补热门）

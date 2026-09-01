@@ -15,9 +15,9 @@ import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
 import com.tkzou.miniforum.recommend.profile.UserProfileService;
 import com.tkzou.miniforum.recommend.model.ItemCfModelStore;
 import com.tkzou.miniforum.recommend.rank.CoarseRankService;
-import com.tkzou.miniforum.recommend.rank.RankService;
+import com.tkzou.miniforum.recommend.rank.FineRankService;
 import com.tkzou.miniforum.recommend.recall.RecallService;
-import com.tkzou.miniforum.recommend.rerank.RerankService;
+import com.tkzou.miniforum.recommend.rank.RerankService;
 import com.tkzou.miniforum.repository.PostRepository;
 import org.junit.jupiter.api.Test;
 
@@ -46,7 +46,7 @@ class RecommendServiceFallbackTest {
         ItemFeatureService itemFeatureService = mock(ItemFeatureService.class);
         RecallService recallService = mock(RecallService.class);
         CoarseRankService coarseRankService = mock(CoarseRankService.class);
-        RankService rankService = mock(RankService.class);
+        FineRankService rankService = mock(FineRankService.class);
         RerankService rerankService = mock(RerankService.class);
         ColdStartService coldStartService = mock(ColdStartService.class);
         ConfigService configService = mock(ConfigService.class);

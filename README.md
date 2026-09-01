@@ -91,7 +91,7 @@ GET /api/recommend/feed?page&size      (session: userId)
   │            └ MergeRecallService: 每路 rank归一化 1/(rank+60)
   │                 + 通道加权(RecConfig) + 去重 → List<Candidate>
   ├─②.5 粗排    CoarseRankService: 按融合分截断到 coarseTopN（默认 200 即透传，架构对齐大厂"千→百"）
-  ├─③ 排序(精排) RuleRankService.rank(ctx, coarse)
+  ├─③ 排序(精排) RuleFineRankService.rank(ctx, coarse)
   │            rankScore = (Σ w_f·f + explore) × 时效衰减(半衰期4h)
   │            特征: interact·quality·interest·social·author·hot·realtime
   │            → List<RankedItem>(携带特征分构成 + 推荐理由)

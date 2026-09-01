@@ -1,5 +1,5 @@
-package com.tkzou.miniforum.recommend.rerank.impl;
-import com.tkzou.miniforum.recommend.rerank.RerankService;
+package com.tkzou.miniforum.recommend.rank.impl;
+import com.tkzou.miniforum.recommend.rank.RerankService;
 
 import com.tkzou.miniforum.recommend.config.ConfigService;
 import com.tkzou.miniforum.recommend.config.RecConfig;

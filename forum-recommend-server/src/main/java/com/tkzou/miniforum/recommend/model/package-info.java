@@ -11,7 +11,7 @@
  *   → ItemCfModel.topSimilar(postId, k)    相似物品 TopK
  * </pre>
  *
- * 使用方：recall.ItemCfRecall（召回）、rank.RuleRankService（interest 特征）、
+ * 使用方：recall.ItemCfRecall（召回）、rank.RuleFineRankService（interest 特征）、
  * recommend.service.RecommendService.related（详情相关推荐）。
  * 属"离线构建 + 在线读取"一体件：构建在行为数变化时触发（演示），生产可由 offline-job 离线构建后发布。
  */

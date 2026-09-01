@@ -1,6 +1,6 @@
 package com.tkzou.miniforum.recommend.rank.impl;
 import com.tkzou.miniforum.recommend.rank.ExploreProvider;
-import com.tkzou.miniforum.recommend.rank.RankService;
+import com.tkzou.miniforum.recommend.rank.FineRankService;
 
 import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.recommend.coldstart.TrafficPool;
@@ -29,9 +29,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 规则加权排序（弱训练侧默认排序器）
+ * 规则加权精排（排序第二阶段·弱训练侧默认实现，粗排之后、重排之前）
  * <p>
- * <b>数据流程</b>：{@code List<Candidate>（融合候选）} → 对每个候选计算特征分构成 featureScores
+ * <b>数据流程</b>：{@code List<Candidate>（粗排后的候选）} → 对每个候选计算特征分构成 featureScores
  * → 加权求和 rankScore = (Σ w_f·f + explore) × recency → 排序 → {@code List<RankedItem>}（携带特征分+召回路来源+推荐理由），
  * 供重排层 {@code DiversifyRerankService} 消费。
  * <p>
@@ -40,7 +40,7 @@ import java.util.Set;
  * 微博场景方向性经验值（见 docs/微博推荐调研.md）。
  */
 @Component
-public class RuleRankService implements RankService {
+public class RuleFineRankService implements FineRankService {
 
     /** 兴趣融合权重：话题重叠 × 0.6 + ItemCF 相似度 × 0.4（微博兴趣 = 内容语义 + 行为相似） */
     private static final double INTEREST_TOPIC_WEIGHT = 0.6;
@@ -64,15 +64,15 @@ public class RuleRankService implements RankService {
     private final ExploreProvider exploreProvider;
     private final TrafficPool trafficPool;
 
-    public RuleRankService(UserProfileService userProfileService,
-                           ItemFeatureService itemFeatureService,
-                           ItemCfModelStore itemCfModelStore,
-                           ItemCfScorer itemCfScorer,
-                           SocialGraphService socialGraphService,
-                           PostRepository postRepository,
-                           ConfigService configService,
-                           ExploreProvider exploreProvider,
-                           TrafficPool trafficPool) {
+    public RuleFineRankService(UserProfileService userProfileService,
+                               ItemFeatureService itemFeatureService,
+                               ItemCfModelStore itemCfModelStore,
+                               ItemCfScorer itemCfScorer,
+                               SocialGraphService socialGraphService,
+                               PostRepository postRepository,
+                               ConfigService configService,
+                               ExploreProvider exploreProvider,
+                               TrafficPool trafficPool) {
         this.userProfileService = userProfileService;
         this.itemFeatureService = itemFeatureService;
         this.itemCfModelStore = itemCfModelStore;
