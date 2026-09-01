@@ -73,7 +73,7 @@ public class MySqlMessageRepository implements MessageRepository {
 
     @Override
     public List<Message> findByConversationId(Long conversationId) {
-        return jdbcTemplate.query("SELECT * FROM messages WHERE conversation_id=? ORDER BY created_at, id",
+        return jdbcTemplate.query("SELECT id, conversation_id, sender, sender_id, receiver, receiver_id, content, created_at, is_read FROM messages WHERE conversation_id=? ORDER BY created_at, id",
                 this::mapMessage, conversationId);
     }
 
@@ -102,7 +102,7 @@ public class MySqlMessageRepository implements MessageRepository {
 
     @Override
     public List<Message> exportAll() {
-        return jdbcTemplate.query("SELECT * FROM messages ORDER BY id", this::mapMessage);
+        return jdbcTemplate.query("SELECT id, conversation_id, sender, sender_id, receiver, receiver_id, content, created_at, is_read FROM messages ORDER BY id", this::mapMessage);
     }
 
     @Override

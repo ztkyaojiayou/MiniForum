@@ -44,8 +44,22 @@ public class MySqlFavoriteRepository implements FavoriteRepository {
                 + "post_id BIGINT NOT NULL,"
                 + "username VARCHAR(50) NOT NULL,"
                 + "created_at DATETIME NOT NULL,"
-                + "UNIQUE KEY uk_fav (post_id, username)"
+                + "UNIQUE KEY uk_fav (post_id, username),"
+                + "KEY idx_username (username, created_at)"
                 + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        // 存量表补索引（findPostIdsByUsername 的 username 分支走索引，避免全表扫）：幂等补建
+        ensureIndex("favorites", "idx_username", "ALTER TABLE favorites ADD INDEX idx_username (username, created_at)");
+    }
+
+    /** 幂等补索引：information_schema 判定不存在时才执行 ALTER */
+    private void ensureIndex(String table, String index, String alterSql) {
+        Integer n = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.statistics "
+                        + "WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ?",
+                Integer.class, table, index);
+        if (n == null || n == 0) {
+            jdbcTemplate.execute(alterSql);
+        }
     }
 
     @Override
@@ -61,7 +75,7 @@ public class MySqlFavoriteRepository implements FavoriteRepository {
 
     @Override
     public Optional<Favorite> findByPostIdAndUsername(Long postId, String username) {
-        return jdbcTemplate.query("SELECT * FROM favorites WHERE post_id=? AND username=?",
+        return jdbcTemplate.query("SELECT id, post_id, username, created_at FROM favorites WHERE post_id=? AND username=?",
                 this::mapFavorite, postId, username).stream().findFirst();
     }
 
@@ -89,7 +103,7 @@ public class MySqlFavoriteRepository implements FavoriteRepository {
 
     @Override
     public List<Favorite> findAll() {
-        return jdbcTemplate.query("SELECT * FROM favorites ORDER BY created_at DESC, id DESC", this::mapFavorite);
+        return jdbcTemplate.query("SELECT id, post_id, username, created_at FROM favorites ORDER BY created_at DESC, id DESC", this::mapFavorite);
     }
 
     @Override

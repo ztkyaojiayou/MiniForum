@@ -77,7 +77,7 @@ public class MySqlLikeRepository implements LikeRepository {
 
     @Override
     public Optional<Like> findByPostIdAndUsername(Long postId, String username) {
-        return jdbcTemplate.query("SELECT * FROM likes WHERE post_id=? AND username=?",
+        return jdbcTemplate.query("SELECT id, post_id, username, created_at FROM likes WHERE post_id=? AND username=?",
                 this::mapLike, postId, username).stream().findFirst();
     }
 
@@ -99,7 +99,7 @@ public class MySqlLikeRepository implements LikeRepository {
 
     @Override
     public List<Like> findAll() {
-        return jdbcTemplate.query("SELECT * FROM likes ORDER BY created_at DESC, id DESC", this::mapLike);
+        return jdbcTemplate.query("SELECT id, post_id, username, created_at FROM likes ORDER BY created_at DESC, id DESC", this::mapLike);
     }
 
     @Override

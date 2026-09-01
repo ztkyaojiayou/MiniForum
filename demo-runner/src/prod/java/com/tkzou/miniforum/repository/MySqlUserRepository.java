@@ -67,17 +67,17 @@ public class MySqlUserRepository implements UserRepository {
 
     @Override
     public Optional<User> findById(Long id) {
-        return jdbcTemplate.query("SELECT * FROM users WHERE id=?", this::mapUser, id).stream().findFirst();
+        return jdbcTemplate.query("SELECT id, username, email, password, age, nickname, bio, avatar FROM users WHERE id=?", this::mapUser, id).stream().findFirst();
     }
 
     @Override
     public Optional<User> findByUsername(String username) {
-        return jdbcTemplate.query("SELECT * FROM users WHERE username=?", this::mapUser, username).stream().findFirst();
+        return jdbcTemplate.query("SELECT id, username, email, password, age, nickname, bio, avatar FROM users WHERE username=?", this::mapUser, username).stream().findFirst();
     }
 
     @Override
     public List<User> findAll() {
-        return jdbcTemplate.query("SELECT * FROM users ORDER BY id", this::mapUser);
+        return jdbcTemplate.query("SELECT id, username, email, password, age, nickname, bio, avatar FROM users ORDER BY id", this::mapUser);
     }
 
     @Override

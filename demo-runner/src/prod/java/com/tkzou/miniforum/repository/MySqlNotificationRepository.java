@@ -71,7 +71,7 @@ public class MySqlNotificationRepository implements NotificationRepository {
 
     @Override
     public List<Notification> findByRecipientId(Long recipientId) {
-        return jdbcTemplate.query("SELECT * FROM notifications WHERE recipient_id=? ORDER BY created_at DESC, id DESC",
+        return jdbcTemplate.query("SELECT id, recipient_id, actor_id, actor_username, type, post_id, content, is_read, created_at FROM notifications WHERE recipient_id=? ORDER BY created_at DESC, id DESC",
                 this::mapNotification, recipientId);
     }
 
@@ -95,7 +95,7 @@ public class MySqlNotificationRepository implements NotificationRepository {
 
     @Override
     public List<Notification> exportAll() {
-        return jdbcTemplate.query("SELECT * FROM notifications ORDER BY id", this::mapNotification);
+        return jdbcTemplate.query("SELECT id, recipient_id, actor_id, actor_username, type, post_id, content, is_read, created_at FROM notifications ORDER BY id", this::mapNotification);
     }
 
     @Override

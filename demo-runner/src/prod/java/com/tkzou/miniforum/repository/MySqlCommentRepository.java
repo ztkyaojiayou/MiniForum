@@ -65,12 +65,12 @@ public class MySqlCommentRepository implements CommentRepository {
 
     @Override
     public Optional<Comment> findById(Long id) {
-        return jdbcTemplate.query("SELECT * FROM comments WHERE id=?", this::mapComment, id).stream().findFirst();
+        return jdbcTemplate.query("SELECT id, post_id, author, content, created_at, like_count, parent_id FROM comments WHERE id=?", this::mapComment, id).stream().findFirst();
     }
 
     @Override
     public List<Comment> findByPostId(Long postId) {
-        return jdbcTemplate.query("SELECT * FROM comments WHERE post_id=? ORDER BY created_at ASC, id ASC",
+        return jdbcTemplate.query("SELECT id, post_id, author, content, created_at, like_count, parent_id FROM comments WHERE post_id=? ORDER BY created_at ASC, id ASC",
                 this::mapComment, postId);
     }
 
@@ -92,7 +92,7 @@ public class MySqlCommentRepository implements CommentRepository {
 
     @Override
     public List<Comment> findAll() {
-        return jdbcTemplate.query("SELECT * FROM comments ORDER BY created_at DESC, id DESC", this::mapComment);
+        return jdbcTemplate.query("SELECT id, post_id, author, content, created_at, like_count, parent_id FROM comments ORDER BY created_at DESC, id DESC", this::mapComment);
     }
 
     @Override

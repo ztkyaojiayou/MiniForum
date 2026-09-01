@@ -54,7 +54,7 @@ public class MySqlSearchRecordRepository implements SearchRecordRepository {
 
     @Override
     public Optional<SearchRecord> findByKeyword(String keyword) {
-        return jdbcTemplate.query("SELECT * FROM search_records WHERE keyword=?", this::mapSearchRecord, keyword)
+        return jdbcTemplate.query("SELECT id, keyword, count, last_searched_at FROM search_records WHERE keyword=?", this::mapSearchRecord, keyword)
                 .stream().findFirst();
     }
 
@@ -79,13 +79,13 @@ public class MySqlSearchRecordRepository implements SearchRecordRepository {
 
     @Override
     public List<SearchRecord> findTopKeywords(int limit) {
-        return jdbcTemplate.query("SELECT * FROM search_records ORDER BY count DESC, last_searched_at DESC LIMIT ?",
+        return jdbcTemplate.query("SELECT id, keyword, count, last_searched_at FROM search_records ORDER BY count DESC, last_searched_at DESC LIMIT ?",
                 this::mapSearchRecord, Math.max(limit, 1));
     }
 
     @Override
     public List<SearchRecord> exportAll() {
-        return jdbcTemplate.query("SELECT * FROM search_records ORDER BY id", this::mapSearchRecord);
+        return jdbcTemplate.query("SELECT id, keyword, count, last_searched_at FROM search_records ORDER BY id", this::mapSearchRecord);
     }
 
     @Override

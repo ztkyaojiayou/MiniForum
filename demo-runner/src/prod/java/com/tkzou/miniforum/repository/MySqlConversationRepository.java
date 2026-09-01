@@ -48,8 +48,22 @@ public class MySqlConversationRepository implements ConversationRepository {
                 + "last_message_at DATETIME,"
                 + "last_message TEXT,"
                 + "last_sender VARCHAR(50),"
-                + "UNIQUE KEY uk_pair (user_a, user_b)"
+                + "UNIQUE KEY uk_pair (user_a, user_b),"
+                + "KEY idx_user_b (user_b)"
                 + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        // 存量表补索引（findByUser 的 user_b 分支走索引，避免 OR 一侧全表扫）：幂等补建
+        ensureIndex("conversations", "idx_user_b", "ALTER TABLE conversations ADD INDEX idx_user_b (user_b)");
+    }
+
+    /** 幂等补索引：information_schema 判定不存在时才执行 ALTER */
+    private void ensureIndex(String table, String index, String alterSql) {
+        Integer n = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.statistics "
+                        + "WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ?",
+                Integer.class, table, index);
+        if (n == null || n == 0) {
+            jdbcTemplate.execute(alterSql);
+        }
     }
 
     @Override
@@ -67,14 +81,14 @@ public class MySqlConversationRepository implements ConversationRepository {
 
     @Override
     public Optional<Conversation> findById(Long id) {
-        return jdbcTemplate.query("SELECT * FROM conversations WHERE id=?", this::mapConversation, id).stream().findFirst();
+        return jdbcTemplate.query("SELECT id, user_a, user_b, last_message_at, last_message, last_sender FROM conversations WHERE id=?", this::mapConversation, id).stream().findFirst();
     }
 
     @Override
     public Optional<Conversation> findByPair(String userX, String userY) {
         // 与内存实现语义一致：按字典序归一化后精确匹配 (user_a, user_b)，保证同一对唯一
         String[] pair = normalizePair(userX, userY);
-        return jdbcTemplate.query("SELECT * FROM conversations WHERE user_a=? AND user_b=?",
+        return jdbcTemplate.query("SELECT id, user_a, user_b, last_message_at, last_message, last_sender FROM conversations WHERE user_a=? AND user_b=?",
                 this::mapConversation, pair[0], pair[1]).stream().findFirst();
     }
 
@@ -91,13 +105,13 @@ public class MySqlConversationRepository implements ConversationRepository {
 
     @Override
     public List<Conversation> findByUser(String username) {
-        return jdbcTemplate.query("SELECT * FROM conversations WHERE user_a=? OR user_b=? ORDER BY last_message_at DESC",
+        return jdbcTemplate.query("SELECT id, user_a, user_b, last_message_at, last_message, last_sender FROM conversations WHERE user_a=? OR user_b=? ORDER BY last_message_at DESC",
                 this::mapConversation, username, username);
     }
 
     @Override
     public List<Conversation> exportAll() {
-        return jdbcTemplate.query("SELECT * FROM conversations ORDER BY id", this::mapConversation);
+        return jdbcTemplate.query("SELECT id, user_a, user_b, last_message_at, last_message, last_sender FROM conversations ORDER BY id", this::mapConversation);
     }
 
     @Override

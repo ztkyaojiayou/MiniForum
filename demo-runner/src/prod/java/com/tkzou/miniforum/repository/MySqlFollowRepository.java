@@ -64,8 +64,22 @@ public class MySqlFollowRepository implements FollowRepository {
                 + "follower_id BIGINT NOT NULL,"
                 + "followee_id BIGINT NOT NULL,"
                 + "created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"
-                + "UNIQUE KEY uk_follow (follower_id, followee_id)"
+                + "UNIQUE KEY uk_follow (follower_id, followee_id),"
+                + "KEY idx_followee (followee_id, created_at)"
                 + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        // 存量表补索引（CREATE TABLE IF NOT EXISTS 不作用于已存在表）：按信息模式判存在，幂等
+        ensureIndex("user_follow", "idx_followee", "ALTER TABLE user_follow ADD INDEX idx_followee (followee_id, created_at)");
+    }
+
+    /** 幂等补索引：information_schema 判定不存在时才执行 ALTER（避免 CREATE TABLE IF NOT EXISTS 不作用于存量表） */
+    private void ensureIndex(String table, String index, String alterSql) {
+        Integer n = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.statistics "
+                        + "WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ?",
+                Integer.class, table, index);
+        if (n == null || n == 0) {
+            jdbcTemplate.execute(alterSql);
+        }
     }
 
     @Override

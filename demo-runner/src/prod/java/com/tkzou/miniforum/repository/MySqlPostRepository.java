@@ -97,7 +97,7 @@ public class MySqlPostRepository implements PostRepository {
 
     @Override
     public Optional<Post> findById(Long id) {
-        return jdbcTemplate.query("SELECT * FROM posts WHERE id=?", this::mapPost, id).stream().findFirst();
+        return jdbcTemplate.query("SELECT id, title, content, author, author_id, created_at, tags, topics, category, status, like_count, view_count, deleted, deleted_at, original_post_id, original_author_id, original_author FROM posts WHERE id=?", this::mapPost, id).stream().findFirst();
     }
 
     @Override
@@ -107,18 +107,18 @@ public class MySqlPostRepository implements PostRepository {
 
     @Override
     public List<Post> findAll() {
-        return jdbcTemplate.query("SELECT * FROM posts ORDER BY created_at DESC, id DESC", this::mapPost);
+        return jdbcTemplate.query("SELECT id, title, content, author, author_id, created_at, tags, topics, category, status, like_count, view_count, deleted, deleted_at, original_post_id, original_author_id, original_author FROM posts ORDER BY created_at DESC, id DESC", this::mapPost);
     }
 
     @Override
     public List<Post> findByAuthorId(Long authorId) {
-        return jdbcTemplate.query("SELECT * FROM posts WHERE author_id=? ORDER BY created_at DESC, id DESC",
+        return jdbcTemplate.query("SELECT id, title, content, author, author_id, created_at, tags, topics, category, status, like_count, view_count, deleted, deleted_at, original_post_id, original_author_id, original_author FROM posts WHERE author_id=? ORDER BY created_at DESC, id DESC",
                 this::mapPost, authorId);
     }
 
     @Override
     public List<Post> exportAll() {
-        return jdbcTemplate.query("SELECT * FROM posts ORDER BY id", this::mapPost);
+        return jdbcTemplate.query("SELECT id, title, content, author, author_id, created_at, tags, topics, category, status, like_count, view_count, deleted, deleted_at, original_post_id, original_author_id, original_author FROM posts ORDER BY id", this::mapPost);
     }
 
     @Override
