@@ -78,7 +78,7 @@ public class InMemoryConfigService implements ConfigService {
             return objectMapper.readValue(json, new TypeReference<Map<String, Double>>() {
             });
         } catch (Exception e) {
-            log.warn("解析权重配置失败，使用默认值：{}", e.getMessage());
+            log.warn("解析权重配置失败，使用默认值", e);
             return Map.of();
         }
     }

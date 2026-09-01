@@ -104,7 +104,7 @@ public class OfflineEvalScheduler {
             log.info("【离线评估】{}", row);
             appendReport(m, behaviorCount);
         } catch (Exception e) {
-            log.warn("离线评估异常：{}", e.getMessage());
+            log.warn("离线评估异常", e);
         }
     }
 
@@ -134,7 +134,7 @@ public class OfflineEvalScheduler {
             Files.createDirectories(file.getParent());
             objectMapper.writeValue(file.toFile(), report);
         } catch (Exception e) {
-            log.warn("写入离线评估报告失败：{}", e.getMessage());
+            log.warn("写入离线评估报告失败", e);
         }
     }
 

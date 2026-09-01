@@ -82,11 +82,12 @@ public class KafkaBehaviorConsumer {
                         behaviorLogRepository.save(behavior);
                         eventQueue.publish(behavior);
                     } catch (Exception e) {
-                        log.warn("解析行为消息失败：{}", e.getMessage());
+                        // 异常必须带堆栈（手册硬性要求）；带 topic/offset 便于定位坏消息
+                        log.warn("解析行为消息失败：topic={} offset={}", record.topic(), record.offset(), e);
                     }
                 }
             } catch (Exception e) {
-                log.warn("Kafka 消费异常：{}", e.getMessage());
+                log.warn("Kafka 消费异常", e);
             }
         }
     }
@@ -94,6 +95,13 @@ public class KafkaBehaviorConsumer {
     @PreDestroy
     public void stop() {
         running = false;
+        if (thread != null) {
+            try {
+                thread.join(5000); // 等待消费循环退出（poll 最多阻塞 500ms），再关 consumer，保证有序停止
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
         if (consumer != null) {
             consumer.close();
         }

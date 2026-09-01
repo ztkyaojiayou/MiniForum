@@ -139,7 +139,7 @@ public class DataStore implements ApplicationRunner {
             loadBehaviorLogs();
             log.info("数据持久化加载完成，目录: {}", dataDir);
         } catch (Exception e) {
-            log.warn("数据持久化加载失败，将使用空数据启动: {}", e.getMessage());
+            log.warn("数据持久化加载失败，将使用空数据启动", e);
         } finally {
             // 无论成败，加载阶段结束，后续定时保存才允许落盘
             loaded.set(true);
@@ -166,7 +166,7 @@ public class DataStore implements ApplicationRunner {
             objectMapper.writeValue(Paths.get(dataDir, "messages.json").toFile(), messageRepository.exportAll());
             objectMapper.writeValue(Paths.get(dataDir, "behavior-log.json").toFile(), behaviorLogRepository.exportAll());
         } catch (Exception e) {
-            log.warn("数据持久化保存失败: {}", e.getMessage());
+            log.warn("数据持久化保存失败", e);
         }
     }
 

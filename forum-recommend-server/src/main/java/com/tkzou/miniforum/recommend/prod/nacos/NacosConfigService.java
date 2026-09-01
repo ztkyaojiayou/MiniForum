@@ -86,7 +86,7 @@ public class NacosConfigService implements ConfigService {
             }
             return b.build();
         } catch (Exception e) {
-            log.warn("解析 Nacos 推荐配置失败，使用默认值：{}", e.getMessage());
+            log.warn("解析 Nacos 推荐配置失败，使用默认值", e);
             return RecConfig.defaults();
         }
     }

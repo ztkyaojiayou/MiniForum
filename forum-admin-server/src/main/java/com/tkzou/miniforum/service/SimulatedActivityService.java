@@ -121,7 +121,7 @@ public class SimulatedActivityService {
                 log.info("模拟活动一轮：新建 {} 帖，互动 {} 次", created, interacted);
             }
         } catch (Exception e) {
-            log.warn("模拟活动异常：{}", e.getMessage());
+            log.warn("模拟活动异常", e);
         }
     }
 

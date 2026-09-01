@@ -88,7 +88,7 @@ public class MySqlDataStore implements ApplicationRunner {
                             + "ON DUPLICATE KEY UPDATE payload = VALUES(payload)",
                     key, payload);
         } catch (Exception e) {
-            log.warn("MySQL 保存 {} 失败：{}", key, e.getMessage());
+            log.warn("MySQL 保存 {} 失败", key, e);
         }
     }
 
@@ -114,7 +114,7 @@ public class MySqlDataStore implements ApplicationRunner {
         } catch (EmptyResultDataAccessException e) {
             // 表存在但尚无该 key
         } catch (Exception e) {
-            log.warn("MySQL 加载 {} 失败：{}", key, e.getMessage());
+            log.warn("MySQL 加载 {} 失败", key, e);
         }
     }
 

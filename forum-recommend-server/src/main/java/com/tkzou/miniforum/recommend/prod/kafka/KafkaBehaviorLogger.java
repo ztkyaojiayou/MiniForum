@@ -65,7 +65,7 @@ public class KafkaBehaviorLogger implements BehaviorLogger {
             String json = objectMapper.writeValueAsString(event);
             producer.send(new ProducerRecord<>("behavior-log", String.valueOf(userId), json));
         } catch (Exception e) {
-            log.warn("行为写入 Kafka 失败：{}", e.getMessage());
+            log.warn("行为写入 Kafka 失败", e);
         }
     }
 

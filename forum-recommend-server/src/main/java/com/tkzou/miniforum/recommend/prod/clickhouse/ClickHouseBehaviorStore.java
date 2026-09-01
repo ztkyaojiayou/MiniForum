@@ -97,7 +97,7 @@ public class ClickHouseBehaviorStore {
              ResultSet rs = ps.executeQuery()) {
             return rs.next() ? rs.getLong(1) : 0;
         } catch (Exception e) {
-            log.warn("ClickHouse count 失败：{}", e.getMessage());
+            log.warn("ClickHouse count 失败", e);
             return 0;
         }
     }
@@ -124,7 +124,7 @@ public class ClickHouseBehaviorStore {
                 }
             }
         } catch (Exception e) {
-            log.warn("ClickHouse 查询失败：{}", e.getMessage());
+            log.warn("ClickHouse 查询失败", e);
         }
         return result;
     }
@@ -133,7 +133,7 @@ public class ClickHouseBehaviorStore {
         try (Connection conn = connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.execute();
         } catch (Exception e) {
-            log.warn("ClickHouse DDL 失败：{}", e.getMessage());
+            log.warn("ClickHouse DDL 失败", e);
         }
     }
 

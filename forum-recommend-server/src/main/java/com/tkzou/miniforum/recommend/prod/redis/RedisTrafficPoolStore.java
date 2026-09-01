@@ -65,7 +65,7 @@ public class RedisTrafficPoolStore implements TrafficPoolStore {
             try {
                 return Optional.of(objectMapper.readValue(json, PostState.class));
             } catch (Exception e) {
-                log.warn("流量池状态读取失败：{}", e.getMessage());
+                log.warn("流量池状态读取失败", e);
                 return Optional.empty();
             }
         }
@@ -77,7 +77,7 @@ public class RedisTrafficPoolStore implements TrafficPoolStore {
             jedis.set(KEY_PREFIX + postId, objectMapper.writeValueAsString(state));
             jedis.expire(KEY_PREFIX + postId, defaultTtlSeconds);
         } catch (Exception e) {
-            log.warn("流量池状态写入 Redis 失败：{}", e.getMessage());
+            log.warn("流量池状态写入 Redis 失败", e);
         }
     }
 
@@ -88,7 +88,7 @@ public class RedisTrafficPoolStore implements TrafficPoolStore {
                     new SetParams().nx().ex(ttlSeconds));
             return "OK".equals(ok);
         } catch (Exception e) {
-            log.warn("流量池原子入池失败：{}", e.getMessage());
+            log.warn("流量池原子入池失败", e);
             return false;
         }
     }
@@ -115,7 +115,7 @@ public class RedisTrafficPoolStore implements TrafficPoolStore {
                 cursor = scan.getCursor();
             } while (!"0".equals(cursor));
         } catch (Exception e) {
-            log.warn("流量池全量扫描失败：{}", e.getMessage());
+            log.warn("流量池全量扫描失败", e);
         }
         return result;
     }

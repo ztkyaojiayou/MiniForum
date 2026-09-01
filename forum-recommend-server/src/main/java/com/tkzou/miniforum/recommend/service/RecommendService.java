@@ -144,8 +144,7 @@ public class RecommendService {
             // 业务异常：Tracer.trace 给异常比例熔断规则（DEGRADE_GRADE_EXCEPTION_RATIO）供数，
             // 异常率超阈值后 Sentinel 自动熔断（后续 entry 抛 DegradeException → 走上面的 BlockException 分支）。
             Tracer.trace(e);
-            log.warn("推荐链路异常，降级为热门兜底：userId={}, expId={}, err={}",
-                    ctx.getUserId(), expId, e.getMessage());
+            log.warn("推荐链路异常，降级为热门兜底：userId={}, expId={}", ctx.getUserId(), expId, e);
             return hotFallback(ctx, username, topN);
         } finally {
             if (entry != null) {
@@ -188,7 +187,7 @@ public class RecommendService {
                     .filter(java.util.Objects::nonNull)
                     .collect(Collectors.toList());
         } catch (Exception ex) {
-            log.error("热门兜底也失败：userId={}, err={}", ctx.getUserId(), ex.getMessage());
+            log.error("热门兜底也失败：userId={}", ctx.getUserId(), ex);
             return List.of();
         }
     }

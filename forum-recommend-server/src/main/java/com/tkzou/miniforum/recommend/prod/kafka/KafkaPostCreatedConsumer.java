@@ -77,11 +77,12 @@ public class KafkaPostCreatedConsumer {
                         // 广播到进程内事件总线：扇出/冷启流量池/搜索索引/内容管道等订阅者异步消费（避免发帖请求被拖慢）
                         eventBus.publish(event);
                     } catch (Exception e) {
-                        log.warn("解析帖子创建事件失败：{}", e.getMessage());
+                        // 异常必须带堆栈（手册硬性要求）；带 topic/offset 便于定位坏消息
+                        log.warn("解析帖子创建事件失败：topic={} offset={}", record.topic(), record.offset(), e);
                     }
                 }
             } catch (Exception e) {
-                log.warn("Kafka 帖子创建事件消费异常：{}", e.getMessage());
+                log.warn("Kafka 帖子创建事件消费异常", e);
             }
         }
     }
@@ -89,6 +90,13 @@ public class KafkaPostCreatedConsumer {
     @PreDestroy
     public void stop() {
         running = false;
+        if (thread != null) {
+            try {
+                thread.join(5000); // 等待消费循环退出（poll 最多阻塞 500ms），再关 consumer，保证有序停止
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
         if (consumer != null) {
             consumer.close();
         }

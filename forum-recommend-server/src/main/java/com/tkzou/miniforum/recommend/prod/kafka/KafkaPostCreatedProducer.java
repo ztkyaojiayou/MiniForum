@@ -50,7 +50,7 @@ public class KafkaPostCreatedProducer implements PostCreatedNotifier {
             producer.send(new ProducerRecord<>("post-created",
                     String.valueOf(event.getPostId()), objectMapper.writeValueAsString(event)));
         } catch (Exception e) {
-            log.warn("帖子创建事件写入 Kafka 失败：{}", e.getMessage());
+            log.warn("帖子创建事件写入 Kafka 失败", e);
         }
     }
 }

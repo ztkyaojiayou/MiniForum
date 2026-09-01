@@ -58,7 +58,7 @@ public class ItemCfModelRedisStore {
                     json, new TypeReference<Map<Long, List<ItemCfModel.SimilarItem>>>() {});
             return Optional.of(ItemCfModel.from(map));
         } catch (Exception e) {
-            log.warn("ItemCF 模型读取失败：{}", e.getMessage());
+            log.warn("ItemCF 模型读取失败", e);
             return Optional.empty();
         }
     }
@@ -68,7 +68,7 @@ public class ItemCfModelRedisStore {
         try (Jedis jedis = jedisPool.getResource()) {
             jedis.set(KEY, objectMapper.writeValueAsString(model.getSimMap()));
         } catch (Exception e) {
-            log.warn("ItemCF 模型发布失败：{}", e.getMessage());
+            log.warn("ItemCF 模型发布失败", e);
         }
     }
 

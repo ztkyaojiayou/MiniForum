@@ -45,7 +45,7 @@ public class RedisUserProfileStore {
         try (Jedis jedis = jedisPool.getResource()) {
             jedis.setex(KEY_PREFIX + userId, TTL_SECONDS, objectMapper.writeValueAsString(profile));
         } catch (Exception e) {
-            log.warn("用户画像写入 Redis 失败：{}", e.getMessage());
+            log.warn("用户画像写入 Redis 失败", e);
         }
     }
 
@@ -57,7 +57,7 @@ public class RedisUserProfileStore {
             }
             return Optional.of(objectMapper.readValue(json, UserProfile.class));
         } catch (Exception e) {
-            log.warn("用户画像读取失败：{}", e.getMessage());
+            log.warn("用户画像读取失败", e);
             return Optional.empty();
         }
     }

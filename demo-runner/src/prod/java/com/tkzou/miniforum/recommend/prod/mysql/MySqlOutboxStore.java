@@ -67,7 +67,7 @@ public class MySqlOutboxStore implements OutboxStore {
                     "INSERT INTO post_outbox(post_id, status, payload) VALUES(?, 'PENDING', ?)",
                     event.getPostId(), objectMapper.writeValueAsString(event));
         } catch (Exception e) {
-            log.warn("Outbox 写入失败：postId={} {}", event.getPostId(), e.getMessage());
+            log.warn("Outbox 写入失败：postId={}", event.getPostId(), e);
         }
     }
 
@@ -79,7 +79,7 @@ public class MySqlOutboxStore implements OutboxStore {
             pending = jdbcTemplate.queryForList(
                     "SELECT id, post_id, payload FROM post_outbox WHERE status = 'PENDING' ORDER BY id LIMIT " + batchSize);
         } catch (Exception e) {
-            log.warn("Outbox 轮询失败：{}", e.getMessage());
+            log.warn("Outbox 轮询失败", e);
             return;
         }
         for (Map<String, Object> row : pending) {
@@ -91,7 +91,7 @@ public class MySqlOutboxStore implements OutboxStore {
                 jdbcTemplate.update("UPDATE post_outbox SET status = 'DONE' WHERE id = ?", id);
             } catch (Exception e) {
                 // 保留 PENDING，下轮重试（at-least-once；下游 fanout/冷启以 postId 幂等）
-                log.warn("Outbox 投递失败，保留 PENDING 重试：id={} postId={} {}", id, postId, e.getMessage());
+                log.warn("Outbox 投递失败，保留 PENDING 重试：id={} postId={}", id, postId, e);
             }
         }
     }

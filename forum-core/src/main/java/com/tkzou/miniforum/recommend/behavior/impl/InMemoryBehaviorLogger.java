@@ -99,9 +99,9 @@ public class InMemoryBehaviorLogger implements BehaviorLogger {
             latch.await(5, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.warn("行为打点 flush 被中断：{}", e.getMessage());
+            log.warn("行为打点 flush 被中断", e);
         } catch (Exception e) {
-            log.warn("行为打点 flush 异常：{}", e.getMessage());
+            log.warn("行为打点 flush 异常", e);
         }
     }
 

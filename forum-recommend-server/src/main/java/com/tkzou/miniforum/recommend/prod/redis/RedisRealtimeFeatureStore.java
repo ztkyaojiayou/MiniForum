@@ -49,7 +49,7 @@ public class RedisRealtimeFeatureStore implements RealtimeFeatureStore {
             jedis.set(KEY_PREFIX + key, objectMapper.writeValueAsString(feature));
             jedis.expire(KEY_PREFIX + key, TTL_SECONDS);
         } catch (Exception e) {
-            log.warn("实时特征写入 Redis 失败：{}", e.getMessage());
+            log.warn("实时特征写入 Redis 失败", e);
         }
     }
 
@@ -63,7 +63,7 @@ public class RedisRealtimeFeatureStore implements RealtimeFeatureStore {
             try {
                 return Optional.of(objectMapper.readValue(json, RealtimeFeature.class));
             } catch (Exception e) {
-                log.warn("实时特征读取失败：{}", e.getMessage());
+                log.warn("实时特征读取失败", e);
                 return Optional.empty();
             }
         }

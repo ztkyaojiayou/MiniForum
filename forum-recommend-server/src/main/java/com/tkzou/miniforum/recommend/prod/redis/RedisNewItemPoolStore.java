@@ -58,7 +58,7 @@ public class RedisNewItemPoolStore implements NewItemPoolStore {
             try {
                 return Optional.of(objectMapper.readValue(json, AlphaBeta.class));
             } catch (Exception e) {
-                log.warn("Thompson 后验读取失败：{}", e.getMessage());
+                log.warn("Thompson 后验读取失败", e);
                 return Optional.empty();
             }
         }
@@ -70,7 +70,7 @@ public class RedisNewItemPoolStore implements NewItemPoolStore {
             jedis.set(KEY_PREFIX + itemId, objectMapper.writeValueAsString(ab));
             jedis.expire(KEY_PREFIX + itemId, defaultTtlSeconds);
         } catch (Exception e) {
-            log.warn("Thompson 后验写入 Redis 失败：{}", e.getMessage());
+            log.warn("Thompson 后验写入 Redis 失败", e);
         }
     }
 
@@ -81,7 +81,7 @@ public class RedisNewItemPoolStore implements NewItemPoolStore {
                     new SetParams().nx().ex(ttlSeconds));
             return "OK".equals(ok);
         } catch (Exception e) {
-            log.warn("Thompson 后验原子创建失败：{}", e.getMessage());
+            log.warn("Thompson 后验原子创建失败", e);
             return false;
         }
     }
