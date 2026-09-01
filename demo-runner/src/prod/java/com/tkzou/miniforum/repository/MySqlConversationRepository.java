@@ -78,6 +78,17 @@ public class MySqlConversationRepository implements ConversationRepository {
     }
 
     @Override
+    public Conversation findOrCreateByPair(String userX, String userY) {
+        String[] pair = normalizePair(userX, userY);
+        // 插入即幂等：uk_pair 冲突时 user_a=user_a 为 no-op（不动现有会话摘要），随后按 uk 回读真实 id，
+        // 修复并发下"upsert 返回新 id、message 写到不存在的 conversation_id"的竞态
+        jdbcTemplate.update("INSERT INTO conversations(id,user_a,user_b) VALUES(?,?,?) "
+                        + "ON DUPLICATE KEY UPDATE user_a=user_a",
+                idProvider.next("Conversation"), pair[0], pair[1]);
+        return findByPair(userX, userY).orElseThrow(() -> new IllegalStateException("会话创建失败"));
+    }
+
+    @Override
     public List<Conversation> findByUser(String username) {
         return jdbcTemplate.query("SELECT * FROM conversations WHERE user_a=? OR user_b=? ORDER BY last_message_at DESC",
                 this::mapConversation, username, username);

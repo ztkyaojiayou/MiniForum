@@ -274,8 +274,8 @@ public class PostService {
             throw new ResourceNotFoundException("帖子不存在：id=" + id);
         }
         if (isPublished(post)) {
-            post.setViewCount(post.getViewCount() + 1);
-            postRepository.save(post);
+            long newViewCount = postRepository.incrementViewCount(id, 1);
+            post.setViewCount(newViewCount); // 原子自增并回写本地对象（内存共享引用幂等）
             // 记录浏览行为（供画像/推荐信号，生产形态进 Kafka）
             userRepository.findByUsername(username)
                     .ifPresent(u -> behaviorLogger.log(u.getId(), id, BehaviorType.VIEW, "POST", null));
@@ -588,15 +588,16 @@ public class PostService {
         if (isDraft(post) || post.isDeleted()) {
             throw new BusinessException("草稿不能点赞");
         }
-        if (likeRepository.findByPostIdAndUsername(postId, username).isPresent()) {
-            throw new BusinessException("你已经点过赞了");
-        }
         Like like = new Like();
         like.setPostId(postId);
         like.setUsername(username);
         like.setCreatedAt(LocalDateTime.now());
-        likeRepository.save(like);
-        post.setLikeCount(post.getLikeCount() + 1);
+        // 原子"判重+插入"：InMemory putIfAbsent / MySql 唯一索引+DuplicateKeyException，杜绝并发重复点赞
+        if (!likeRepository.trySaveIfAbsent(like)) {
+            throw new BusinessException("你已经点过赞了");
+        }
+        long newLikeCount = postRepository.incrementLikeCount(postId, 1);
+        post.setLikeCount(newLikeCount); // 原子自增并回写本地对象（内存共享引用幂等）
         behaviorLogger.log(actorId, postId, BehaviorType.LIKE, "POST", null);
         // 通知帖子作者（给自己点赞不通知）
         notificationService.notify(post.getAuthorId(), actorId, username,
@@ -613,8 +614,9 @@ public class PostService {
         }
         Like like = likeRepository.findByPostIdAndUsername(postId, username)
                 .orElseThrow(() -> new BusinessException("你还没有点过赞"));
-        likeRepository.delete(like);                        // ① 状态表删行（Like=当前状态，非历史）
-        post.setLikeCount(Math.max(0, post.getLikeCount() - 1)); // ② 聚合快照 -1
+        likeRepository.delete(like);                                    // ① 状态表删行（Like=当前状态，非历史）
+        long newLikeCount = postRepository.incrementLikeCount(postId, -1); // ② 聚合快照原子 -1（不小于 0）
+        post.setLikeCount(newLikeCount);
         behaviorLogger.log(actorId, postId, BehaviorType.UNLIKE, "POST", null); // ③ 事件流（推荐感知"取消赞"）
         postCache.invalidate(postId); // 取消点赞 → 踢单帖缓存
         return toVO(post, username);

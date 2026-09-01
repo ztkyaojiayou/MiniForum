@@ -19,6 +19,12 @@ public interface ConversationRepository {
     /** 按会话双方用户名查找（key 规范为 小用户名:大用户名） */
     Optional<Conversation> findByPair(String userX, String userY);
 
+    /**
+     * 查找或创建会话（并发安全）：uk_pair 唯一键保证两人只有一个会话。
+     * 返回"真实持久化的会话"（MySQL 侧按 uk 回读，避免 upsert 返回新 id 写到不存在行）。
+     */
+    Conversation findOrCreateByPair(String userX, String userY);
+
     /** 某用户参与的会话（按最后消息时间倒序） */
     List<Conversation> findByUser(String username);
 

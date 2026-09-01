@@ -55,8 +55,8 @@ public class MessageService {
         if (peer.getUsername().equals(myUsername)) {
             throw new BusinessException("不能给自己发私信");
         }
-        Conversation conversation = conversationRepository.findByPair(myUsername, peer.getUsername())
-                .orElseGet(() -> conversationRepository.save(new Conversation(myUsername, peer.getUsername())));
+        // 查找或创建会话（并发安全：uk_pair 保证两人唯一，返回真实持久化的会话）
+        Conversation conversation = conversationRepository.findOrCreateByPair(myUsername, peer.getUsername());
         return toConversationVO(conversation, myUsername);
     }
 
@@ -87,8 +87,8 @@ public class MessageService {
         if (receiver.getUsername().equals(myUsername)) {
             throw new BusinessException("不能给自己发私信");
         }
-        Conversation conversation = conversationRepository.findByPair(myUsername, toUsername)
-                .orElseGet(() -> conversationRepository.save(new Conversation(myUsername, toUsername)));
+        // 查找或创建会话（并发安全：uk_pair 保证两人唯一，返回真实持久化的会话）
+        Conversation conversation = conversationRepository.findOrCreateByPair(myUsername, toUsername);
         Message message = new Message();
         message.setConversationId(conversation.getId());
         message.setSender(myUsername);

@@ -28,13 +28,38 @@ public class InMemoryLikeRepository implements LikeRepository {
 
     private final Map<Long, Like> storage = new ConcurrentHashMap<>();
 
+    /**
+     * (postId:username) → Like 去重索引：{@link #trySaveIfAbsent} 用 putIfAbsent 原子判重，
+     * 与 storage（按 id）在 save/delete/deleteByPostId/importAll 四处同步维护。
+     */
+    private final Map<String, Like> byKey = new ConcurrentHashMap<>();
+
+    /** 复合键：postId + ":" + username（用户名不含 ':'，见 @提及 正则） */
+    private static String key(Long postId, String username) {
+        return postId + ":" + username;
+    }
+
     @Override
     public Like save(Like like) {
         if (like.getId() == null) {
             like.setId(idProvider.next("Like"));
         }
         storage.put(like.getId(), like);
+        byKey.put(key(like.getPostId(), like.getUsername()), like);
         return like;
+    }
+
+    @Override
+    public boolean trySaveIfAbsent(Like like) {
+        if (like.getId() == null) {
+            like.setId(idProvider.next("Like"));
+        }
+        String k = key(like.getPostId(), like.getUsername());
+        if (byKey.putIfAbsent(k, like) != null) {
+            return false; // 已存在（并发重复点赞），不插入
+        }
+        storage.put(like.getId(), like);
+        return true;
     }
 
     @Override
@@ -54,12 +79,14 @@ public class InMemoryLikeRepository implements LikeRepository {
     @Override
     public void delete(Like like) {
         storage.remove(like.getId());
+        byKey.remove(key(like.getPostId(), like.getUsername()));
     }
 
     /** 删除某帖子下的全部点赞（帖子被删除时级联清理） */
     @Override
     public void deleteByPostId(Long postId) {
         storage.entrySet().removeIf(e -> e.getValue().getPostId().equals(postId));
+        byKey.entrySet().removeIf(e -> e.getValue().getPostId().equals(postId));
     }
 
     @Override
@@ -81,10 +108,12 @@ public class InMemoryLikeRepository implements LikeRepository {
     @Override
     public void importAll(List<Like> likes) {
         storage.clear();
+        byKey.clear();
         if (likes != null) {
             for (Like l : likes) {
                 if (l != null && l.getId() != null) {
                     storage.put(l.getId(), l);
+                    byKey.put(key(l.getPostId(), l.getUsername()), l);
                 }
             }
         }

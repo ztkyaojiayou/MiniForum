@@ -51,6 +51,15 @@ public class InMemoryConversationRepository implements ConversationRepository {
                 .findFirst();
     }
 
+    /**
+     * 查找或创建会话（JVM 内原子）：synchronized 使并发下只创建一个会话，
+     * 语义与原先 findByPair().orElseGet(save) 完全一致。
+     */
+    @Override
+    public synchronized Conversation findOrCreateByPair(String userX, String userY) {
+        return findByPair(userX, userY).orElseGet(() -> save(new Conversation(userX, userY)));
+    }
+
     @Override
     public List<Conversation> findByUser(String username) {
         return storage.values().stream()

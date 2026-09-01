@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -56,6 +57,21 @@ public class MySqlLikeRepository implements LikeRepository {
                         + "ON DUPLICATE KEY UPDATE created_at=VALUES(created_at)",
                 like.getId(), like.getPostId(), like.getUsername(), like.getCreatedAt());
         return like;
+    }
+
+    @Override
+    public boolean trySaveIfAbsent(Like like) {
+        if (like.getId() == null) {
+            like.setId(idProvider.next("Like"));
+        }
+        try {
+            // 纯 INSERT（不走 upsert）：uk_like 唯一索引冲突 → DuplicateKeyException → 返回 false
+            jdbcTemplate.update("INSERT INTO likes(id,post_id,username,created_at) VALUES(?,?,?,?)",
+                    like.getId(), like.getPostId(), like.getUsername(), like.getCreatedAt());
+            return true;
+        } catch (DuplicateKeyException e) {
+            return false; // 同用户并发重复点赞：唯一索引兜底，判重与插入原子合一
+        }
     }
 
     @Override

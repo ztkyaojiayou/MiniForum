@@ -134,6 +134,20 @@ public class MySqlPostRepository implements PostRepository {
     }
 
     @Override
+    public long incrementLikeCount(Long postId, int delta) {
+        jdbcTemplate.update("UPDATE posts SET like_count = GREATEST(like_count + ?, 0) WHERE id = ?", delta, postId);
+        Integer n = jdbcTemplate.queryForObject("SELECT like_count FROM posts WHERE id = ?", Integer.class, postId);
+        return n == null ? 0 : n;
+    }
+
+    @Override
+    public long incrementViewCount(Long postId, int delta) {
+        jdbcTemplate.update("UPDATE posts SET view_count = GREATEST(view_count + ?, 0) WHERE id = ?", delta, postId);
+        Integer n = jdbcTemplate.queryForObject("SELECT view_count FROM posts WHERE id = ?", Integer.class, postId);
+        return n == null ? 0 : n;
+    }
+
+    @Override
     public long count() {
         Integer n = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM posts", Integer.class);
         return n == null ? 0 : n;

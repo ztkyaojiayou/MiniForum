@@ -16,6 +16,13 @@ public interface LikeRepository {
 
     Like save(Like like);
 
+    /**
+     * 原子"判重+插入"：同一 (postId, username) 已存在时返回 false（不插入），否则插入并返回 true。
+     * 内存实现 {@code putIfAbsent} / MySQL 依赖 uk_like 唯一索引 + {@code DuplicateKeyException}，
+     * 把 check-then-act 合成单步，杜绝并发重复点赞。
+     */
+    boolean trySaveIfAbsent(Like like);
+
     Optional<Like> findByPostIdAndUsername(Long postId, String username);
 
     long countByPostId(Long postId);

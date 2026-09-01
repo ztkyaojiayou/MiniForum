@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -130,6 +131,35 @@ public class InMemoryPostRepository implements PostRepository {
                 }
             }
         }
+    }
+
+    @Override
+    public long incrementLikeCount(Long postId, int delta) {
+        return incrementCount(postId, delta, true);
+    }
+
+    @Override
+    public long incrementViewCount(Long postId, int delta) {
+        return incrementCount(postId, delta, false);
+    }
+
+    /**
+     * 单 key 原子累加：{@link ConcurrentHashMap#computeIfPresent} 保证同一 postId 的读-改-写串行化，
+     * 原地更新共享 Post 引用（缓存/读取方持同一对象自动可见），返回新计数。
+     */
+    private long incrementCount(Long postId, int delta, boolean like) {
+        AtomicLong holder = new AtomicLong();
+        storage.computeIfPresent(postId, (k, p) -> {
+            long v = Math.max(0, (like ? p.getLikeCount() : p.getViewCount()) + delta);
+            if (like) {
+                p.setLikeCount(v);
+            } else {
+                p.setViewCount(v);
+            }
+            holder.set(v);
+            return p;
+        });
+        return holder.get();
     }
 
     @Override

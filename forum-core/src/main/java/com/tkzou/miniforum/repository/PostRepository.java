@@ -32,5 +32,14 @@ public interface PostRepository {
     /** 清空并批量导入（用于从持久化数据恢复） */
     void importAll(List<Post> posts);
 
+    /**
+     * 原子自增点赞数（并发安全，读-改-写合一），返回新计数；delta 可为负，结果不小于 0。
+     * 由存储层保证原子性：内存 {@code ConcurrentHashMap.computeIfPresent} / MySQL {@code UPDATE ... SET like_count=like_count+?}。
+     */
+    long incrementLikeCount(Long postId, int delta);
+
+    /** 原子自增阅读量（并发安全，读-改-写合一），返回新计数 */
+    long incrementViewCount(Long postId, int delta);
+
     long count();
 }
