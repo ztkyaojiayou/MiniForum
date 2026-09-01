@@ -126,7 +126,7 @@ GET /api/recommend/feed?page&size      (session: userId)
   ├─▶ [ClickHouse Kafka Engine group=mini-forum-clickhouse]  ← 离线行为事实源
   │      Kafka Engine 表 → 物化视图 → MergeTree behavior_log（毫秒级自动消费）
   │        └─▶ 离线画像 / ItemCF / 离线评估读 ClickHouse（ClickHouseBehaviorStore）
-  └─▶ [KafkaBehaviorIngestor group=mini-forum-offline]  ← 在线侧回灌（应用内, 500ms poll）
+  └─▶ [KafkaBehaviorConsumer group=mini-forum-offline]  ← 在线侧回灌（应用内, 500ms poll）
          ├─▶ BehaviorLogRepository（内存）→ 实时特征 / 冷启动反馈
          └─▶ BehaviorEventQueue → ColdStartFeedbackListener → Thompson 后验
 
@@ -161,8 +161,8 @@ AbExperimentService：floorMod(hash(uid:salt), 100) 分桶
 
 生产适配（`-Pprod` 编译 src/prod/java，`@Profile("prod")` 运行时激活，默认内存实现）：
   prod.kafka.KafkaBehaviorLogger（行为→Kafka topic behavior-log）
-  prod.kafka.KafkaBehaviorIngestor（Kafka behavior-log→内存行为库+事件队列，在线侧回灌）
-  prod.kafka.KafkaPostCreatedProducer / KafkaPostCreatedIngestor（发帖事件→Kafka topic post-created：扇出/冷启/搜索索引）
+  prod.kafka.KafkaBehaviorConsumer（Kafka behavior-log→内存行为库+事件队列，在线侧回灌）
+  prod.kafka.KafkaPostCreatedProducer / KafkaPostCreatedConsumer（发帖事件→Kafka topic post-created：扇出/冷启/搜索索引）
   prod.clickhouse.ClickHouseBehaviorStore（行为→Kafka Engine 表→物化视图→MergeTree，离线画像/ItemCF/评估读取）
   prod.redis.RedisUserProfileStore（画像→Redis profile:{uid}, TTL 1h）
   prod.redis.RedisRealtimeFeatureStore（实时特征→Redis realtime:{key}, TTL 60s）
@@ -185,7 +185,7 @@ AbExperimentService：floorMod(hash(uid:salt), 100) 分桶
 | 离线画像 / ItemCF / 评估读行为 | ClickHouseBehaviorStore（findByUserId/findAll/...） | ✅ |
 | 在线请求读近线特征 | realtimeMatch → RedisRealtimeFeatureStore | ✅ |
 | 在线请求读画像 / ItemCF 模型 | RedisUserProfileStore（profile:{uid}）+ ItemCfModelRedisStore（itemcf:latest） | ✅ |
-| 行为 → 冷启动反馈 | KafkaBehaviorIngestor → BehaviorEventQueue → ColdStartFeedbackListener | ✅ |
+| 行为 → 冷启动反馈 | KafkaBehaviorConsumer → BehaviorEventQueue → ColdStartFeedbackListener | ✅ |
 | 主存储（10 业务实体）→ MySQL | MySql*Repository 行级表（@PostConstruct 建表 + upsert） | ✅ |
 | 行为 → 快照兜底 | MySqlDataStore mini_store（仅 behavior-log，JSON DataStore 已禁用） | ✅ |
 | 关注关系 / 冷启池状态 | MySqlFollowRepository（MySQL 事实 + Redis ZSET）+ RedisTrafficPool/NewItemPoolStore | ✅ |

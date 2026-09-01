@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  * <b>数据流程</b>：行为事件（VIEW/LIKE/COMMENT/REPOST/CLICK/FAVORITE）→ 回源帖子标签/话题 →
  * 增量累加热度（VIEW+1/LIKE+5/COMMENT+10/REPOST+8/CLICK+3/FAVORITE+5）与关联帖数。
- * 订阅 {@link BehaviorEventQueue}：@!prod 直接订阅，@prod 经 KafkaBehaviorIngestor 回灌队列后同样收到
+ * 订阅 {@link BehaviorEventQueue}：@!prod 直接订阅，@prod 经 KafkaBehaviorConsumer 回灌队列后同样收到
  * ——一份代码 @!prod/@prod 通吃（热搜从读时全表扫改为事件驱动聚合）。
  * <p>
  * 热搜主榜仍保留原"帖子计数热度 + 搜索词"逻辑，本聚合器的行为热度作为<b>补充信号</b>并入（见 HotSearchService）。

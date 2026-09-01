@@ -29,7 +29,7 @@ import java.util.Set;
  * </ul>
  * 连接使用 {@link JedisPool}（fanout 在 Kafka 消费者线程、读取在 Web 请求线程，需跨线程安全），
  * {@link #close()} 由 Spring {@link PreDestroy} 触发。
- * 生产扇出由 Kafka 消费者（prod.kafka.KafkaPostCreatedIngestor）异步触发，避免发帖请求被拖慢。
+ * 生产扇出由 Kafka 消费者（prod.kafka.KafkaPostCreatedConsumer）异步触发，避免发帖请求被拖慢。
  * 启用：-Pprod 构建 + spring.profiles.active=prod + 配置 app.rec.redis.host/port。
  */
 @Component

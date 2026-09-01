@@ -17,7 +17,7 @@
  * <pre>
  * 发帖落库 → OutboxStore.enqueue → Relayer → PostCreatedProducer.publish(PostCreatedEvent)
  *     ├ 演示：InMemoryPostCreatedProducer → PostCreatedEventBus → PostCreatedConsumer（fanout + 搜索 + 冷启）
- *     └ 生产：KafkaPostCreatedProducer → "post-created" → KafkaPostCreatedIngestor → PostCreatedEventBus → 同上
+ *     └ 生产：KafkaPostCreatedProducer → "post-created" → KafkaPostCreatedConsumer → PostCreatedEventBus → 同上
  * </pre>
  *
  * 完整的事件消费者（FanoutPostCreatedConsumer / SearchIndexPostCreatedConsumer / TrafficPoolPostCreatedConsumer）在 forum-recommend-server 的
