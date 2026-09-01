@@ -41,7 +41,6 @@ import com.tkzou.miniforum.repository.impl.InMemoryPostRepository;
 import com.tkzou.miniforum.repository.impl.InMemoryUserRepository;
 import com.tkzou.miniforum.recommend.stream.impl.FanoutPostCreatedConsumer;
 import com.tkzou.miniforum.recommend.stream.PostCreatedEventBus;
-import com.tkzou.miniforum.recommend.stream.PostCreatedConsumerRegistrar;
 
 /**
  * 关注流推模式 + 游标分页闭环单元测试
@@ -69,8 +68,7 @@ class FollowServiceTest {
         NotificationRepository notificationRepository = new InMemoryNotificationRepository();
         NotificationService notificationService = new NotificationService(notificationRepository);
         BehaviorLogger behaviorLogger = new InMemoryBehaviorLogger(new BehaviorLogRepository(), new BehaviorEventQueue());
-        PostCreatedEventBus eventBus = new PostCreatedEventBus();
-        new PostCreatedConsumerRegistrar(eventBus, List.of(new FanoutPostCreatedConsumer(followFeedStore))); // 关注流扇出订阅（Registrar 统一注册）
+        PostCreatedEventBus eventBus = new PostCreatedEventBus(List.of(new FanoutPostCreatedConsumer(followFeedStore))); // 总线构造器自动订阅消费者
         OutboxStore outboxStore = new InMemoryOutboxStore(new InMemoryPostCreatedProducer(eventBus));
         PostAssembler postAssembler = new PostAssembler(postRepository, likeRepository, commentRepository, favoriteRepository);
         postService = new PostService(postRepository, likeRepository, commentRepository,

@@ -55,8 +55,7 @@ class TrafficPoolPostCreatedConsumerTest {
     @Test
     void postCreatedEvent_pushesNewPostIntoTrafficPool() {
         TrafficPool trafficPool = newTrafficPool(itemFeatureService(true));
-        PostCreatedEventBus eventBus = new PostCreatedEventBus();
-        new PostCreatedConsumerRegistrar(eventBus, List.of(new TrafficPoolPostCreatedConsumer(trafficPool))); // 由 Registrar 统一注册订阅
+        PostCreatedEventBus eventBus = new PostCreatedEventBus(List.of(new TrafficPoolPostCreatedConsumer(trafficPool))); // 总线构造器自动订阅消费者
         InMemoryPostCreatedProducer notifier = new InMemoryPostCreatedProducer(eventBus);
 
         notifier.publish(new PostCreatedEvent(1001L, 7L, "alice", "标题", "内容", "科技", List.of("AI")));
@@ -69,8 +68,7 @@ class TrafficPoolPostCreatedConsumerTest {
     @Test
     void repeatedPostCreatedEvent_isDeduplicated() {
         TrafficPool trafficPool = newTrafficPool(itemFeatureService(true));
-        PostCreatedEventBus eventBus = new PostCreatedEventBus();
-        new PostCreatedConsumerRegistrar(eventBus, List.of(new TrafficPoolPostCreatedConsumer(trafficPool)));
+        PostCreatedEventBus eventBus = new PostCreatedEventBus(List.of(new TrafficPoolPostCreatedConsumer(trafficPool))); // 总线构造器自动订阅消费者
 
         PostCreatedEvent event = new PostCreatedEvent(1001L, 7L, "alice", "标题", "内容", "科技", List.of("AI"));
         eventBus.publish(event);
@@ -82,8 +80,7 @@ class TrafficPoolPostCreatedConsumerTest {
     @Test
     void nonNewPoolPost_isIgnoredByTrafficPool() {
         TrafficPool trafficPool = newTrafficPool(itemFeatureService(false));
-        PostCreatedEventBus eventBus = new PostCreatedEventBus();
-        new PostCreatedConsumerRegistrar(eventBus, List.of(new TrafficPoolPostCreatedConsumer(trafficPool)));
+        PostCreatedEventBus eventBus = new PostCreatedEventBus(List.of(new TrafficPoolPostCreatedConsumer(trafficPool))); // 总线构造器自动订阅消费者
 
         eventBus.publish(new PostCreatedEvent(2002L, 8L, "bob", "标题", "内容", "科技", List.of()));
 

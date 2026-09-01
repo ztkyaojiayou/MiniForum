@@ -8,10 +8,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * 关注流扇出订阅者（实现 {@link PostCreatedConsumer}，由 {@link PostCreatedConsumerRegistrar} 统一注册）
+ * 关注流扇出订阅者（实现 {@link PostCreatedConsumer}，由 {@link PostCreatedEventBus} 构造器自动注册）
  * <p>
  * 收到发帖事件 → {@link FollowFeedStore#fanout} 把 postId 写入作者所有已建流粉丝的 inbox。
- * 与搜索索引/流量池是总线的一路并行消费者（见 {@link PostCreatedConsumerRegistrar}）：
+ * 与搜索索引/流量池是总线的一路并行消费者（见 {@link PostCreatedEventBus}）：
  * 内存发帖（InMemoryPostCreatedProducer）与生产 Kafka 消费（KafkaPostCreatedConsumer）都
  * publish 到总线，本订阅者在 @!prod/@prod 通吃。
  */

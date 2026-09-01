@@ -7,10 +7,10 @@ import com.tkzou.miniforum.search.SearchIndex;
 import org.springframework.stereotype.Component;
 
 /**
- * 搜索索引更新订阅者（实现 {@link PostCreatedConsumer}，由 {@link PostCreatedConsumerRegistrar} 统一注册）
+ * 搜索索引更新订阅者（实现 {@link PostCreatedConsumer}，由 {@link PostCreatedEventBus} 构造器自动注册）
  * <p>
  * 收到发帖事件 → 回源帖子 → {@link SearchIndex#index} 增量索引（标题/内容/标签/话题）。
- * 与 FanoutPostCreatedConsumer 是总线的一路并行消费者（见 {@link PostCreatedConsumerRegistrar}），
+ * 与 FanoutPostCreatedConsumer 是总线的一路并行消费者（见 {@link PostCreatedEventBus}），
  * @!prod/@prod 通吃（发帖 → 索引，演示同步 / 生产异步）。
  */
 @Component

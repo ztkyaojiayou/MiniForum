@@ -4,7 +4,7 @@ package com.tkzou.miniforum.recommend.stream;
  * 帖子创建事件订阅者接口（统一的一路消费）
  * <p>
  * 所有下行消费者（关注流扇出 / 搜索索引 / 冷启动流量池 / 未来内容管道等）实现本接口，
- * 由 {@code PostCreatedConsumerRegistrar} 统一收集并注册到 {@link PostCreatedEventBus}——
+ * 由 {@code PostCreatedEventBus} 构造器自动收集注册——
  * 订阅关系集中在装配器，新增消费方只需新建 {@code @Component} 实现本接口，现有一处不碰。
  * <p>
  * <b>对齐 Kafka consumer 心智</b>：每个实现 = 一个独立消费组，{@link #name()} 是该组的标识
