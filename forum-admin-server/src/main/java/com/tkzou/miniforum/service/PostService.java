@@ -14,7 +14,7 @@ import com.tkzou.miniforum.repository.LikeRepository;
 import com.tkzou.miniforum.repository.PostRepository;
 import com.tkzou.miniforum.repository.UserRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
-import com.tkzou.miniforum.recommend.stream.OutboxStore;
+import com.tkzou.miniforum.recommend.mq.OutboxStore;
 import com.tkzou.miniforum.search.SearchIndex;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;

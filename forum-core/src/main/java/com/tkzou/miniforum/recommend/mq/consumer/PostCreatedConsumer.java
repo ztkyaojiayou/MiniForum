@@ -1,4 +1,5 @@
-package com.tkzou.miniforum.recommend.stream;
+package com.tkzou.miniforum.recommend.mq.consumer;
+import com.tkzou.miniforum.recommend.mq.PostCreatedEvent;
 
 /**
  * 帖子创建事件订阅者接口（统一的一路消费）

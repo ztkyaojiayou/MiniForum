@@ -1,9 +1,9 @@
 package com.tkzou.miniforum.recommend.prod.mysql;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tkzou.miniforum.recommend.stream.OutboxStore;
-import com.tkzou.miniforum.recommend.stream.PostCreatedEvent;
-import com.tkzou.miniforum.recommend.stream.PostCreatedProducer;
+import com.tkzou.miniforum.recommend.mq.OutboxStore;
+import com.tkzou.miniforum.recommend.mq.PostCreatedEvent;
+import com.tkzou.miniforum.recommend.mq.producer.PostCreatedProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;

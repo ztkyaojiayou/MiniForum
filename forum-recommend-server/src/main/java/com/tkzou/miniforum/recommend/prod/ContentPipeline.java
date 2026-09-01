@@ -1,7 +1,7 @@
 package com.tkzou.miniforum.recommend.prod;
 
-import com.tkzou.miniforum.recommend.stream.PostCreatedEvent;
-import com.tkzou.miniforum.recommend.stream.PostCreatedEventBus;
+import com.tkzou.miniforum.recommend.mq.PostCreatedEvent;
+import com.tkzou.miniforum.recommend.mq.PostCreatedEventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;

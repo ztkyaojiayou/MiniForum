@@ -1,4 +1,4 @@
-package com.tkzou.miniforum.recommend.stream;
+package com.tkzou.miniforum.recommend.mq;
 
 import com.tkzou.miniforum.recommend.behavior.BehaviorLog;
 import org.springframework.beans.factory.annotation.Value;

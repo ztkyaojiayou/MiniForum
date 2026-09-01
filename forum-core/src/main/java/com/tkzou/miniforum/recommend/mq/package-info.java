@@ -21,6 +21,7 @@
  * </pre>
  *
  * 完整的事件消费者（FanoutPostCreatedConsumer / SearchIndexPostCreatedConsumer / TrafficPoolPostCreatedConsumer）在 forum-recommend-server 的
- * 同名包下——它们依赖 recommend 内部的 TrafficPool / RealtimeFeatureStore / SearchIndex，故不放共享域。
+ * {@code recommend/mq/consumer/} 下——它们依赖 recommend 内部的 TrafficPool / RealtimeFeatureStore / SearchIndex，故不放共享域。
+ * 共享域按角色归子包：{@code mq/producer/}（{@code PostCreatedProducer} 接口）、{@code mq/consumer/}（{@code PostCreatedConsumer} 接口）。
  */
-package com.tkzou.miniforum.recommend.stream;
+package com.tkzou.miniforum.recommend.mq;

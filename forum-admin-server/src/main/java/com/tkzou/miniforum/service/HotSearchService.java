@@ -6,7 +6,7 @@ import com.tkzou.miniforum.entity.SearchRecord;
 import com.tkzou.miniforum.repository.CommentRepository;
 import com.tkzou.miniforum.repository.PostRepository;
 import com.tkzou.miniforum.repository.SearchRecordRepository;
-import com.tkzou.miniforum.recommend.stream.HeatAggregator;
+import com.tkzou.miniforum.recommend.mq.HeatAggregator;
 import com.tkzou.miniforum.util.TtlCache;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;

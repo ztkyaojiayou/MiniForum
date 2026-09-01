@@ -10,7 +10,7 @@ import com.tkzou.miniforum.repository.PostRepository;
 import com.tkzou.miniforum.repository.UserRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
 import com.tkzou.miniforum.idempotency.IdempotencyStore;
-import com.tkzou.miniforum.recommend.stream.OutboxStore;
+import com.tkzou.miniforum.recommend.mq.OutboxStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

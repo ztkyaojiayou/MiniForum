@@ -1,4 +1,5 @@
-package com.tkzou.miniforum.recommend.stream;
+package com.tkzou.miniforum.recommend.mq.producer;
+import com.tkzou.miniforum.recommend.mq.PostCreatedEvent;
 
 /**
  * 帖子创建事件发布器接口

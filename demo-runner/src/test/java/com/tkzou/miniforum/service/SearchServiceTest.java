@@ -19,10 +19,10 @@ import com.tkzou.miniforum.repository.UserRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
 import com.tkzou.miniforum.recommend.behavior.impl.InMemoryBehaviorLogger;
-import com.tkzou.miniforum.recommend.stream.BehaviorEventQueue;
+import com.tkzou.miniforum.recommend.mq.BehaviorEventQueue;
 import com.tkzou.miniforum.idempotency.impl.InMemoryIdempotencyStore;
-import com.tkzou.miniforum.recommend.stream.impl.InMemoryOutboxStore;
-import com.tkzou.miniforum.recommend.stream.impl.InMemoryPostCreatedProducer;
+import com.tkzou.miniforum.recommend.mq.impl.InMemoryOutboxStore;
+import com.tkzou.miniforum.recommend.mq.producer.InMemoryPostCreatedProducer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -35,7 +35,7 @@ import com.tkzou.miniforum.repository.impl.InMemoryFavoriteRepository;
 import com.tkzou.miniforum.repository.impl.InMemoryLikeRepository;
 import com.tkzou.miniforum.repository.impl.InMemoryPostRepository;
 import com.tkzou.miniforum.repository.impl.InMemoryUserRepository;
-import com.tkzou.miniforum.recommend.stream.PostCreatedEventBus;
+import com.tkzou.miniforum.recommend.mq.PostCreatedEventBus;
 
 /**
  * 综合搜索服务单元测试：帖子（标题/内容/标签/话题）+ 用户（用户名/昵称）

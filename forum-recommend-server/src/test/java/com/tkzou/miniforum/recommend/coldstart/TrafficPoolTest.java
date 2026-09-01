@@ -5,7 +5,7 @@ import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 import com.tkzou.miniforum.recommend.coldstart.impl.InMemoryTrafficPoolStore;
 import com.tkzou.miniforum.recommend.feature.ItemFeature;
 import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
-import com.tkzou.miniforum.recommend.stream.BehaviorEventQueue;
+import com.tkzou.miniforum.recommend.mq.BehaviorEventQueue;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 

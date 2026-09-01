@@ -1,8 +1,8 @@
 package com.tkzou.miniforum.recommend.prod.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tkzou.miniforum.recommend.stream.PostCreatedEvent;
-import com.tkzou.miniforum.recommend.stream.PostCreatedProducer;
+import com.tkzou.miniforum.recommend.mq.PostCreatedEvent;
+import com.tkzou.miniforum.recommend.mq.producer.PostCreatedProducer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;

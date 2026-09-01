@@ -1,4 +1,4 @@
-package com.tkzou.miniforum.recommend.stream;
+package com.tkzou.miniforum.recommend.mq;
 
 import java.util.ArrayList;
 import java.util.List;

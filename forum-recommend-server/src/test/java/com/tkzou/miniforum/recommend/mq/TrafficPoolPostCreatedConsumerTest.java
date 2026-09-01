@@ -1,6 +1,6 @@
-package com.tkzou.miniforum.recommend.stream;
-import com.tkzou.miniforum.recommend.stream.impl.TrafficPoolPostCreatedConsumer;
-import com.tkzou.miniforum.recommend.stream.impl.InMemoryPostCreatedProducer;
+package com.tkzou.miniforum.recommend.mq;
+import com.tkzou.miniforum.recommend.mq.consumer.TrafficPoolPostCreatedConsumer;
+import com.tkzou.miniforum.recommend.mq.producer.InMemoryPostCreatedProducer;
 
 import com.tkzou.miniforum.recommend.coldstart.impl.InMemoryTrafficPoolStore;
 import com.tkzou.miniforum.recommend.coldstart.TrafficPool;

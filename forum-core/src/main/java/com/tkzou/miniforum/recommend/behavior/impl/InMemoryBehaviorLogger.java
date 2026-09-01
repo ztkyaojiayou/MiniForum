@@ -4,7 +4,7 @@ import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLog;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
 
-import com.tkzou.miniforum.recommend.stream.BehaviorEventQueue;
+import com.tkzou.miniforum.recommend.mq.BehaviorEventQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;

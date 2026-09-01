@@ -1,6 +1,6 @@
-package com.tkzou.miniforum.recommend.stream.impl;
-import com.tkzou.miniforum.recommend.stream.PostCreatedConsumer;
-import com.tkzou.miniforum.recommend.stream.PostCreatedEvent;
+package com.tkzou.miniforum.recommend.mq.consumer;
+import com.tkzou.miniforum.recommend.mq.consumer.PostCreatedConsumer;
+import com.tkzou.miniforum.recommend.mq.PostCreatedEvent;
 
 import com.tkzou.miniforum.feed.FollowFeedStore;
 import org.slf4j.Logger;

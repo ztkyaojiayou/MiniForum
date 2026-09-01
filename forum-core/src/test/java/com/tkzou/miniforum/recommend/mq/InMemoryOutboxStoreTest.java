@@ -1,5 +1,6 @@
-package com.tkzou.miniforum.recommend.stream;
-import com.tkzou.miniforum.recommend.stream.impl.InMemoryOutboxStore;
+package com.tkzou.miniforum.recommend.mq;
+import com.tkzou.miniforum.recommend.mq.producer.PostCreatedProducer;
+import com.tkzou.miniforum.recommend.mq.impl.InMemoryOutboxStore;
 
 import org.junit.jupiter.api.Test;
 

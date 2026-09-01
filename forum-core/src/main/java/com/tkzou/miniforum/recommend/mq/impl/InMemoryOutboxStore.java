@@ -1,7 +1,7 @@
-package com.tkzou.miniforum.recommend.stream.impl;
-import com.tkzou.miniforum.recommend.stream.PostCreatedEvent;
-import com.tkzou.miniforum.recommend.stream.PostCreatedProducer;
-import com.tkzou.miniforum.recommend.stream.OutboxStore;
+package com.tkzou.miniforum.recommend.mq.impl;
+import com.tkzou.miniforum.recommend.mq.PostCreatedEvent;
+import com.tkzou.miniforum.recommend.mq.producer.PostCreatedProducer;
+import com.tkzou.miniforum.recommend.mq.OutboxStore;
 
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;

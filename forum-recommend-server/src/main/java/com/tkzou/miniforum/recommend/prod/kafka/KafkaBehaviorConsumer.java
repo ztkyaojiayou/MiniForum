@@ -3,7 +3,7 @@ package com.tkzou.miniforum.recommend.prod.kafka;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLog;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;
-import com.tkzou.miniforum.recommend.stream.BehaviorEventQueue;
+import com.tkzou.miniforum.recommend.mq.BehaviorEventQueue;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;

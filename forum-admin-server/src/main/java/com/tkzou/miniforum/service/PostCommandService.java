@@ -17,8 +17,8 @@ import com.tkzou.miniforum.repository.PostRepository;
 import com.tkzou.miniforum.repository.UserRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
-import com.tkzou.miniforum.recommend.stream.OutboxStore;
-import com.tkzou.miniforum.recommend.stream.PostCreatedEvent;
+import com.tkzou.miniforum.recommend.mq.OutboxStore;
+import com.tkzou.miniforum.recommend.mq.PostCreatedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

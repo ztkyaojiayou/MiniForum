@@ -20,8 +20,8 @@ import com.tkzou.miniforum.idempotency.IdempotencyStore;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
 import com.tkzou.miniforum.recommend.behavior.impl.InMemoryBehaviorLogger;
-import com.tkzou.miniforum.recommend.stream.BehaviorEventQueue;
-import com.tkzou.miniforum.recommend.stream.OutboxStore;
+import com.tkzou.miniforum.recommend.mq.BehaviorEventQueue;
+import com.tkzou.miniforum.recommend.mq.OutboxStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

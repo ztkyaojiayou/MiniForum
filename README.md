@@ -73,7 +73,7 @@
 | 层 | 时效 | 本模块对应 | 职责 |
 |---|---|---|---|
 | **离线层** | 小时 ~ 天 | `recommend/model`、`recommend/eval` | 行为日志 → ItemCF 相似度表；时间切分离线评估 |
-| **近线层** | 秒 ~ 分 | `recommend/stream`、`recommend/feature` | 实时特征窗口聚合（模拟 Kafka → Flink → Redis） |
+| **近线层** | 秒 ~ 分 | `recommend/mq`、`recommend/feature` | 实时特征窗口聚合（模拟 Kafka → Flink → Redis） |
 | **在线层** | 毫秒 | `recommend/service` + `recall/rank/rerank/coldstart` | 漏斗编排，低延迟下发；配置 / AB 分流 |
 
 ### 2. 在线请求链路（一次 `/api/recommend/feed`）

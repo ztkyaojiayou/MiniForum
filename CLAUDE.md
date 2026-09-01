@@ -76,12 +76,12 @@ forum-core（纯库，无 main、无 web 依赖）
 ### 离线 / 近线 / 在线分层
 
 - **离线**（`recommend/model`、`recommend/eval`、`forum-offline-job`）：ItemCF 相似度 + 时间切分（80/20）离线评估，7 项指标（AUC/GAUC/Recall@K/NDCG@K/Coverage/Diversity/Freshness）。`OfflineEvalScheduler` 每 30 分钟运行 → 写 `data/eval-report.json`。
-- **近线**（`recommend/stream`、`recommend/feature`、`forum-flink-nearline`）：实时特征窗口聚合（Kafka→Flink→Redis）。
+- **近线**（`recommend/mq`、`recommend/feature`、`forum-flink-nearline`）：实时特征窗口聚合（Kafka→Flink→Redis）。
 - **在线**（`recommend/service` + recall/rank/rerank/coldstart）：低延迟漏斗编排。
 
 ### 共享事件总线（近期工作——「一份事件、多路消费」）
 
-`forum-core/recommend/stream/` 定义领域事件与总线接口（`PostCreatedEventBus`、`PostCreatedEvent`、`PostCreatedProducer`、`OutboxStore`、`InMemoryOutboxStore`、`BehaviorEventQueue`、`PostCreatedConsumer`）。下游消费者实现 `PostCreatedConsumer` 接口（`name()` 消费组标识 + `onPostCreated` 处理），由 `PostCreatedEventBus`（core）构造器利用 Spring 的 `List<PostCreatedConsumer>` 自动收集并统一注册——订阅关系集中一处、新增消费方零改动。当前三个并列订阅者：`FanoutPostCreatedConsumer`（关注流扇出）、`SearchIndexPostCreatedConsumer`（建搜索索引）、`TrafficPoolPostCreatedConsumer`（预热冷启动池）。对标生产环境 Kafka 将一份 `post-created` 事件广播给多个独立消费组。新增下游消费者：新建 `@Component` 实现 `PostCreatedConsumer` 即可，而非直接调用 repository。
+`forum-core/recommend/mq/` 定义领域事件与总线接口（`PostCreatedEventBus`、`PostCreatedEvent`、`PostCreatedProducer`、`OutboxStore`、`InMemoryOutboxStore`、`BehaviorEventQueue`、`PostCreatedConsumer`）。下游消费者实现 `PostCreatedConsumer` 接口（`name()` 消费组标识 + `onPostCreated` 处理），由 `PostCreatedEventBus`（core）构造器利用 Spring 的 `List<PostCreatedConsumer>` 自动收集并统一注册——订阅关系集中一处、新增消费方零改动。当前三个并列订阅者：`FanoutPostCreatedConsumer`（关注流扇出）、`SearchIndexPostCreatedConsumer`（建搜索索引）、`TrafficPoolPostCreatedConsumer`（预热冷启动池）。对标生产环境 Kafka 将一份 `post-created` 事件广播给多个独立消费组。新增下游消费者：新建 `@Component` 实现 `PostCreatedConsumer` 即可，而非直接调用 repository。
 
 ### 持久化
 
