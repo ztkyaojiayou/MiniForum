@@ -219,8 +219,8 @@ AbExperimentService：floorMod(hash(uid:salt), 100) 分桶
 my-first-nanobot-server/                  # Maven 多模块（父 POM forum-parent，聚合 6 模块）
 ├── forum-core/              # ★ 共享域（纯库，无 main）
 │   └── src/main/java/com/tkzou/miniforum/
-│       ├── entity/ repository/ dto/ common/ exception/ util/    # 数据层与基础件
-│       ├── feed/            #   关注流 inbox（FollowFeedStore 接口 + 内存/Redis 实现）
+│       ├── entity/ repository(+impl/) dto(request/response/common) common/ exception/ util/  # 数据层与基础件
+│       ├── feed/            #   关注流 inbox（FollowFeedStore 接口 + impl/{InMemory,Redis}FollowFeedStore）
 │       └── recommend/       #   behavior(行为日志) + stream(事件接口) 共享件
 │       └── dto/PostAssembler.java   # 帖子视图装配（admin 与 recommend 共用，破依赖环）
 ├── forum-admin-server/      # ★ 主业务：帖子/用户/评论/关注/feed/搜索/热搜/通知/私信
@@ -228,7 +228,7 @@ my-first-nanobot-server/                  # Maven 多模块（父 POM forum-pare
 ├── forum-recommend-server/  # ★ 推荐核心：召回/排序/重排/冷启动/三域/AB/配置 + 生产适配
 │   └── src/main/java/com/tkzou/miniforum/recommend/
 │       ├── recall/ rank/ rerank/ coldstart/ model/               # 推荐管道
-│       ├── profile/ feature/ graph/                              # 三域：画像/特征/社交图谱（各自接口+内存实现）
+│       ├── profile/ feature/ graph/                              # 三域：画像/特征/社交图谱（接口在顶层，实现归各包 impl/）
 │       ├── config/ ab/ domain/ service/ stream/                  # 配置/AB/编排/事件
 │       └── prod/            #   Kafka/Redis/ClickHouse/Nacos/Sentinel 生产适配(@Profile("prod"))
 ├── forum-offline-job/       # 离线层：离线评估（OfflineEvalScheduler）+ OfflineJobApplication

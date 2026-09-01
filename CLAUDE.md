@@ -54,7 +54,7 @@ forum-core（纯库，无 main、无 web 依赖）
 
 每个外部系统（Kafka、Redis、Nacos、Flink、MySQL、ClickHouse）都用同一种方式建模，这也是零中间件默认的关窍：
 
-1. 主源码树里定义**接口**与默认的**内存实现**（始终激活）。
+1. 主源码树里定义**接口**（各包顶层，如 `repository/PostRepository`）与默认的**内存实现**（归入同包 `impl/` 子包，如 `repository/impl/InMemoryPostRepository`，始终激活）。
 2. 一个 `@Profile("prod")` 的**真实适配**——仅在 `-Pprod` 下编译（demo-runner 的 `src/prod/java`，或 recommend-server 的 `src/main/java/.../prod/`），仅在 `SPRING_PROFILES_ACTIVE=prod` 下激活。
 3. Spring 按 profile 选择对应 bean；其余代码只依赖接口，两种模式下行为一致。
 
@@ -85,7 +85,7 @@ forum-core（纯库，无 main、无 web 依赖）
 
 ### 持久化
 
-默认 `DataStore`（demo-runner）每 30s（`app.persistence.interval-ms`）把内存 `ConcurrentHashMap` 各仓库快照到 `data/*.json`，启动时加载。`prod` 下 `MySqlDataStore` 取而代之（JSON 存储为 `@Profile("!prod")`）。实体位于 `forum-core/entity/`，仓储位于 `forum-core/repository/`。
+默认 `DataStore`（demo-runner）每 30s（`app.persistence.interval-ms`）把内存 `ConcurrentHashMap` 各仓库快照到 `data/*.json`，启动时加载。`prod` 下 `MySqlDataStore` 取而代之（JSON 存储为 `@Profile("!prod")`）。实体位于 `forum-core/entity/`，仓储接口位于 `forum-core/repository/`、内存默认实现在 `repository/impl/`（prod 行级实现在 demo-runner `src/prod`）。
 
 ## 约定
 
