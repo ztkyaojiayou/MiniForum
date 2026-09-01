@@ -6,7 +6,7 @@
  *
  * <h3>数据流转</h3>
  * <pre>
- * 发帖落库 → PostCreatedNotifier.notify → FollowFeedStore.fanout(authorId, postId)
+ * 发帖落库 → PostCreatedProducer.notify → FollowFeedStore.fanout(authorId, postId)
  *     └→ 写入【作者所有已建流粉丝】的 inbox（postId 升序 = 时间序，封顶 feed.cap 淘汰最旧）
  *
  * 读关注流 → FollowService.getFollowFeed → getInbox(userId, maxId, maxCount)

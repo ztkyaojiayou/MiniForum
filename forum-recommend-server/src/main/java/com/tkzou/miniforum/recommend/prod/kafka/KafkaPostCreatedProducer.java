@@ -2,7 +2,7 @@ package com.tkzou.miniforum.recommend.prod.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tkzou.miniforum.recommend.stream.PostCreatedEvent;
-import com.tkzou.miniforum.recommend.stream.PostCreatedNotifier;
+import com.tkzou.miniforum.recommend.stream.PostCreatedProducer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -18,13 +18,13 @@ import java.util.Properties;
 /**
  * Kafka 帖子创建事件生产者（生产适配，@Profile("prod") 激活）
  * <p>
- * <b>数据流程</b>：{@link #notify} → Jackson 序列化 {@link PostCreatedEvent} → KafkaProducer 写入
+ * <b>数据流程</b>：{@link #publish} → Jackson 序列化 {@link PostCreatedEvent} → KafkaProducer 写入
  * topic "post-created" → 下游消费者（搜索索引 / feed 扇出 / 内容管道 / 推荐冷启动）。
- * 与内存实现（InMemoryPostCreatedNotifier）实现同一 {@link PostCreatedNotifier} 接口，可平滑替换。
+ * 与内存实现（InMemoryPostCreatedProducer）实现同一 {@link PostCreatedProducer} 接口，可平滑替换。
  */
 @Component
 @Profile("prod")
-public class KafkaPostCreatedProducer implements PostCreatedNotifier {
+public class KafkaPostCreatedProducer implements PostCreatedProducer {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaPostCreatedProducer.class);
 
@@ -45,7 +45,7 @@ public class KafkaPostCreatedProducer implements PostCreatedNotifier {
     }
 
     @Override
-    public void notify(PostCreatedEvent event) {
+    public void publish(PostCreatedEvent event) {
         try {
             producer.send(new ProducerRecord<>("post-created",
                     String.valueOf(event.getPostId()), objectMapper.writeValueAsString(event)));

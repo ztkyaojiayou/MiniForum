@@ -1,6 +1,6 @@
 package com.tkzou.miniforum.recommend.stream;
 import com.tkzou.miniforum.recommend.stream.impl.TrafficPoolOnPostCreated;
-import com.tkzou.miniforum.recommend.stream.impl.InMemoryPostCreatedNotifier;
+import com.tkzou.miniforum.recommend.stream.impl.InMemoryPostCreatedProducer;
 
 import com.tkzou.miniforum.recommend.coldstart.impl.InMemoryTrafficPoolStore;
 import com.tkzou.miniforum.recommend.coldstart.TrafficPool;
@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * 冷启流量池订阅者测试（P3.3 内存冷启事件化）
  * <p>
- * 内存发帖（InMemoryPostCreatedNotifier）publish 到总线 → TrafficPoolOnPostCreated 消费 →
+ * 内存发帖（InMemoryPostCreatedProducer）publish 到总线 → TrafficPoolOnPostCreated 消费 →
  * {@link TrafficPool#notifyCreated} 把新帖纳入流量池跟踪。生产 Kafka 消费同样 publish 到该总线，
  * 订阅者行为一致，故这里用内存路径验证（总线已统一）。
  */
@@ -56,10 +56,10 @@ class TrafficPoolOnPostCreatedTest {
     void postCreatedEvent_pushesNewPostIntoTrafficPool() {
         TrafficPool trafficPool = newTrafficPool(itemFeatureService(true));
         PostCreatedEventBus eventBus = new PostCreatedEventBus();
-        new PostCreatedSubscriberRegistrar(eventBus, List.of(new TrafficPoolOnPostCreated(trafficPool))); // 由 Registrar 统一注册订阅
-        InMemoryPostCreatedNotifier notifier = new InMemoryPostCreatedNotifier(eventBus);
+        new PostCreatedConsumerRegistrar(eventBus, List.of(new TrafficPoolOnPostCreated(trafficPool))); // 由 Registrar 统一注册订阅
+        InMemoryPostCreatedProducer notifier = new InMemoryPostCreatedProducer(eventBus);
 
-        notifier.notify(new PostCreatedEvent(1001L, 7L, "alice", "标题", "内容", "科技", List.of("AI")));
+        notifier.publish(new PostCreatedEvent(1001L, 7L, "alice", "标题", "内容", "科技", List.of("AI")));
 
         assertEquals(1, trafficPool.size(), "冷启新帖应入流量池跟踪");
         // tier=0 试探期：baseBoost=0.3 保底加分，证明已进入流量池（非 0）
@@ -70,7 +70,7 @@ class TrafficPoolOnPostCreatedTest {
     void repeatedPostCreatedEvent_isDeduplicated() {
         TrafficPool trafficPool = newTrafficPool(itemFeatureService(true));
         PostCreatedEventBus eventBus = new PostCreatedEventBus();
-        new PostCreatedSubscriberRegistrar(eventBus, List.of(new TrafficPoolOnPostCreated(trafficPool)));
+        new PostCreatedConsumerRegistrar(eventBus, List.of(new TrafficPoolOnPostCreated(trafficPool)));
 
         PostCreatedEvent event = new PostCreatedEvent(1001L, 7L, "alice", "标题", "内容", "科技", List.of("AI"));
         eventBus.publish(event);
@@ -83,7 +83,7 @@ class TrafficPoolOnPostCreatedTest {
     void nonNewPoolPost_isIgnoredByTrafficPool() {
         TrafficPool trafficPool = newTrafficPool(itemFeatureService(false));
         PostCreatedEventBus eventBus = new PostCreatedEventBus();
-        new PostCreatedSubscriberRegistrar(eventBus, List.of(new TrafficPoolOnPostCreated(trafficPool)));
+        new PostCreatedConsumerRegistrar(eventBus, List.of(new TrafficPoolOnPostCreated(trafficPool)));
 
         eventBus.publish(new PostCreatedEvent(2002L, 8L, "bob", "标题", "内容", "科技", List.of()));
 

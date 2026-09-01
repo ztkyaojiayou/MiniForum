@@ -22,7 +22,7 @@ import com.tkzou.miniforum.recommend.behavior.impl.InMemoryBehaviorLogger;
 import com.tkzou.miniforum.idempotency.impl.InMemoryIdempotencyStore;
 import com.tkzou.miniforum.recommend.stream.BehaviorEventQueue;
 import com.tkzou.miniforum.recommend.stream.impl.InMemoryOutboxStore;
-import com.tkzou.miniforum.recommend.stream.impl.InMemoryPostCreatedNotifier;
+import com.tkzou.miniforum.recommend.stream.impl.InMemoryPostCreatedProducer;
 import com.tkzou.miniforum.recommend.stream.OutboxStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,7 +41,7 @@ import com.tkzou.miniforum.repository.impl.InMemoryPostRepository;
 import com.tkzou.miniforum.repository.impl.InMemoryUserRepository;
 import com.tkzou.miniforum.recommend.stream.impl.FanoutOnPostCreated;
 import com.tkzou.miniforum.recommend.stream.PostCreatedEventBus;
-import com.tkzou.miniforum.recommend.stream.PostCreatedSubscriberRegistrar;
+import com.tkzou.miniforum.recommend.stream.PostCreatedConsumerRegistrar;
 
 /**
  * 关注流推模式 + 游标分页闭环单元测试
@@ -70,8 +70,8 @@ class FollowServiceTest {
         NotificationService notificationService = new NotificationService(notificationRepository);
         BehaviorLogger behaviorLogger = new InMemoryBehaviorLogger(new BehaviorLogRepository(), new BehaviorEventQueue());
         PostCreatedEventBus eventBus = new PostCreatedEventBus();
-        new PostCreatedSubscriberRegistrar(eventBus, List.of(new FanoutOnPostCreated(followFeedStore))); // 关注流扇出订阅（Registrar 统一注册）
-        OutboxStore outboxStore = new InMemoryOutboxStore(new InMemoryPostCreatedNotifier(eventBus));
+        new PostCreatedConsumerRegistrar(eventBus, List.of(new FanoutOnPostCreated(followFeedStore))); // 关注流扇出订阅（Registrar 统一注册）
+        OutboxStore outboxStore = new InMemoryOutboxStore(new InMemoryPostCreatedProducer(eventBus));
         PostAssembler postAssembler = new PostAssembler(postRepository, likeRepository, commentRepository, favoriteRepository);
         postService = new PostService(postRepository, likeRepository, commentRepository,
                 favoriteRepository, notificationService, userRepository, behaviorLogger, outboxStore, postAssembler,

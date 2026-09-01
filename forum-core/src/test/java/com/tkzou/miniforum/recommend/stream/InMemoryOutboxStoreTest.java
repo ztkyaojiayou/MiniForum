@@ -11,16 +11,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * 内存 Outbox 单元测试
  * <p>
- * 验证演示实现：enqueue 同步委托 {@link PostCreatedNotifier}（保持"发帖即扇出"闭环）。
+ * 验证演示实现：enqueue 同步委托 {@link PostCreatedProducer}（保持"发帖即扇出"闭环）。
  */
 class InMemoryOutboxStoreTest {
 
-    /** 记录式 fake PostCreatedNotifier：记录收到的每个事件 */
-    private static final class RecordingNotifier implements PostCreatedNotifier {
+    /** 记录式 fake PostCreatedProducer：记录收到的每个事件 */
+    private static final class RecordingNotifier implements PostCreatedProducer {
         final List<PostCreatedEvent> events = new ArrayList<>();
 
         @Override
-        public void notify(PostCreatedEvent event) {
+        public void publish(PostCreatedEvent event) {
             events.add(event);
         }
     }

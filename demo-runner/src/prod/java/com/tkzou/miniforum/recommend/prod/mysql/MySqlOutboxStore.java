@@ -3,7 +3,7 @@ package com.tkzou.miniforum.recommend.prod.mysql;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tkzou.miniforum.recommend.stream.OutboxStore;
 import com.tkzou.miniforum.recommend.stream.PostCreatedEvent;
-import com.tkzou.miniforum.recommend.stream.PostCreatedNotifier;
+import com.tkzou.miniforum.recommend.stream.PostCreatedProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,7 +20,7 @@ import java.util.Map;
  * MySQL 发帖事件 Outbox（生产适配，@Profile("prod") 激活，替代内存 OutboxStore）
  * <p>
  * <b>数据流程</b>：发帖 → {@link #enqueue} 把事件写 post_outbox 表（status=PENDING，持久化保证不丢）
- * → 定时 Relayer 轮询 PENDING → {@link PostCreatedNotifier#notify}（prod = KafkaPostCreatedProducer 发 Kafka
+ * → 定时 Relayer 轮询 PENDING → {@link PostCreatedProducer#publish}（prod = KafkaPostCreatedProducer 发 Kafka
  * "post-created"，ack=1 + 生产者内置重试）→ 成功后 status=DONE；
  * 投递异常保留 PENDING 下轮重试（at-least-once，下游 fanout/冷启幂等）。
  * <p>
@@ -39,16 +39,16 @@ public class MySqlOutboxStore implements OutboxStore {
     private static final Logger log = LoggerFactory.getLogger(MySqlOutboxStore.class);
 
     private final JdbcTemplate jdbcTemplate;
-    private final PostCreatedNotifier postCreatedNotifier;
+    private final PostCreatedProducer postCreatedProducer;
     private final ObjectMapper objectMapper;
     private final int batchSize;
 
     public MySqlOutboxStore(JdbcTemplate jdbcTemplate,
-                            PostCreatedNotifier postCreatedNotifier,
+                            PostCreatedProducer postCreatedProducer,
                             ObjectMapper objectMapper,
                             @Value("${app.outbox.batch-size:100}") int batchSize) {
         this.jdbcTemplate = jdbcTemplate;
-        this.postCreatedNotifier = postCreatedNotifier;
+        this.postCreatedProducer = postCreatedProducer;
         this.objectMapper = objectMapper;
         this.batchSize = batchSize;
     }
@@ -92,7 +92,7 @@ public class MySqlOutboxStore implements OutboxStore {
             long postId = ((Number) row.get("post_id")).longValue();
             try {
                 PostCreatedEvent event = objectMapper.readValue((String) row.get("payload"), PostCreatedEvent.class);
-                postCreatedNotifier.notify(event);
+                postCreatedProducer.publish(event);
                 jdbcTemplate.update("UPDATE post_outbox SET status = '" + OutboxStatus.DONE.name() + "' WHERE id = ?", id);
             } catch (Exception e) {
                 // 保留 PENDING，下轮重试（at-least-once；下游 fanout/冷启以 postId 幂等）

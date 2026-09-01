@@ -22,7 +22,7 @@ import com.tkzou.miniforum.recommend.behavior.impl.InMemoryBehaviorLogger;
 import com.tkzou.miniforum.recommend.stream.BehaviorEventQueue;
 import com.tkzou.miniforum.idempotency.impl.InMemoryIdempotencyStore;
 import com.tkzou.miniforum.recommend.stream.impl.InMemoryOutboxStore;
-import com.tkzou.miniforum.recommend.stream.impl.InMemoryPostCreatedNotifier;
+import com.tkzou.miniforum.recommend.stream.impl.InMemoryPostCreatedProducer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -62,7 +62,7 @@ class PostServiceTest {
         PostAssembler postAssembler = new PostAssembler(postRepository, likeRepository, commentRepository, favoriteRepository);
         postService = new PostService(postRepository, likeRepository, commentRepository,
                 favoriteRepository, notificationService, userRepository, behaviorLogger,
-                new InMemoryOutboxStore(new InMemoryPostCreatedNotifier(new PostCreatedEventBus())),
+                new InMemoryOutboxStore(new InMemoryPostCreatedProducer(new PostCreatedEventBus())),
                 postAssembler, new InMemoryIdempotencyStore(300_000L));
     }
 

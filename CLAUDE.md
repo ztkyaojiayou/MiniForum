@@ -81,7 +81,7 @@ forum-core（纯库，无 main、无 web 依赖）
 
 ### 共享事件总线（近期工作——「一份事件、多路消费」）
 
-`forum-core/recommend/stream/` 定义领域事件与总线接口（`PostCreatedEventBus`、`PostCreatedEvent`、`PostCreatedNotifier`、`OutboxStore`、`InMemoryOutboxStore`、`BehaviorEventQueue`、`PostCreatedSubscriber`）。下游消费者实现 `PostCreatedSubscriber` 接口（`name()` 消费组标识 + `onPostCreated` 处理），由 `PostCreatedSubscriberRegistrar`（recommend-server）利用 Spring 的 `List<PostCreatedSubscriber>` 自动收集并统一注册到总线——订阅关系集中一处、新增消费方零改动。当前三个并列订阅者：`FanoutOnPostCreated`（关注流扇出）、`SearchIndexUpdater`（建搜索索引）、`TrafficPoolOnPostCreated`（预热冷启动池）。对标生产环境 Kafka 将一份 `post-created` 事件广播给多个独立消费组。新增下游消费者：新建 `@Component` 实现 `PostCreatedSubscriber` 即可，而非直接调用 repository。
+`forum-core/recommend/stream/` 定义领域事件与总线接口（`PostCreatedEventBus`、`PostCreatedEvent`、`PostCreatedProducer`、`OutboxStore`、`InMemoryOutboxStore`、`BehaviorEventQueue`、`PostCreatedConsumer`）。下游消费者实现 `PostCreatedConsumer` 接口（`name()` 消费组标识 + `onPostCreated` 处理），由 `PostCreatedConsumerRegistrar`（recommend-server）利用 Spring 的 `List<PostCreatedConsumer>` 自动收集并统一注册到总线——订阅关系集中一处、新增消费方零改动。当前三个并列订阅者：`FanoutOnPostCreated`（关注流扇出）、`SearchIndexUpdater`（建搜索索引）、`TrafficPoolOnPostCreated`（预热冷启动池）。对标生产环境 Kafka 将一份 `post-created` 事件广播给多个独立消费组。新增下游消费者：新建 `@Component` 实现 `PostCreatedConsumer` 即可，而非直接调用 repository。
 
 ### 持久化
 

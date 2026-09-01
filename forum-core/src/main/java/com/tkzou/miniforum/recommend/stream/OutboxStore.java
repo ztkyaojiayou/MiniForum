@@ -6,9 +6,9 @@ package com.tkzou.miniforum.recommend.stream;
  * 保证发帖事件"必达"：入队（{@link #enqueue}）后由 Relayer 兜底投递到 Kafka，失败重试、不丢。
  * 双实现：
  * <ul>
- *   <li>内存 {@link InMemoryOutboxStore}（@Profile("!prod")）——同步委托 {@link PostCreatedNotifier}，保持演示闭环；</li>
+ *   <li>内存 {@link InMemoryOutboxStore}（@Profile("!prod")）——同步委托 {@link PostCreatedProducer}，保持演示闭环；</li>
  *   <li>MySQL {@code MySqlOutboxStore}（@Profile("prod")，demo-runner/src/prod）——写 post_outbox 表
- *       （status=PENDING），定时 Relayer 轮询 → PostCreatedNotifier（Kafka 实现）投递 → status=DONE。</li>
+ *       （status=PENDING），定时 Relayer 轮询 → PostCreatedProducer（Kafka 实现）投递 → status=DONE。</li>
  * </ul>
  */
 public interface OutboxStore {
