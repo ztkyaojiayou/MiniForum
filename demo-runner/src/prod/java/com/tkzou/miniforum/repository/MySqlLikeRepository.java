@@ -5,7 +5,6 @@ import com.tkzou.miniforum.util.EntityIdProvider;
 import com.tkzou.miniforum.util.IdProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -30,11 +29,11 @@ public class MySqlLikeRepository implements LikeRepository {
     private static final Logger log = LoggerFactory.getLogger(MySqlLikeRepository.class);
 
     private final JdbcTemplate jdbcTemplate;
-    @Autowired(required = false)
-    private IdProvider idProvider = new EntityIdProvider();
+    private final IdProvider idProvider;
 
-    public MySqlLikeRepository(JdbcTemplate jdbcTemplate) {
+    public MySqlLikeRepository(JdbcTemplate jdbcTemplate, IdProvider idProvider) {
         this.jdbcTemplate = jdbcTemplate;
+        this.idProvider = idProvider;
         log.info("MySQL 点赞仓库初始化（行级表 likes）");
     }
 

@@ -5,7 +5,6 @@ import com.tkzou.miniforum.util.EntityIdProvider;
 import com.tkzou.miniforum.util.IdProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -14,6 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.annotation.PostConstruct;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,11 +31,11 @@ public class MySqlUserRepository implements UserRepository {
     private static final Logger log = LoggerFactory.getLogger(MySqlUserRepository.class);
 
     private final JdbcTemplate jdbcTemplate;
-    @Autowired(required = false)
-    private IdProvider idProvider = new EntityIdProvider();
+    private final IdProvider idProvider;
 
-    public MySqlUserRepository(JdbcTemplate jdbcTemplate) {
+    public MySqlUserRepository(JdbcTemplate jdbcTemplate, IdProvider idProvider) {
         this.jdbcTemplate = jdbcTemplate;
+        this.idProvider = idProvider;
         log.info("MySQL 用户仓库初始化（行级表 users）");
     }
 
@@ -73,6 +75,18 @@ public class MySqlUserRepository implements UserRepository {
     @Override
     public Optional<User> findByUsername(String username) {
         return jdbcTemplate.query("SELECT id, username, email, password, age, nickname, bio, avatar FROM users WHERE username=?", this::mapUser, username).stream().findFirst();
+    }
+
+    @Override
+    public List<User> findByIds(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return new ArrayList<>();
+        }
+        // IN 占位符批量回源（P2-25 N+1 修复）：一次 SQL 取代逐条 findById
+        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+        return jdbcTemplate.query(
+                "SELECT id, username, email, password, age, nickname, bio, avatar FROM users WHERE id IN (" + placeholders + ")",
+                this::mapUser, ids.toArray());
     }
 
     @Override

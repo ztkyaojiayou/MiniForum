@@ -8,7 +8,6 @@ import com.tkzou.miniforum.util.EntityIdProvider;
 import com.tkzou.miniforum.util.IdProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -41,12 +40,12 @@ public class MySqlPostRepository implements PostRepository {
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
     /** ID 生成器（生产 = Snowflake） */
-    @Autowired(required = false)
-    private IdProvider idProvider = new EntityIdProvider();
+    private final IdProvider idProvider;
 
-    public MySqlPostRepository(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
+    public MySqlPostRepository(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, IdProvider idProvider) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
+        this.idProvider = idProvider;
         log.info("MySQL 帖子仓库初始化（行级表 posts）");
     }
 

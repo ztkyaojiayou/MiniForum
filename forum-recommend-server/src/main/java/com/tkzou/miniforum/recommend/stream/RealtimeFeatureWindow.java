@@ -66,8 +66,12 @@ public class RealtimeFeatureWindow {
         }
     }
 
-    /** 聚合窗口内事件写回存储（滑动窗口，不清空；下次 flush 仍按时间 cutoff 过滤） */
-    public synchronized void flush() {
+    /**
+     * 聚合窗口内事件写回存储（滑动窗口，不清空；下次 flush 仍按时间 cutoff 过滤）。
+     * 快照在 {@code synchronized (recentEvents)} 内取，聚合（含 {@code postRepository.findById} I/O）在锁外执行——
+     * 不持 this 锁做 I/O（P2-24）；单 {@link Scheduled} 线程触发，无需方法级 synchronized。
+     */
+    public void flush() {
         RecConfig cfg = configService.current();
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime cutoff = now.minusMinutes(cfg.getRealtimeWindowMinutes());

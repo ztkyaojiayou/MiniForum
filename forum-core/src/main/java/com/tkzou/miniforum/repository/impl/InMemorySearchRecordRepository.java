@@ -22,9 +22,19 @@ import java.util.stream.Collectors;
 @Repository
 @Profile("!prod")
 public class InMemorySearchRecordRepository implements SearchRecordRepository {
-    /** ID 生成器：Spring 注入（演示=实体生成器 / 生产=Snowflake），测试无 Spring 时用默认实体生成器 */
-    @Autowired(required = false)
-    private IdProvider idProvider = new EntityIdProvider();
+    /** ID 生成器（构造器注入，P2-26）：Spring 按 profile 注入 EntityIdProvider(!prod) / SnowflakeIdProvider(prod)；测试直构走无参默认 */
+    private final IdProvider idProvider;
+
+    /** 测试/默认构造：EntityIdProvider（演示默认） */
+    public InMemorySearchRecordRepository() {
+        this(new EntityIdProvider());
+    }
+
+    /** 构造器注入：避免 @Autowired(required=false) 字段注入掩盖注入失败 */
+    @Autowired
+    public InMemorySearchRecordRepository(IdProvider idProvider) {
+        this.idProvider = idProvider;
+    }
 
     private final Map<Long, SearchRecord> storage = new ConcurrentHashMap<>();
 

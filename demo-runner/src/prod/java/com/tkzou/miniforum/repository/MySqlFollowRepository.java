@@ -5,7 +5,6 @@ import com.tkzou.miniforum.util.EntityIdProvider;
 import com.tkzou.miniforum.util.IdProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -46,14 +45,15 @@ public class MySqlFollowRepository implements FollowRepository {
     private final JdbcTemplate jdbcTemplate;
     private final JedisPool jedisPool;
     /** ID 生成器（生产 = Snowflake） */
-    @Autowired(required = false)
-    private IdProvider idProvider = new EntityIdProvider();
+    private final IdProvider idProvider;
 
     public MySqlFollowRepository(JdbcTemplate jdbcTemplate,
                                  @Value("${app.rec.redis.host:localhost}") String host,
-                                 @Value("${app.rec.redis.port:6379}") int port) {
+                                 @Value("${app.rec.redis.port:6379}") int port,
+                                 IdProvider idProvider) {
         this.jdbcTemplate = jdbcTemplate;
         this.jedisPool = new JedisPool(host, port);
+        this.idProvider = idProvider;
         log.info("MySQL 关注关系仓库初始化（user_follow 事实 + Redis 缓存），{}:{}", host, port);
     }
 

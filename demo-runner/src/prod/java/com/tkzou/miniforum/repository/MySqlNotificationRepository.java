@@ -6,7 +6,6 @@ import com.tkzou.miniforum.util.EntityIdProvider;
 import com.tkzou.miniforum.util.IdProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -31,11 +30,11 @@ public class MySqlNotificationRepository implements NotificationRepository {
 
     private final JdbcTemplate jdbcTemplate;
     /** ID 生成器（生产 = Snowflake） */
-    @Autowired(required = false)
-    private IdProvider idProvider = new EntityIdProvider();
+    private final IdProvider idProvider;
 
-    public MySqlNotificationRepository(JdbcTemplate jdbcTemplate) {
+    public MySqlNotificationRepository(JdbcTemplate jdbcTemplate, IdProvider idProvider) {
         this.jdbcTemplate = jdbcTemplate;
+        this.idProvider = idProvider;
         log.info("MySQL 消息通知仓库初始化（行级表 notifications）");
     }
 

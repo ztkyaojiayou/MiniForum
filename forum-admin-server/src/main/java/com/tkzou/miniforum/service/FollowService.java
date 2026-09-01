@@ -125,21 +125,29 @@ public class FollowService {
         return followRepository.countByFolloweeId(userId);
     }
 
-    /** 我关注的人列表（最新关注在前） */
+    /** 我关注的人列表（最新关注在前；P2-25 批量 IN 回源，替代逐条 findById） */
     public List<UserBriefVO> getFollowing(Long userId) {
-        return followRepository.findByFollowerId(userId).stream()
-                .map(f -> userRepository.findById(f.getFolloweeId()))
-                .filter(opt -> opt.isPresent())
-                .map(opt -> new UserBriefVO(opt.get()))
+        List<Follow> follows = followRepository.findByFollowerId(userId);
+        Map<Long, User> users = userRepository.findByIds(
+                        follows.stream().map(Follow::getFolloweeId).collect(Collectors.toList()))
+                .stream().collect(Collectors.toMap(User::getId, u -> u));
+        return follows.stream()
+                .map(f -> users.get(f.getFolloweeId()))
+                .filter(u -> u != null)
+                .map(UserBriefVO::new)
                 .collect(Collectors.toList());
     }
 
-    /** 我的粉丝列表（最新关注在前） */
+    /** 我的粉丝列表（最新关注在前；P2-25 批量 IN 回源） */
     public List<UserBriefVO> getFollowers(Long userId) {
-        return followRepository.findByFolloweeId(userId).stream()
-                .map(f -> userRepository.findById(f.getFollowerId()))
-                .filter(opt -> opt.isPresent())
-                .map(opt -> new UserBriefVO(opt.get()))
+        List<Follow> follows = followRepository.findByFolloweeId(userId);
+        Map<Long, User> users = userRepository.findByIds(
+                        follows.stream().map(Follow::getFollowerId).collect(Collectors.toList()))
+                .stream().collect(Collectors.toMap(User::getId, u -> u));
+        return follows.stream()
+                .map(f -> users.get(f.getFollowerId()))
+                .filter(u -> u != null)
+                .map(UserBriefVO::new)
                 .collect(Collectors.toList());
     }
 
@@ -180,15 +188,17 @@ public class FollowService {
                 commonCount.merge(candidateId, 1, Integer::sum);
             }
         }
-        // 过滤用户不存在 + 共同好友数降序（id 升序兜底，保证确定性）+ 截断
+        // 过滤用户不存在 + 共同好友数降序（id 升序兜底，保证确定性）+ 截断（P2-25 批量 IN 回源）
+        Map<Long, User> users = userRepository.findByIds(commonCount.keySet())
+                .stream().collect(Collectors.toMap(User::getId, u -> u));
         return commonCount.entrySet().stream()
-                .filter(e -> userRepository.findById(e.getKey()).isPresent())
+                .filter(e -> users.containsKey(e.getKey()))
                 .sorted(Comparator.<Map.Entry<Long, Integer>>comparingInt(Map.Entry::getValue)
                         .reversed()
                         .thenComparing(Comparator.comparing(Map.Entry::getKey)))
                 .limit(safeLimit)
                 .map(e -> {
-                    User u = userRepository.findById(e.getKey()).orElseThrow();
+                    User u = users.get(e.getKey());
                     return new RecommendUserVO(u.getId(), u.getUsername(), u.getNickname(), u.getAvatar(),
                             e.getValue(), e.getValue() + " 位你关注的人关注了 TA", false);
                 })
