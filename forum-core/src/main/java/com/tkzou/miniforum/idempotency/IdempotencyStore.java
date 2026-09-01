@@ -10,7 +10,7 @@ import java.util.Optional;
  * 重复提交 {@link #getCompleted} 命中直接返回首次结果。
  * <p>
  * 双实现：内存 {@link InMemoryIdempotencyStore}（@Profile("!prod")，演示）/
- * Redis {@link RedisIdempotencyStore}（@Profile("prod")，NX+EX 原子 + TTL）。
+ * Redis {@link com.tkzou.miniforum.idempotency.impl.RedisIdempotencyStore}（@Profile("prod")，NX+EX 原子 + TTL）。
  */
 public interface IdempotencyStore {
 

@@ -17,7 +17,7 @@
  * <ul>
  *   <li>{@link com.tkzou.miniforum.feed.InMemoryFollowFeedStore}（@Profile("!prod")）：
  *       每用户一个 {@code ConcurrentSkipListSet<Long>}，单机演示；</li>
- *   <li>{@link com.tkzou.miniforum.feed.RedisFollowFeedStore}（@Profile("prod")）：
+ *   <li>{@link com.tkzou.miniforum.feed.impl.RedisFollowFeedStore}（@Profile("prod)）：
  *       Redis ZSet {@code feed:inbox:{uid}}（member=postId, score=postId）+ 建流标记
  *       {@code feed:built:{uid}}，pipeline 批量扇出，跨线程安全（JedisPool）。</li>
  * </ul>

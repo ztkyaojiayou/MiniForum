@@ -1,4 +1,5 @@
 package com.tkzou.miniforum.idempotency;
+import com.tkzou.miniforum.idempotency.impl.InMemoryIdempotencyStore;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

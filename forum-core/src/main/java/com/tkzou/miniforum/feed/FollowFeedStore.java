@@ -7,7 +7,7 @@ import java.util.List;
  * <p>
  * 生产级关注流的"推模式"实现：发帖时把 postId 扇出到每个粉丝的 inbox，读时间线 = 读自己的 inbox（O(1)）。
  * 默认使用内存实现（{@link InMemoryFollowFeedStore}，@Profile("!prod")），
- * 生产 profile 使用 Redis ZSet 实现（{@link RedisFollowFeedStore}，@Profile("prod")）。
+ * 生产 profile 使用 Redis ZSet 实现（{@link com.tkzou.miniforum.feed.impl.RedisFollowFeedStore}，@Profile("prod")）。
  * <p>
  * 核心原则：inbox 只存 postId 序列（不存全文），内容按 id 回源；postId 单调递增即天然有序。
  */

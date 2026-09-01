@@ -95,4 +95,4 @@ forum-core（纯库，无 main、无 web 依赖）
 
 ## 测试
 
-共 **176 个测试**（core 44 / admin 39 / recommend 57 / offline 8 / demo-runner 28，含端到端集成测试）。`forum-core` 的 test-jar 提供 `TestBehaviors`，供 recommend/offline 测试共用。运行单个测试需加 `-pl <module> -Dtest=<ClassName>`；因模块可能不含该测试，请使用 `-DfailIfNoTests=false`。
+共 **173 个测试**（core 44 / admin 39 / recommend 54 / offline 8 / demo-runner 28，含端到端集成测试）。`forum-core` 的 test-jar 提供 `TestBehaviors`，供 recommend/offline 测试共用。运行单个测试需加 `-pl <module> -Dtest=<ClassName>`；因模块可能不含该测试，请使用 `-DfailIfNoTests=false`。

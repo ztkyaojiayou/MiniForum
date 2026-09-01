@@ -7,7 +7,7 @@ import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLog;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
-import com.tkzou.miniforum.recommend.behavior.InMemoryBehaviorLogger;
+import com.tkzou.miniforum.recommend.behavior.impl.InMemoryBehaviorLogger;
 import com.tkzou.miniforum.recommend.domain.RecommendContext;
 import com.tkzou.miniforum.recommend.eval.Metrics;
 import com.tkzou.miniforum.recommend.eval.OfflineEvaluator;

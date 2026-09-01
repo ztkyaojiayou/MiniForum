@@ -1,4 +1,5 @@
 package com.tkzou.miniforum.recommend.profile;
+import com.tkzou.miniforum.recommend.profile.impl.InMemoryUserProfileService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

@@ -1,7 +1,8 @@
 package com.tkzou.miniforum.feed;
+import com.tkzou.miniforum.feed.impl.InMemoryFollowFeedStore;
 
 import com.tkzou.miniforum.entity.Follow;
-import com.tkzou.miniforum.repository.InMemoryFollowRepository;
+import com.tkzou.miniforum.repository.impl.InMemoryFollowRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

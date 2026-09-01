@@ -1,4 +1,5 @@
 package com.tkzou.miniforum.repository;
+import com.tkzou.miniforum.repository.impl.InMemoryPostRepository;
 
 import com.tkzou.miniforum.entity.Post;
 import org.junit.jupiter.api.BeforeEach;

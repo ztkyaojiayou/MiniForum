@@ -5,7 +5,7 @@ import com.tkzou.miniforum.dto.PostVO;
 import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.recommend.ab.AbExperimentService;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
-import com.tkzou.miniforum.recommend.coldstart.ColdStartService;
+import com.tkzou.miniforum.recommend.coldstart.impl.ColdStartService;
 import com.tkzou.miniforum.recommend.config.ConfigService;
 import com.tkzou.miniforum.recommend.config.RecConfig;
 import com.tkzou.miniforum.recommend.domain.RecommendContext;

@@ -1,4 +1,5 @@
 package com.tkzou.miniforum.recommend.coldstart;
+import com.tkzou.miniforum.recommend.coldstart.impl.InMemoryNewItemPoolStore;
 
 import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
 import com.tkzou.miniforum.repository.PostRepository;

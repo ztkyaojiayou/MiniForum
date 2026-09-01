@@ -1,4 +1,5 @@
 package com.tkzou.miniforum.recommend.feature;
+import com.tkzou.miniforum.recommend.feature.impl.InMemoryItemFeatureService;
 
 import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;

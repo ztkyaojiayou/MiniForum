@@ -1,4 +1,5 @@
 package com.tkzou.miniforum.recommend.behavior;
+import com.tkzou.miniforum.recommend.behavior.impl.InMemoryBehaviorLogger;
 
 import com.tkzou.miniforum.recommend.stream.BehaviorEventQueue;
 import org.junit.jupiter.api.Test;

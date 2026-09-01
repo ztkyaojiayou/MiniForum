@@ -5,9 +5,9 @@ import com.tkzou.miniforum.dto.MessageVO;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.exception.BusinessException;
 import com.tkzou.miniforum.exception.ResourceNotFoundException;
-import com.tkzou.miniforum.repository.InMemoryConversationRepository;
+import com.tkzou.miniforum.repository.impl.InMemoryConversationRepository;
 import com.tkzou.miniforum.repository.ConversationRepository;
-import com.tkzou.miniforum.repository.InMemoryMessageRepository;
+import com.tkzou.miniforum.repository.impl.InMemoryMessageRepository;
 import com.tkzou.miniforum.repository.MessageRepository;
 import com.tkzou.miniforum.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,7 +18,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import com.tkzou.miniforum.repository.InMemoryUserRepository;
+import com.tkzou.miniforum.repository.impl.InMemoryUserRepository;
 
 /**
  * 站内私信服务单元测试：会话创建 / 消息收发 / 未读数 / 已读标记 / 自禁与用户校验

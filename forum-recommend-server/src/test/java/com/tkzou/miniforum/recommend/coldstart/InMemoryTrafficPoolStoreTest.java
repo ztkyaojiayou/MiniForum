@@ -1,4 +1,5 @@
 package com.tkzou.miniforum.recommend.coldstart;
+import com.tkzou.miniforum.recommend.coldstart.impl.InMemoryTrafficPoolStore;
 
 import org.junit.jupiter.api.Test;
 
