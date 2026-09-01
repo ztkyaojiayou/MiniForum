@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
  * <p>
  * <b>数据流程</b>：发帖落库 → {@link #publish} → {@link PostCreatedEventBus#publish} 广播给全部订阅者
  * （关注流扇出 / 搜索索引 / 内容管道）。生产由 Kafka 实现异步下发，Kafka 消费后同样 publish 到总线。
- * 关注流扇出具体逻辑在 {@code FanoutOnPostCreated} 订阅者。
+ * 关注流扇出具体逻辑在 {@code FanoutPostCreatedConsumer} 订阅者。
  */
 @Component
 @Profile("!prod")

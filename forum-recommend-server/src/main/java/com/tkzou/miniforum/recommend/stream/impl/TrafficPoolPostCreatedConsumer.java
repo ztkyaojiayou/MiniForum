@@ -14,11 +14,11 @@ import org.springframework.stereotype.Component;
  * （生产不再在 KafkaPostCreatedConsumer 里直接调，统一走总线）。
  */
 @Component
-public class TrafficPoolOnPostCreated implements PostCreatedConsumer {
+public class TrafficPoolPostCreatedConsumer implements PostCreatedConsumer {
 
     private final TrafficPool trafficPool;
 
-    public TrafficPoolOnPostCreated(TrafficPool trafficPool) {
+    public TrafficPoolPostCreatedConsumer(TrafficPool trafficPool) {
         this.trafficPool = trafficPool;
     }
 

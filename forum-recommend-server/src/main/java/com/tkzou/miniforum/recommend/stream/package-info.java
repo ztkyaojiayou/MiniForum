@@ -3,8 +3,8 @@
  * <p>
  * 与 forum-core 的 recommend.stream（接口/事件件）对应，本包是<b>依赖 recommend 内部件的实现</b>：
  * <ul>
- *   <li><b>Consumer（发帖消费者）</b>：{@code FanoutOnPostCreated}（关注流扇出）/ {@code SearchIndexUpdater}（建搜索索引）/
- *       {@code TrafficPoolOnPostCreated}（冷启池预热）——都实现 {@code PostCreatedConsumer}，由
+ *   <li><b>Consumer（发帖消费者）</b>：{@code FanoutPostCreatedConsumer}（关注流扇出）/ {@code SearchIndexPostCreatedConsumer}（建搜索索引）/
+ *       {@code TrafficPoolPostCreatedConsumer}（冷启池预热）——都实现 {@code PostCreatedConsumer}，由
  *       {@code PostCreatedConsumerRegistrar} 用 Spring 的 {@code List<PostCreatedConsumer>} 自动收集并注册到内存总线；</li>
  *   <li><b>Producer（内存发帖生产者）</b>：{@code InMemoryPostCreatedProducer}（@Profile("!prod")）——把发帖事件直接发到
  *       {@code PostCreatedEventBus}（内存版 MQ）；生产由 {@code KafkaPostCreatedProducer} 发 Kafka topic "post-created" 替代；</li>

@@ -11,8 +11,8 @@ import java.util.List;
  * 实现并逐个注册到 {@link PostCreatedEventBus}。新增一键下游消费：新建 {@code @Component}
  * 实现 {@code PostCreatedConsumer} 即自动接入总线，无需改动任何现有代码（开闭原则）。
  * <p>
- * <b>订阅关系全景</b>（一处可查）：{@code FanoutOnPostCreated}（关注流扇出）/
- * {@code SearchIndexUpdater}（搜索索引增量）/ {@code TrafficPoolOnPostCreated}（冷启流量池）。
+ * <b>订阅关系全景</b>（一处可查）：{@code FanoutPostCreatedConsumer}（关注流扇出）/
+ * {@code SearchIndexPostCreatedConsumer}（搜索索引增量）/ {@code TrafficPoolPostCreatedConsumer}（冷启流量池）。
  * 放置在本模块而非 core：接口在 core、装配逻辑属于业务侧，避免 core 依赖 recommend 实现类。
  */
 @Component

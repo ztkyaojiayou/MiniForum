@@ -20,7 +20,7 @@
  *     └ 生产：KafkaPostCreatedProducer → "post-created" → KafkaPostCreatedConsumer → PostCreatedEventBus → 同上
  * </pre>
  *
- * 完整的事件消费者（FanoutOnPostCreated / SearchIndexUpdater / TrafficPoolOnPostCreated）在 forum-recommend-server 的
+ * 完整的事件消费者（FanoutPostCreatedConsumer / SearchIndexPostCreatedConsumer / TrafficPoolPostCreatedConsumer）在 forum-recommend-server 的
  * 同名包下——它们依赖 recommend 内部的 TrafficPool / RealtimeFeatureStore / SearchIndex，故不放共享域。
  */
 package com.tkzou.miniforum.recommend.stream;

@@ -16,13 +16,13 @@ import org.springframework.stereotype.Component;
  * publish 到总线，本订阅者在 @!prod/@prod 通吃。
  */
 @Component
-public class FanoutOnPostCreated implements PostCreatedConsumer {
+public class FanoutPostCreatedConsumer implements PostCreatedConsumer {
 
-    private static final Logger log = LoggerFactory.getLogger(FanoutOnPostCreated.class);
+    private static final Logger log = LoggerFactory.getLogger(FanoutPostCreatedConsumer.class);
 
     private final FollowFeedStore followFeedStore;
 
-    public FanoutOnPostCreated(FollowFeedStore followFeedStore) {
+    public FanoutPostCreatedConsumer(FollowFeedStore followFeedStore) {
         this.followFeedStore = followFeedStore;
     }
 
