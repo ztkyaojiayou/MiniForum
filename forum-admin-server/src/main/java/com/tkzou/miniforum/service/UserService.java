@@ -140,5 +140,6 @@ public class UserService {
             throw new ResourceNotFoundException("用户不存在: id=" + id);
         }
         userRepository.deleteById(id);
+        followService.onUserDeleted(id); // 级联清理关注关系 + 从大V集合移除
     }
 }

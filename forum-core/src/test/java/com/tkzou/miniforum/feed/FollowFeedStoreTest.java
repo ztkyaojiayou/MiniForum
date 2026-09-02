@@ -2,7 +2,9 @@ package com.tkzou.miniforum.feed;
 import com.tkzou.miniforum.feed.impl.InMemoryFollowFeedStore;
 
 import com.tkzou.miniforum.entity.Follow;
+import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.repository.impl.InMemoryFollowRepository;
+import com.tkzou.miniforum.repository.impl.InMemoryPostRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -17,17 +19,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * 关注流 inbox 内存实现单元测试
  * <p>
- * 覆盖：fanout 扇出（只写已建流用户）/ onFollow 回填建流 / 游标读取（maxId/sinceId 排他边界）/ 封顶淘汰。
+ * 覆盖：fanout 扇出（只写已建流用户）/ onFollow 回填建流 / 游标读取（maxId/sinceId 排他边界）/ 封顶淘汰 /
+ * 大V分流（isBigV 阈值判定 + 懒扫描初始化）/ 大V outbox 读取（getAuthorTimeline）。
  */
 class FollowFeedStoreTest {
 
     private InMemoryFollowRepository followRepository;
+    private InMemoryPostRepository postRepository;
     private InMemoryFollowFeedStore store;
 
     @BeforeEach
     void setUp() {
         followRepository = new InMemoryFollowRepository();
-        store = new InMemoryFollowFeedStore(followRepository, 5); // 小 cap 便于测封顶
+        postRepository = new InMemoryPostRepository();
+        store = new InMemoryFollowFeedStore(followRepository, postRepository, 5); // 小 cap 便于测封顶
     }
 
     private void follow(Long followerId, Long followeeId) {
@@ -35,6 +40,15 @@ class FollowFeedStoreTest {
         f.setFollowerId(followerId);
         f.setFolloweeId(followeeId);
         followRepository.save(f);
+    }
+
+    /** 发一帖（作者已发布、未删除），id 显式给定 */
+    private void publishPost(Long id, Long authorId) {
+        Post p = new Post();
+        p.setId(id);
+        p.setAuthorId(authorId);
+        p.setStatus(Post.STATUS_PUBLISHED);
+        postRepository.save(p);
     }
 
     @Test
@@ -112,27 +126,79 @@ class FollowFeedStoreTest {
         assertTrue(store.isBuilt(1L));
     }
 
+    // ---------- 大V分流（isBigV / bigVIds / refreshBigV / getAuthorTimeline / writeOutbox） ----------
+
     @Test
-    void shouldSkipFanout_shouldFlipAtThreshold() {
-        InMemoryFollowFeedStore lowThreshold = new InMemoryFollowFeedStore(followRepository, 5, 2);
+    void isBigV_shouldFlipAtThreshold() {
+        InMemoryFollowFeedStore lowThreshold = new InMemoryFollowFeedStore(followRepository, postRepository, 5, 2);
         follow(1L, 100L); // 作者 100 有 1 个粉丝 → 低于阈值 2
-        assertFalse(lowThreshold.shouldSkipFanout(100L));
-        follow(2L, 100L); // 2 个粉丝 → 达到阈值 → 跳过
-        assertTrue(lowThreshold.shouldSkipFanout(100L));
+        assertFalse(lowThreshold.isBigV(100L));
+        follow(2L, 100L); // 2 个粉丝 → 达到阈值 → 大V
+        lowThreshold.refreshBigV(100L); // 事件驱动：关注/取关后由 FollowService 调用维护集合
+        assertTrue(lowThreshold.isBigV(100L));
     }
 
     @Test
-    void shouldSkipFanout_defaultThresholdNeverSkips() {
+    void isBigV_defaultThresholdNeverSkips() {
         follow(1L, 100L);
-        assertFalse(store.shouldSkipFanout(100L)); // 2 参构造默认阈值 10 万
+        assertFalse(store.isBigV(100L)); // 2 参构造默认阈值 10 万
     }
 
     @Test
     void fanout_shouldSkipForBigV() {
-        InMemoryFollowFeedStore lowThreshold = new InMemoryFollowFeedStore(followRepository, 5, 1);
+        InMemoryFollowFeedStore lowThreshold = new InMemoryFollowFeedStore(followRepository, postRepository, 5, 1);
         follow(1L, 100L); // 作者 100 有 1 个粉丝 → 达到阈值 1 → 大V
         lowThreshold.onFollow(1L, List.of()); // 建流
         lowThreshold.fanout(100L, 200L); // 大V跳过扇出
         assertTrue(lowThreshold.getInbox(1L, null, 10).isEmpty());
+    }
+
+    @Test
+    void refreshBigV_shouldAddThenRemoveByThreshold() {
+        InMemoryFollowFeedStore lowThreshold = new InMemoryFollowFeedStore(followRepository, postRepository, 5, 2);
+        follow(1L, 100L);
+        assertFalse(lowThreshold.isBigV(100L));
+        follow(2L, 100L); // 2 粉丝 → 跨阈值
+        lowThreshold.refreshBigV(100L);
+        assertTrue(lowThreshold.isBigV(100L));
+        followRepository.deleteByUserId(2L); // 删掉一个粉丝 → 掉出阈值
+        lowThreshold.refreshBigV(100L);
+        assertFalse(lowThreshold.isBigV(100L));
+    }
+
+    @Test
+    void bigVIds_shouldReturnOnlyBigVs() {
+        InMemoryFollowFeedStore lowThreshold = new InMemoryFollowFeedStore(followRepository, postRepository, 5, 2);
+        follow(1L, 100L);
+        follow(2L, 100L); // 100 → 2 粉丝 ≥ 2 → 大V
+        follow(3L, 200L); // 200 → 1 粉丝 < 2 → 普通
+        assertEquals(List.of(100L), lowThreshold.bigVIds().stream().sorted().collect(Collectors.toList()));
+    }
+
+    @Test
+    void getAuthorTimeline_shouldReturnNewestBeforeMaxId() {
+        // 作者 100 发帖 id 1..6（最新在前），maxId 排他 + maxCount 截断 + 只读已发布可见帖
+        publishPost(1L, 100L);
+        publishPost(2L, 100L);
+        publishPost(3L, 100L);
+        publishPost(4L, 100L);
+        publishPost(5L, 100L);
+        Post deleted = new Post();
+        deleted.setId(6L);
+        deleted.setAuthorId(100L);
+        deleted.setDeleted(true); // 已删除 → 拉流时过滤
+        postRepository.save(deleted);
+
+        assertEquals(List.of(5L, 4L, 3L), store.getAuthorTimeline(100L, null, 3)); // 最新在前 + 截断
+        assertEquals(List.of(5L, 4L, 3L, 2L, 1L), store.getAuthorTimeline(100L, null, 10)); // 不含已删 6
+        assertEquals(List.of(3L, 2L, 1L), store.getAuthorTimeline(100L, 4L, 10)); // 严格 < 4
+        assertTrue(store.getAuthorTimeline(200L, null, 10).isEmpty()); // 无帖作者 → 空
+    }
+
+    @Test
+    void writeOutbox_shouldBeNoOpInMemory() {
+        // 内存实现 outbox = Post 表本身：writeOutbox 是 no-op，getAuthorTimeline 直接从 Post 读
+        store.writeOutbox(100L, 7L);
+        assertTrue(store.getAuthorTimeline(100L, null, 10).isEmpty()); // 没有落 Post 就不存在
     }
 }

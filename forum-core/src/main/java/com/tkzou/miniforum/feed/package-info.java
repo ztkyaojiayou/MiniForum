@@ -6,11 +6,12 @@
  *
  * <h3>数据流转</h3>
  * <pre>
- * 发帖落库 → PostCreatedProducer.notify → FollowFeedStore.fanout(authorId, postId)
- *     └→ 写入【作者所有已建流粉丝】的 inbox（postId 升序 = 时间序，封顶 feed.cap 淘汰最旧）
+ * 发帖落库 → PostCreatedProducer.publish → FanoutPostCreatedConsumer 分流
+ *     ├ 普通作者 → FollowFeedStore.fanout(authorId, postId) → 写入【作者所有已建流粉丝】的 inbox（封顶 feed.cap 淘汰最旧）
+ *     └ 大V作者  → FollowFeedStore.writeOutbox(authorId, postId) → 只写自己的 outbox（走拉，粉丝读时拉取）
  *
- * 读关注流 → FollowService.getFollowFeed → getInbox(userId, maxId, maxCount)
- *     └→ 读自己 inbox（O(1)）→ 按 postId 回源帖子 → 过滤（可见 + 作者仍在关注）→ 游标分页
+ * 读关注流 → FollowService.getFollowFeed → getInbox(userId, maxId, maxCount) + 各已关注大V getAuthorTimeline
+ *     └→ 读自己 inbox（O(1)）+ 拉大V outbox → 全局 postId 合并去重排序 → 回源帖子 → 过滤（可见 + 作者仍在关注）→ 游标分页
  * </pre>
  *
  * <b>双实现</b>：
@@ -27,8 +28,10 @@
  *   <li>inbox 只存 postId 序列（不存全文），内容按 id 回源；</li>
  *   <li>fanout 只写给<b>已建流</b>的粉丝——未建流用户首次读取会用完整关注集合回填，避免"半成品流"；</li>
  *   <li>游标分页：postId 单调递增 = 天然时间序，max_id 向下翻历史、since_id 增量刷新；</li>
- *   <li>大V分流预留 {@link com.tkzou.miniforum.feed.FollowFeedStore#shouldSkipFanout}：
- *       粉丝超阈值跳过扇出（走拉），激活前必须先实现读侧 pull 合并。</li>
+ *   <li>大V分流（拉推结合）{@link com.tkzou.miniforum.feed.FollowFeedStore#isBigV}：
+ *       粉丝超阈值走拉（{@code writeOutbox} 写 outbox + 读侧 {@code getAuthorTimeline} 合并），普通作者走推；
+ *       大V集合由 {@code refreshBigV} 事件驱动维护（关注/取关/删用户后重数受影响作者，读/扇出两侧 O(1) 查集合，不逐人 count）。
+ *       详见 docs/关注流拉推结合实施方案.md。</li>
  * </ul>
  * 详见 docs/feed流架构调研与对比.md。
  */

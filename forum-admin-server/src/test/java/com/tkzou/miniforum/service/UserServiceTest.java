@@ -57,7 +57,7 @@ class UserServiceTest {
         BehaviorLogger behaviorLogger = new InMemoryBehaviorLogger(new BehaviorLogRepository(), new BehaviorEventQueue());
         FollowService followService = new FollowService(followRepository, userRepository, postRepository,
                 likeRepository, commentRepository, favoriteRepository, notificationService, behaviorLogger,
-                new InMemoryFollowFeedStore(followRepository, 500), 500);
+                new InMemoryFollowFeedStore(followRepository, postRepository, 500), 500);
         userService = new UserService(userRepository, postRepository, followService);
     }
 

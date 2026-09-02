@@ -1,8 +1,11 @@
 package com.tkzou.miniforum.feed.impl;
+
 import com.tkzou.miniforum.feed.FollowFeedStore;
 
 import com.tkzou.miniforum.entity.Follow;
+import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.repository.FollowRepository;
+import com.tkzou.miniforum.repository.PostRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,17 +14,24 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.stream.Collectors;
 
 /**
  * 内存关注流 inbox（默认实现，@Profile("!prod")）
  * <p>
  * 单机演示级：每个用户一个 {@link ConcurrentSkipListSet}&lt;Long&gt;（postId 升序 = 时间序）。
+ * 大 V 分流：全局 {@code bigVs} 集合（粉丝数 ≥ 阈值），懒扫描存量关注关系一次初始化 + {@link #refreshBigV} 事件驱动增量维护；
+ * 大 V 的 outbox 天然在 Post 表（作者自己的时间线），读时直接查，无需额外结构。
  * 生产 profile 由 {@link RedisFollowFeedStore} 替代。
  */
 @Component
@@ -34,35 +44,42 @@ public class InMemoryFollowFeedStore implements FollowFeedStore {
     static final int DEFAULT_BIG_V_THRESHOLD = 100000;
 
     private final FollowRepository followRepository;
+    private final PostRepository postRepository;
 
     private final int cap;
 
-    /** 大V分流阈值：粉丝数 ≥ 此值时 shouldSkipFanout 返回 true（走拉） */
+    /** 大V分流阈值：粉丝数 ≥ 此值时 isBigV 返回 true（走拉） */
     private final int bigVThreshold;
 
     /** userId → inbox（postId 升序；最新 = 最大 id） */
     private final Map<Long, ConcurrentSkipListSet<Long>> inboxes = new ConcurrentHashMap<>();
 
-    /** 便捷构造（测试/默认）：bigVThreshold 用默认 10 万，永不触发 */
-    public InMemoryFollowFeedStore(FollowRepository followRepository, int cap) {
-        this(followRepository, cap, DEFAULT_BIG_V_THRESHOLD);
+    /** 全局大V集合（成员 = 粉丝数 ≥ 阈值的作者 id）；懒扫描一次 + 事件驱动增量维护 */
+    private final Set<Long> bigVs = ConcurrentHashMap.newKeySet();
+
+    /** 大V集合是否已从存量关注关系初始化 */
+    private volatile boolean bigVsScanned = false;
+
+    public InMemoryFollowFeedStore(FollowRepository followRepository, PostRepository postRepository, int cap) {
+        this(followRepository, postRepository, cap, DEFAULT_BIG_V_THRESHOLD);
     }
 
     @Autowired
     public InMemoryFollowFeedStore(FollowRepository followRepository,
+                                   PostRepository postRepository,
                                    @Value("${app.rec.feed.cap:500}") int cap,
                                    @Value("${app.rec.feed.big-v-fan-threshold:100000}") int bigVThreshold) {
         this.followRepository = followRepository;
+        this.postRepository = postRepository;
         this.cap = cap;
         this.bigVThreshold = bigVThreshold;
     }
 
     @Override
     public void fanout(Long authorId, Long postId) {
-        // 大V分流预留：粉丝超阈值跳过扇出（走拉）。
-        // ⚠ 激活前必须先实现读侧 pull 合并（outbox + 读者拉取，见 docs §5/§2.5），否则大V新帖不会进粉丝 inbox。
-        if (shouldSkipFanout(authorId)) {
-            log.warn("跳过扇出：作者 {} 粉丝数超阈值（走拉，pull 路径待实现）", authorId);
+        // 大V分流：粉丝超阈值跳过扇出（走拉，新帖只写自己的 outbox）
+        if (isBigV(authorId)) {
+            log.warn("跳过扇出：作者 {} 粉丝数超阈值（走拉，新帖进自己的 outbox）", authorId);
             return;
         }
         List<Follow> followers = followRepository.findByFolloweeId(authorId);
@@ -75,6 +92,75 @@ public class InMemoryFollowFeedStore implements FollowFeedStore {
             inboxes.get(followerId).add(postId);
             trim(followerId);
         }
+    }
+
+    @Override
+    public boolean isBigV(Long authorId) {
+        ensureBigVsScanned();
+        return bigVs.contains(authorId);
+    }
+
+    @Override
+    public Set<Long> bigVIds() {
+        ensureBigVsScanned();
+        return new HashSet<>(bigVs);
+    }
+
+    @Override
+    public void refreshBigV(Long authorId) {
+        // 事件驱动：粉丝数只在关注/取关/删用户时变化，调用方改动关系边后对本作者重数一次
+        if (followRepository.countByFolloweeId(authorId) >= bigVThreshold) {
+            bigVs.add(authorId);
+        } else {
+            bigVs.remove(authorId);
+        }
+    }
+
+    @Override
+    public List<Long> getAuthorTimeline(Long authorId, Long maxId, int maxCount) {
+        // outbox 天然在 Post 表（作者自己的时间线），无需额外结构；读时过滤可见 + 按 maxId 截断
+        return postRepository.findByAuthorId(authorId).stream()
+                .filter(p -> maxId == null || p.getId() < maxId)
+                .filter(this::isVisiblePost)
+                .sorted(Comparator.comparing(Post::getId).reversed())
+                .limit(maxCount)
+                .map(Post::getId)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public void writeOutbox(Long authorId, Long postId) {
+        // no-op：内存实现读时直接查 Post 表（发帖已落库），无需独立 outbox
+    }
+
+    /** 懒扫描：首次判定大V时用存量关注关系初始化全局集合（一次性）；之后靠 refreshBigV 增量维护 */
+    private void ensureBigVsScanned() {
+        if (bigVsScanned) {
+            return;
+        }
+        synchronized (this) {
+            if (bigVsScanned) {
+                return;
+            }
+            Map<Long, Long> counts = new HashMap<>();
+            for (Follow f : followRepository.exportAll()) {
+                counts.merge(f.getFolloweeId(), 1L, Long::sum);
+            }
+            counts.forEach((authorId, cnt) -> {
+                if (cnt >= bigVThreshold) {
+                    bigVs.add(authorId);
+                }
+            });
+            bigVsScanned = true;
+            if (!bigVs.isEmpty()) {
+                log.info("大V集合初始化：{} 位作者粉丝数 ≥ 阈值 {}（走拉）", bigVs.size(), bigVThreshold);
+            }
+        }
+    }
+
+    /** 公开可见：已发布且未删除 */
+    private boolean isVisiblePost(Post p) {
+        return Post.STATUS_PUBLISHED.equals(p.getStatus()) && !p.isDeleted();
     }
 
     @Override
@@ -122,12 +208,6 @@ public class InMemoryFollowFeedStore implements FollowFeedStore {
     @Override
     public boolean isBuilt(Long userId) {
         return inboxes.containsKey(userId);
-    }
-
-    @Override
-    public boolean shouldSkipFanout(Long userId) {
-        // 大V分流预留：粉丝数 ≥ 阈值 → 跳过扇出（写放大 O(粉丝数) 爆炸，见 docs §2.5）
-        return followRepository.countByFolloweeId(userId) >= bigVThreshold;
     }
 
     /** 封顶：超过 cap 时移除最旧的（最小 id） */

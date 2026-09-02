@@ -26,11 +26,13 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * 关注 / 粉丝服务
@@ -92,9 +94,11 @@ public class FollowService {
         follow.setCreatedAt(LocalDateTime.now());
         followRepository.save(follow);
         behaviorLogger.log(followerId, null, BehaviorType.FOLLOW, "POST", null);
+        // 大V集合事件驱动维护：关注让被关注者粉丝数 +1，可能跨过阈值
+        followFeedStore.refreshBigV(followeeId);
         // 关注回填：inbox 已建立时，把新关注作者的近期帖子补进我的关注流；
-        // inbox 未建立时跳过——首次读取会用当前完整关注集合回填建流，避免建成只有单作者的半成品流
-        if (followFeedStore.isBuilt(followerId)) {
+        // 大V跳过回填（读时实时拉 outbox）；inbox 未建立时跳过——首次读取会用当前完整关注集合回填建流
+        if (!followFeedStore.isBigV(followeeId) && followFeedStore.isBuilt(followerId)) {
             followFeedStore.onFollow(followerId, recentPostIdsOf(followeeId));
         }
         // 通知被关注者
@@ -107,7 +111,8 @@ public class FollowService {
         Follow follow = followRepository.findByFollowerAndFollowee(followerId, followeeId)
                 .orElseThrow(() -> new BusinessException("你还没有关注该用户"));
         followRepository.delete(follow);                        // ① 状态表删边（Follow=当前关注关系，非历史）
-        behaviorLogger.log(followerId, null, BehaviorType.UNFOLLOW, "POST", null); // ② 事件流（社交图负信号）
+        followFeedStore.refreshBigV(followeeId);                // ② 大V集合维护：粉丝数 -1，可能掉出阈值
+        behaviorLogger.log(followerId, null, BehaviorType.UNFOLLOW, "POST", null); // ③ 事件流（社交图负信号）
     }
 
     /** 是否已关注 */
@@ -156,6 +161,19 @@ public class FollowService {
         return followRepository.findByFollowerId(userId).stream()
                 .map(Follow::getFolloweeId)
                 .collect(Collectors.toSet());
+    }
+
+    /** 拉组 = 全局大V集合 ∩ 我关注的（集合求交，不逐人 countByFolloweeId——见 docs/关注流拉推结合实施方案.md §6） */
+    private Set<Long> bigVsOf(Set<Long> followingIds) {
+        Set<Long> bigVs = new HashSet<>(followFeedStore.bigVIds());
+        bigVs.retainAll(followingIds);
+        return bigVs;
+    }
+
+    /** 用户删除后的级联清理：删关注关系 + 从大V集合移除（粉丝数归零）。供 UserService.deleteUser 调用。 */
+    public void onUserDeleted(Long userId) {
+        followRepository.deleteByUserId(userId);
+        followFeedStore.refreshBigV(userId);
     }
 
     /** 二度遍历关注者的数量上限（防关注数大时 N+1 扫描失控） */
@@ -208,8 +226,9 @@ public class FollowService {
     /**
      * 关注流（向下游标）：我关注的人发布的帖子，最新在前，返回一页 + 下一页游标。
      * <p>
-     * 推模式 inbox：未建流用户首次读取先用当前完整关注集合的近期帖回填建流；之后读自己的 inbox（O(1)）。
-     * postId 单调递增 = 天然时间序，游标边界与展示顺序一致（inbox 内 postId 降序）。
+     * 拉推结合：普通作者走推（inbox 已扇出），大V作者走拉（读时实时拉其 outbox）——
+     * 两路都以全局 postId 游标 maxId 过滤后合并去重（postId 单调递增 = 天然时间序）。
+     * 未建流用户首次读取先用当前完整关注集合的近期帖回填建流（只回填普通作者；大V帖子读时拉）。
      * 注意：inbox 按 feed.cap 封顶，首读即应用封顶（最多最近 N 条）。
      */
     public CursorPage<PostVO> getFollowFeed(Long userId, Long maxId, int size, String username) {
@@ -218,13 +237,26 @@ public class FollowService {
         if (followingIds.isEmpty()) {
             return new CursorPage<>(new ArrayList<>(), null, false);
         }
-        // 首次读取：触发回填建流（用当前完整关注集合）
+        // 拉推分组：大V走拉 / 普通作者走推
+        Set<Long> bigVs = bigVsOf(followingIds);
+        Set<Long> normalIds = new HashSet<>(followingIds);
+        normalIds.removeAll(bigVs);
+        // 首次读取：触发回填建流（只回填普通作者；大V帖子读时实时拉，不物理进 inbox）
         if (!followFeedStore.isBuilt(userId)) {
-            followFeedStore.onFollow(userId, collectRecentFromFollowees(followingIds));
+            followFeedStore.onFollow(userId, collectRecentFromFollowees(normalIds));
         }
-        // 整窗取 inbox（≤ feedCap），过滤后再算游标与 hasMore，杜绝过滤导致的漏帖/假翻页
+        // 整窗取 inbox（≤ feedCap）+ 拉每个大V outbox，合并去重排序（全局 postId 游标对两路都成立）
+        int take = safeSize + bigVs.size() + 1;
         List<Long> inboxIds = followFeedStore.getInbox(userId, maxId, feedCap);
-        List<Post> resolved = resolveFromInbox(inboxIds, followingIds);
+        List<Long> pulled = new ArrayList<>();
+        for (Long v : bigVs) {
+            pulled.addAll(followFeedStore.getAuthorTimeline(v, maxId, take));
+        }
+        List<Long> mixed = Stream.concat(inboxIds.stream(), pulled.stream())
+                .distinct()
+                .sorted(Comparator.reverseOrder())
+                .collect(Collectors.toList());
+        List<Post> resolved = resolveFromInbox(mixed, followingIds);
         boolean hasMore = resolved.size() > safeSize;
         List<Post> pagePosts = resolved.size() > safeSize ? resolved.subList(0, safeSize) : resolved;
         Long nextMaxId = pagePosts.isEmpty() ? null : pagePosts.get(pagePosts.size() - 1).getId();
@@ -237,6 +269,7 @@ public class FollowService {
     /**
      * 关注流增量刷新（since）：返回比 sinceId 更新的关注动态（最新在前）。
      * 未建流时同样先回填建流（前端登录后即开始轮询，用户可能从未打开关注 Tab）。
+     * 大V作者的帖子同样走拉：读其 outbox 最新 take 条，过滤 postId &gt; sinceId 后合并。
      */
     public List<PostVO> getFollowFeedSince(Long userId, Long sinceId, int size, String username) {
         int safeSize = Math.min(Math.max(size, 1), 100);
@@ -244,11 +277,25 @@ public class FollowService {
         if (followingIds.isEmpty()) {
             return new ArrayList<>();
         }
+        Set<Long> bigVs = bigVsOf(followingIds);
+        Set<Long> normalIds = new HashSet<>(followingIds);
+        normalIds.removeAll(bigVs);
         if (!followFeedStore.isBuilt(userId)) {
-            followFeedStore.onFollow(userId, collectRecentFromFollowees(followingIds));
+            followFeedStore.onFollow(userId, collectRecentFromFollowees(normalIds));
         }
+        // 推流增量（inbox after sinceId）+ 拉流（每个大V最新 safeSize 条，过滤 > sinceId）
         List<Long> inboxIds = followFeedStore.getInboxAfter(userId, sinceId, safeSize);
-        return resolveFromInbox(inboxIds, followingIds).stream()
+        List<Long> pulled = new ArrayList<>();
+        for (Long v : bigVs) {
+            followFeedStore.getAuthorTimeline(v, null, safeSize).stream()
+                    .filter(id -> sinceId == null || id > sinceId)
+                    .forEach(pulled::add);
+        }
+        List<Long> mixed = Stream.concat(inboxIds.stream(), pulled.stream())
+                .distinct()
+                .sorted(Comparator.reverseOrder())
+                .collect(Collectors.toList());
+        return resolveFromInbox(mixed, followingIds).stream()
                 .map(p -> toPostVO(p, username))
                 .collect(Collectors.toList());
     }

@@ -14,8 +14,11 @@ import redis.clients.jedis.Pipeline;
 
 import javax.annotation.PreDestroy;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Redis 关注流 inbox（生产适配，@Profile("prod") 激活）
@@ -41,8 +44,14 @@ public class RedisFollowFeedStore implements FollowFeedStore {
     private final FollowRepository followRepository;
     private final JedisPool jedisPool;
     private final int cap;
-    /** 大V分流阈值：粉丝数 ≥ 此值时 shouldSkipFanout 返回 true（走拉，预留） */
+    /** 大V分流阈值：粉丝数 ≥ 此值时 isBigV 返回 true（走拉） */
     private final int bigVThreshold;
+
+    /** 大V集合 Redis SET key（member = 作者 id） */
+    private static final String BIGV_KEY = "feed:bigvs";
+
+    /** 大V集合是否已从存量关注关系初始化（懒扫描一次，见 {@link #ensureBigVsScanned}） */
+    private volatile boolean bigVsScanned = false;
 
     public RedisFollowFeedStore(FollowRepository followRepository,
                                 @Value("${app.rec.redis.host:localhost}") String host,
@@ -58,10 +67,9 @@ public class RedisFollowFeedStore implements FollowFeedStore {
 
     @Override
     public void fanout(Long authorId, Long postId) {
-        // 大V分流预留：粉丝超阈值跳过扇出（走拉）。
-        // ⚠ 激活前必须先实现读侧 pull 合并（outbox + 读者拉取，见 docs §5/§2.5），否则大V新帖不会进粉丝 inbox。
-        if (shouldSkipFanout(authorId)) {
-            log.warn("跳过扇出：作者 {} 粉丝数超阈值（走拉，pull 路径待实现）", authorId);
+        // 大V分流：粉丝超阈值跳过扇出（走拉，新帖只写自己的 outbox，粉丝读时拉取合并）
+        if (isBigV(authorId)) {
+            log.warn("跳过扇出：作者 {} 粉丝数超阈值（走拉，新帖进自己的 outbox）", authorId);
             return;
         }
         List<Follow> followers = followRepository.findByFolloweeId(authorId);
@@ -151,9 +159,89 @@ public class RedisFollowFeedStore implements FollowFeedStore {
     }
 
     @Override
-    public boolean shouldSkipFanout(Long userId) {
-        // 大V分流预留：粉丝数 ≥ 阈值 → 跳过扇出（countByFolloweeId 走 ZCARD，O(1)）
-        return followRepository.countByFolloweeId(userId) >= bigVThreshold;
+    public boolean isBigV(Long authorId) {
+        ensureBigVsScanned();
+        try (Jedis jedis = jedisPool.getResource()) {
+            return jedis.sismember(BIGV_KEY, String.valueOf(authorId));
+        }
+    }
+
+    @Override
+    public Set<Long> bigVIds() {
+        ensureBigVsScanned();
+        try (Jedis jedis = jedisPool.getResource()) {
+            return jedis.smembers(BIGV_KEY).stream()
+                    .map(Long::valueOf)
+                    .collect(Collectors.toSet());
+        }
+    }
+
+    @Override
+    public void refreshBigV(Long authorId) {
+        // 事件驱动重数粉丝数：跨过阈值 SADD，掉出阈值 SREM（粉丝数只在关系边变化时改变）
+        boolean big = followRepository.countByFolloweeId(authorId) >= bigVThreshold;
+        try (Jedis jedis = jedisPool.getResource()) {
+            if (big) {
+                jedis.sadd(BIGV_KEY, String.valueOf(authorId));
+            } else {
+                jedis.srem(BIGV_KEY, String.valueOf(authorId));
+            }
+        }
+    }
+
+    @Override
+    public List<Long> getAuthorTimeline(Long authorId, Long maxId, int maxCount) {
+        try (Jedis jedis = jedisPool.getResource()) {
+            String key = outboxKey(authorId);
+            Set<String> members = maxId == null
+                    ? jedis.zrevrange(key, 0, maxCount - 1)                           // 最新（最大 score）在前
+                    : jedis.zrevrangeByScore(key, "(" + maxId, "-inf", 0, maxCount);  // 上限开区间，下一页不重复
+            List<Long> result = new ArrayList<>();
+            for (String m : members) {
+                result.add(Long.parseLong(m));
+            }
+            return result;
+        }
+    }
+
+    @Override
+    public void writeOutbox(Long authorId, Long postId) {
+        // 大V发帖：只写自己的 outbox（O(1)），不扇出；读者读时拉取合并
+        try (Jedis jedis = jedisPool.getResource()) {
+            String key = outboxKey(authorId);
+            jedis.zadd(key, postId, String.valueOf(postId));
+            jedis.zremrangeByRank(key, 0, -cap - 1); // 封顶：与 inbox 一致
+        }
+    }
+
+    /** 懒扫描：首次判定大V时用存量关注关系（MySQL 事实）初始化全局集合（一次性全表，演示量级可接受） */
+    private void ensureBigVsScanned() {
+        if (bigVsScanned) {
+            return;
+        }
+        synchronized (this) {
+            if (bigVsScanned) {
+                return;
+            }
+            Map<Long, Long> counts = new HashMap<>();
+            for (Follow f : followRepository.exportAll()) {
+                counts.merge(f.getFolloweeId(), 1L, Long::sum);
+            }
+            try (Jedis jedis = jedisPool.getResource()) {
+                Pipeline pipe = jedis.pipelined();
+                counts.forEach((authorId, cnt) -> {
+                    if (cnt >= bigVThreshold) {
+                        pipe.sadd(BIGV_KEY, String.valueOf(authorId));
+                    }
+                });
+                pipe.sync();
+            }
+            bigVsScanned = true;
+        }
+    }
+
+    private String outboxKey(Long authorId) {
+        return "feed:outbox:" + authorId;
     }
 
     @PreDestroy
