@@ -133,7 +133,10 @@ public class RuleFineRankService implements FineRankService {
             double interest = interest(profile, f, model, history, itemCfCache);
             double social = social(ctx.getUserId(), authorId, c.getItemId(), followedRepostedIds);
             double author = authorId != null ? socialGraphService.authorFollowers(authorId) : 0;
+            // hot：批内相对热度 = 本候选 interact ÷ 批内最大 ∈(0,1]——区分"这批候选里谁更热"（依赖上方 maxInteract 预扫描，非全局绝对值）
             double hot = interact / Math.max(1, maxInteract);
+            // realtime：近线实时信号 = 用户近 N 分钟话题点击投影 + 帖子近 N 分钟互动爆发（读 RealtimeFeatureStore）
+            //    ——近线数据 demo 由 RealtimeFeatureWindow 内存每 5s flush、prod 由 Flink 独立作业写 Redis 产出（第 08 章 §3.6）
             double realtime = itemFeatureService.realtimeMatch(ctx.getUserId(), c.getItemId());
 
             feats.put("interact", interact);
@@ -144,10 +147,13 @@ public class RuleFineRankService implements FineRankService {
             feats.put("hot", hot);
             feats.put("realtime", realtime);
 
+            // Σ 加权求和：weighted = Σ rankWeight_f × feature_f（7 特征各乘 RecConfig.rankWeight）——
+            //   权重表决定"哪个信号重要"，是调排序策略的旋钮（AB 变体可配，第 10 章）
             double weighted = 0;
             for (Map.Entry<String, Double> e : feats.entrySet()) {
                 weighted += cfg.rankWeightOf(e.getKey()) * e.getValue();
             }
+            // + explore：探索加分（第 12 章 Thompson λ × 探索度）——不加则新内容/新兴趣永无出头日
             double explore = exploreProvider.exploreBonus(ctx.getUserId(), c.getItemId());
             weighted += explore;
             // 流量池加分：新帖探索保底 + 已验证档位加权（仿抖音赛马）
