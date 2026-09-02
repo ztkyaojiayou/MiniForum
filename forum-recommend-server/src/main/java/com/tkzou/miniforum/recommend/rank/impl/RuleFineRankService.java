@@ -84,6 +84,22 @@ public class RuleFineRankService implements FineRankService {
         this.trafficPool = trafficPool;
     }
 
+    /**
+     * 精排（排序核心打分）：把粗排后的候选逐条算排序分，降序输出给重排层。
+     * <p>
+     * <b>核心公式</b>：
+     * <pre>
+     * rankScore = ( Σ_{f∈7特征} rankWeight_f × feature_f + exploreBonus + trafficTierBonus ) × freshness
+     * </pre>
+     * - <b>Σ 加权求和</b>：7 个特征各乘 {@code RecConfig.rankWeight}（interact/quality/interest/social/author/hot/realtime）
+     *   ——"哪个信号重要"就是调这张权重表（第 10 章，AB 变体可配）；
+     * - <b>+ explore</b>：探索加分（Thompson/新用户 λ，第 12 章）——不加则新内容永无出头日；
+     * - <b>+ trafficTierBonus</b>：流量池档位加分（已验证档位加权，仿抖音赛马，第 12 章）；
+     * - <b>× freshness</b>：最后整体<b>乘</b>时效衰减（不是加）——同分下新帖优先，且随时间指数退场（半衰期 4h）。
+     * <p>
+     * 7 特征按信号意图分三组：内容吸引力（interact 热度 / quality 互动率 / hot 相对热度）、
+     * 个性化匹配（interest 兴趣 / social 社交 / realtime 实时）、作者权威（author 作者粉丝数）。
+     */
     @Override
     public List<RankedItem> rank(RecommendContext ctx, List<Candidate> candidates) {
         RecConfig cfg = configService.current();
@@ -92,7 +108,8 @@ public class RuleFineRankService implements FineRankService {
         ItemCfModel model = itemCfModelStore.get();
         Set<Long> followedRepostedIds = socialGraphService.followedRepostedIds(ctx.getUserId());
 
-        // 候选内最大互动热度（用于 hot 特征归一化）
+        // 预扫描一轮：取本批候选的最大互动热度（log1p 压缩量级），供 hot 特征做"批内相对归一化"——
+        // hot = 本候选热度 / 批内最高 ∈(0,1]，区分"这批里谁更热"，而非比全局绝对值（各批尺度不一）
         double maxInteract = 1;
         for (Candidate c : candidates) {
             maxInteract = Math.max(maxInteract, Math.log1p(itemFeatureService.itemFeature(c.getItemId()).getHotScore()));
@@ -107,6 +124,7 @@ public class RuleFineRankService implements FineRankService {
             Long authorId = post != null ? post.getAuthorId() : null;
             Map<String, Double> feats = new LinkedHashMap<>();
 
+            // 7 特征（内容/个性化/作者三组意图）——每个候选现算，见类 Javadoc 与下方各子方法
             double interact = Math.log1p(f.getHotScore());
             double quality = quality(f);
             double interest = interest(profile, f, model, history, itemCfCache);
@@ -132,6 +150,7 @@ public class RuleFineRankService implements FineRankService {
             // 流量池加分：新帖探索保底 + 已验证档位加权（仿抖音赛马）
             weighted += trafficPool.tierBonus(c.getItemId());
 
+            // rankScore = (加权和 + 探索 + 流量池档位) × 时效衰减 —— 见方法 Javadoc 的公式
             double rankScore = weighted * f.getFreshness();
 
             List<String> sources = new ArrayList<>(c.getChannelScores().keySet());
