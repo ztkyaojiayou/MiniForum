@@ -1,7 +1,7 @@
 /**
  * 社交图谱域（标准推荐系统 ④图关系）
  * <p>
- * {@link SocialGraphService}（域入口接口）+ {@link InMemorySocialGraphService}（默认实现，委托 core 的
+ * {@link SocialGraphService}（域入口接口）+ {@link com.tkzou.miniforum.recommend.graph.impl.InMemorySocialGraphService}（默认实现，委托 core 的
  * {@code FollowRepository}/{@code PostRepository}）。
  * <p>
  * 职责边界：只做"关注/粉丝/二度关系"的社交信号查询（followingIds / isFollowing / followedRepostedIds / authorFollowers）。

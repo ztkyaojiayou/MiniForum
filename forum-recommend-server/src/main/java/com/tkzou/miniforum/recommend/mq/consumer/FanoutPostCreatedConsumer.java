@@ -3,6 +3,7 @@ import com.tkzou.miniforum.recommend.mq.consumer.PostCreatedConsumer;
 import com.tkzou.miniforum.recommend.mq.PostCreatedEvent;
 
 import com.tkzou.miniforum.feed.FollowFeedStore;
+import com.tkzou.miniforum.recommend.mq.PostCreatedEventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;

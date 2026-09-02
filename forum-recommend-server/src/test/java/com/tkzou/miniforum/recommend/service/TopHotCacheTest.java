@@ -9,6 +9,7 @@ import com.tkzou.miniforum.recommend.coldstart.impl.ColdStartService;
 import com.tkzou.miniforum.recommend.config.ConfigService;
 import com.tkzou.miniforum.recommend.config.RecConfig;
 import com.tkzou.miniforum.recommend.domain.RecommendContext;
+import com.tkzou.miniforum.recommend.domain.RecommendScene;
 import com.tkzou.miniforum.recommend.feature.ItemFeature;
 import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
 import com.tkzou.miniforum.recommend.profile.UserProfileService;
@@ -100,8 +101,8 @@ class TopHotCacheTest {
     void hotFallback_topHotPostsIsCached() {
         List<Post> posts = List.of(post(100L, 100), post(200L, 200));
         when(postRepository.findAll()).thenReturn(posts);
-        service.recommend(new RecommendContext(1L, "HOME", LocalDateTime.now(), 10), "alice", "rec-v1");
-        service.recommend(new RecommendContext(1L, "HOME", LocalDateTime.now(), 10), "alice", "rec-v1");
+        service.recommend(new RecommendContext(1L, RecommendScene.HOME, LocalDateTime.now(), 10), "alice", "rec-v1");
+        service.recommend(new RecommendContext(1L, RecommendScene.HOME, LocalDateTime.now(), 10), "alice", "rec-v1");
         verify(postRepository, times(1)).findAll(); // 第二次命中热门缓存，全表扫只发生一次
     }
 
@@ -109,7 +110,7 @@ class TopHotCacheTest {
     void hotFallback_ordersHotPostsByHotScoreDesc() {
         List<Post> posts = List.of(post(100L, 100), post(200L, 200));
         when(postRepository.findAll()).thenReturn(posts);
-        service.recommend(new RecommendContext(1L, "HOME", LocalDateTime.now(), 10), "alice", "rec-v1");
+        service.recommend(new RecommendContext(1L, RecommendScene.HOME, LocalDateTime.now(), 10), "alice", "rec-v1");
 
         ArgumentCaptor<Post> captor = ArgumentCaptor.forClass(Post.class);
         verify(postAssembler, times(2)).toVO(captor.capture(), eq("alice"));
@@ -122,8 +123,8 @@ class TopHotCacheTest {
         service.setTopHotCacheTtlMs(0L);
         List<Post> posts = List.of(post(100L, 100));
         when(postRepository.findAll()).thenReturn(posts);
-        service.recommend(new RecommendContext(1L, "HOME", LocalDateTime.now(), 10), "alice", "rec-v1");
-        service.recommend(new RecommendContext(1L, "HOME", LocalDateTime.now(), 10), "alice", "rec-v1");
+        service.recommend(new RecommendContext(1L, RecommendScene.HOME, LocalDateTime.now(), 10), "alice", "rec-v1");
+        service.recommend(new RecommendContext(1L, RecommendScene.HOME, LocalDateTime.now(), 10), "alice", "rec-v1");
         verify(postRepository, times(2)).findAll(); // ttl=0 每次现算
     }
 }

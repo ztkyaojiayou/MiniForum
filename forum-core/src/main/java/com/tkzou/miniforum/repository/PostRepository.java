@@ -2,6 +2,7 @@ package com.tkzou.miniforum.repository;
 
 import com.tkzou.miniforum.entity.Post;
 
+import com.tkzou.miniforum.repository.impl.InMemoryPostRepository;
 import java.util.List;
 import java.util.Optional;
 

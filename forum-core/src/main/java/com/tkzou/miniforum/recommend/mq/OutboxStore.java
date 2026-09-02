@@ -1,6 +1,7 @@
 package com.tkzou.miniforum.recommend.mq;
 
 import com.tkzou.miniforum.recommend.mq.producer.PostCreatedProducer;
+import com.tkzou.miniforum.recommend.mq.impl.InMemoryOutboxStore;
 
 /**
  * 发帖事件 Outbox 存储

@@ -1,6 +1,7 @@
 package com.tkzou.miniforum.recommend;
 
 import com.tkzou.miniforum.recommend.behavior.BehaviorLog;
+import com.tkzou.miniforum.recommend.behavior.BehaviorScene;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 
 import java.time.LocalDateTime;
@@ -19,7 +20,7 @@ public final class TestBehaviors {
         b.setPostId(postId);
         b.setType(type);
         b.setTimestamp(ts);
-        b.setScene("TEST");
+        b.setScene(BehaviorScene.POST);
         return b;
     }
 

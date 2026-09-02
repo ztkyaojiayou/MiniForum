@@ -15,8 +15,8 @@ public class RecommendContext {
     /** 用户 ID（个性化维度） */
     private final Long userId;
 
-    /** 场景（HOME=首页推荐流 / DETAIL=详情相关推荐 / NEW_USER=新用户） */
-    private final String scene;
+    /** 推荐场景（首页推荐流 / 详情相关推荐 / 新用户，见 {@link RecommendScene}） */
+    private final RecommendScene scene;
 
     /** 请求时间（用于时效计算，可注入假时钟便于测试） */
     private final LocalDateTime requestTime;
@@ -24,7 +24,7 @@ public class RecommendContext {
     /** 期望返回条数 */
     private final int size;
 
-    public RecommendContext(Long userId, String scene, LocalDateTime requestTime, int size) {
+    public RecommendContext(Long userId, RecommendScene scene, LocalDateTime requestTime, int size) {
         this.userId = userId;
         this.scene = scene;
         this.requestTime = requestTime;
@@ -33,7 +33,7 @@ public class RecommendContext {
 
     @Override
     public String toString() {
-        return "RecommendContext{userId=" + userId + ", scene='" + scene + "', requestTime=" + requestTime
+        return "RecommendContext{userId=" + userId + ", scene=" + scene + ", requestTime=" + requestTime
                 + ", size=" + size + '}';
     }
 }

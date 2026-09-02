@@ -4,6 +4,7 @@ import com.tkzou.miniforum.recommend.mq.PostCreatedEvent;
 
 import com.tkzou.miniforum.repository.PostRepository;
 import com.tkzou.miniforum.search.SearchIndex;
+import com.tkzou.miniforum.recommend.mq.PostCreatedEventBus;
 import org.springframework.stereotype.Component;
 
 /**

@@ -1,6 +1,7 @@
 package com.tkzou.miniforum.recommend.prod.kafka;
 
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
+import com.tkzou.miniforum.recommend.behavior.BehaviorScene;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -47,18 +48,19 @@ public class KafkaBehaviorLogger implements BehaviorLogger {
     }
 
     @Override
-    public void log(Long userId, Long postId, BehaviorType type, String scene, String expId) {
+    public void log(Long userId, Long postId, BehaviorType type, BehaviorScene scene, String expId) {
         log(userId, postId, type, scene, expId, null);
     }
 
     @Override
-    public void log(Long userId, Long postId, BehaviorType type, String scene, String expId, Double durationSec) {
+    public void log(Long userId, Long postId, BehaviorType type, BehaviorScene scene, String expId, Double durationSec) {
         try {
             Map<String, Object> event = new LinkedHashMap<>();
             event.put("userId", userId);
             event.put("postId", postId);
             event.put("type", type.name());
-            event.put("scene", scene);
+            // 显式 name() 保证与历史字符串一致（null → DEFAULT，与内存版同语义）
+            event.put("scene", scene == null ? BehaviorScene.DEFAULT.name() : scene.name());
             event.put("expId", expId);
             event.put("durationSec", durationSec);
             event.put("timestamp", System.currentTimeMillis());

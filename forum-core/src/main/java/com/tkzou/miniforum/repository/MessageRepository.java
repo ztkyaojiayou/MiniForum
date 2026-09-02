@@ -2,6 +2,7 @@ package com.tkzou.miniforum.repository;
 
 import com.tkzou.miniforum.entity.Message;
 
+import com.tkzou.miniforum.repository.impl.InMemoryMessageRepository;
 import java.util.List;
 
 /**

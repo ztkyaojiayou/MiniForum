@@ -20,8 +20,8 @@ class InMemoryBehaviorLoggerTest {
         BehaviorEventQueue queue = new BehaviorEventQueue();
         InMemoryBehaviorLogger logger = new InMemoryBehaviorLogger(repo, queue);
 
-        logger.log(1L, 100L, BehaviorType.EXPOSE, "RECOMMEND_FEED", "rec-v1");
-        logger.log(1L, 101L, BehaviorType.LIKE, "POST", null);
+        logger.log(1L, 100L, BehaviorType.EXPOSE, BehaviorScene.RECOMMEND_FEED, "rec-v1");
+        logger.log(1L, 101L, BehaviorType.LIKE, BehaviorScene.POST, null);
         logger.flush(); // 同步排空：两条都落库 + 广播
 
         assertEquals(2, repo.count(), "flush 后行为应全部落库");
@@ -39,7 +39,7 @@ class InMemoryBehaviorLoggerTest {
         BehaviorEventQueue queue = new BehaviorEventQueue();
         InMemoryBehaviorLogger logger = new InMemoryBehaviorLogger(repo, queue);
 
-        logger.log(null, 100L, BehaviorType.LIKE, "POST", null);
+        logger.log(null, 100L, BehaviorType.LIKE, BehaviorScene.POST, null);
         logger.flush();
 
         assertEquals(0, repo.count(), "userId 为空应直接忽略（不落库不广播）");

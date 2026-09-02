@@ -1,6 +1,7 @@
 package com.tkzou.miniforum.repository;
 
 import com.tkzou.miniforum.entity.Comment;
+import com.tkzou.miniforum.repository.impl.InMemoryCommentRepository;
 import java.util.List;
 import java.util.Optional;
 

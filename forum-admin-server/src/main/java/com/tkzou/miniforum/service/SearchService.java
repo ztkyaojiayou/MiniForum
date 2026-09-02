@@ -7,6 +7,7 @@ import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.repository.SearchRecordRepository;
 import com.tkzou.miniforum.repository.UserRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
+import com.tkzou.miniforum.recommend.behavior.BehaviorScene;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 import org.springframework.stereotype.Service;
 
@@ -46,7 +47,7 @@ public class SearchService {
         recordKeyword(kw);
         // 记录用户级搜索行为（画像信号；生产形态进 Kafka）
         userRepository.findByUsername(username)
-                .ifPresent(u -> behaviorLogger.log(u.getId(), null, BehaviorType.SEARCH, "POST", null));
+                .ifPresent(u -> behaviorLogger.log(u.getId(), null, BehaviorType.SEARCH, BehaviorScene.POST, null));
         List<PostVO> posts = postService.search(kw, username);
         String lower = kw.toLowerCase();
         List<UserBriefVO> users = userRepository.findAll().stream()

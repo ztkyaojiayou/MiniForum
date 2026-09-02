@@ -5,10 +5,12 @@ import com.tkzou.miniforum.dto.response.PostVO;
 import com.tkzou.miniforum.dto.response.RecommendPostVO;
 import com.tkzou.miniforum.entity.User;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLog;
+import com.tkzou.miniforum.recommend.behavior.BehaviorScene;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 import com.tkzou.miniforum.recommend.behavior.impl.InMemoryBehaviorLogger;
 import com.tkzou.miniforum.recommend.domain.RecommendContext;
+import com.tkzou.miniforum.recommend.domain.RecommendScene;
 import com.tkzou.miniforum.recommend.eval.Metrics;
 import com.tkzou.miniforum.recommend.eval.OfflineEvaluator;
 import com.tkzou.miniforum.recommend.service.RecommendService;
@@ -69,7 +71,7 @@ class RecommendFlowIntegrationTest {
         behaviorLogRepository.save(behavior(alice, p2.getId(), BehaviorType.CLICK, now.minusHours(1)));
 
         // 4. 推荐流（完整漏斗）
-        RecommendContext ctx = new RecommendContext(alice.getId(), "HOME", LocalDateTime.now(), 10);
+        RecommendContext ctx = new RecommendContext(alice.getId(), RecommendScene.HOME, LocalDateTime.now(), 10);
         List<RecommendPostVO> feed = recommendService.recommend(ctx, "alice", "rec-v1");
 
         assertFalse(feed.isEmpty(), "推荐流不应为空");
@@ -122,7 +124,7 @@ class RecommendFlowIntegrationTest {
         b.setPostId(postId);
         b.setType(type);
         b.setTimestamp(ts);
-        b.setScene("TEST");
+        b.setScene(BehaviorScene.POST);
         return b;
     }
 }

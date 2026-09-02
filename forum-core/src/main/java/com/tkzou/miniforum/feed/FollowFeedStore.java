@@ -1,5 +1,6 @@
 package com.tkzou.miniforum.feed;
 
+import com.tkzou.miniforum.feed.impl.InMemoryFollowFeedStore;
 import java.util.List;
 import java.util.Set;
 

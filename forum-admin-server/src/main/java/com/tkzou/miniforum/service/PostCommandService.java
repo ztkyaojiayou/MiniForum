@@ -16,6 +16,7 @@ import com.tkzou.miniforum.repository.LikeRepository;
 import com.tkzou.miniforum.repository.PostRepository;
 import com.tkzou.miniforum.repository.UserRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
+import com.tkzou.miniforum.recommend.behavior.BehaviorScene;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 import com.tkzou.miniforum.recommend.mq.OutboxStore;
 import com.tkzou.miniforum.recommend.mq.PostCreatedEvent;
@@ -274,7 +275,7 @@ public class PostCommandService {
         }
         long newLikeCount = postRepository.incrementLikeCount(postId, 1);
         post.setLikeCount(newLikeCount); // 原子自增并回写本地对象（内存共享引用幂等）
-        behaviorLogger.log(actorId, postId, BehaviorType.LIKE, "POST", null);
+        behaviorLogger.log(actorId, postId, BehaviorType.LIKE, BehaviorScene.POST, null);
         // 通知帖子作者（给自己点赞不通知）
         notificationService.notify(post.getAuthorId(), actorId, username,
                 Notification.TYPE_LIKE, postId, "赞了你的帖子《" + post.getTitle() + "》");
@@ -293,7 +294,7 @@ public class PostCommandService {
         likeRepository.delete(like);                                        // ① 状态表删行（Like=当前状态，非历史）
         long newLikeCount = postRepository.incrementLikeCount(postId, -1);   // ② 聚合快照原子 -1（不小于 0）
         post.setLikeCount(newLikeCount);
-        behaviorLogger.log(actorId, postId, BehaviorType.UNLIKE, "POST", null); // ③ 事件流（推荐感知"取消赞"）
+        behaviorLogger.log(actorId, postId, BehaviorType.UNLIKE, BehaviorScene.POST, null); // ③ 事件流（推荐感知"取消赞"）
         postQueryCache.invalidate(postId); // 取消点赞 → 踢单帖缓存
         return postAssembler.toVO(post, username);
     }
@@ -329,7 +330,7 @@ public class PostCommandService {
         Post saved = postRepository.save(repost);
         // 转发也是一条新发布的帖子：事件入 Outbox（与发帖一致，扇出到转发者粉丝的关注流 inbox）
         outboxStore.enqueue(toPostCreatedEvent(saved));
-        behaviorLogger.log(actorId, saved.getId(), BehaviorType.REPOST, "POST", null);
+        behaviorLogger.log(actorId, saved.getId(), BehaviorType.REPOST, BehaviorScene.POST, null);
         // 通知原帖作者（转发自己的帖子不通知）
         String brief = originalTitle.isBlank() && original.getContent() != null
                 ? original.getContent().substring(0, Math.min(REPOST_BRIEF_MAX_LEN, original.getContent().length()))

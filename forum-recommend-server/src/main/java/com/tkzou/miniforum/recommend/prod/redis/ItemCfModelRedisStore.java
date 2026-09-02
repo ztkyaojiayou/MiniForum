@@ -1,16 +1,17 @@
 package com.tkzou.miniforum.recommend.prod.redis;
 
+import com.tkzou.miniforum.recommend.model.ItemCfModel;
+import com.tkzou.miniforum.recommend.model.ItemCfModelStore;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tkzou.miniforum.recommend.model.ItemCfModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
 
+import redis.clients.jedis.JedisPool;
 import javax.annotation.PreDestroy;
 import java.util.List;
 import java.util.Map;

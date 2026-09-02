@@ -1,6 +1,7 @@
 package com.tkzou.miniforum.recommend.prod.clickhouse;
 
 import com.tkzou.miniforum.recommend.behavior.BehaviorLog;
+import com.tkzou.miniforum.recommend.behavior.BehaviorScene;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 import com.zaxxer.hikari.HikariDataSource;
 import org.slf4j.Logger;
@@ -137,7 +138,7 @@ public class ClickHouseBehaviorStore {
                     LocalDateTime ts = rs.getTimestamp("timestamp").toLocalDateTime();
                     b.setTimestamp(ts);
                     b.setDurationSec(rs.getDouble("durationSec"));
-                    b.setScene(rs.getString("scene"));
+                    b.setScene(BehaviorScene.fromString(rs.getString("scene")));
                     b.setExpId(rs.getString("expId"));
                     result.add(b);
                 }

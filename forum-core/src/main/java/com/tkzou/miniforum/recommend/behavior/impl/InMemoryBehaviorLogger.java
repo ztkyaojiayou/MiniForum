@@ -3,6 +3,7 @@ import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLog;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
+import com.tkzou.miniforum.recommend.behavior.BehaviorScene;
 
 import com.tkzou.miniforum.recommend.mq.BehaviorEventQueue;
 import org.slf4j.Logger;
@@ -64,12 +65,12 @@ public class InMemoryBehaviorLogger implements BehaviorLogger {
     }
 
     @Override
-    public void log(Long userId, Long postId, BehaviorType type, String scene, String expId) {
+    public void log(Long userId, Long postId, BehaviorType type, BehaviorScene scene, String expId) {
         log(userId, postId, type, scene, expId, null);
     }
 
     @Override
-    public void log(Long userId, Long postId, BehaviorType type, String scene, String expId, Double durationSec) {
+    public void log(Long userId, Long postId, BehaviorType type, BehaviorScene scene, String expId, Double durationSec) {
         if (userId == null) {
             return;
         }
@@ -79,7 +80,7 @@ public class InMemoryBehaviorLogger implements BehaviorLogger {
         behavior.setType(type);
         behavior.setTimestamp(LocalDateTime.now());
         behavior.setDurationSec(durationSec);
-        behavior.setScene(scene == null || scene.isBlank() ? "DEFAULT" : scene);
+        behavior.setScene(scene == null ? BehaviorScene.DEFAULT : scene);
         behavior.setExpId(expId);
         // 只入队（非阻塞）；落库 + 广播交给后台线程，把最频繁的写从请求路径摘掉
         executor.execute(() -> {

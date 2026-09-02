@@ -1,5 +1,6 @@
 package com.tkzou.miniforum.recommend.graph;
 
+import com.tkzou.miniforum.recommend.graph.impl.InMemorySocialGraphService;
 import java.util.Set;
 
 /**

@@ -7,6 +7,7 @@ import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.exception.BusinessException;
 import com.tkzou.miniforum.exception.ResourceNotFoundException;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
+import com.tkzou.miniforum.recommend.behavior.BehaviorScene;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 import com.tkzou.miniforum.repository.FavoriteRepository;
 import com.tkzou.miniforum.repository.PostRepository;
@@ -59,7 +60,7 @@ public class FavoriteService {
         favorite.setCreatedAt(LocalDateTime.now());
         favoriteRepository.save(favorite);
         userRepository.findByUsername(username)
-                .ifPresent(u -> behaviorLogger.log(u.getId(), postId, BehaviorType.FAVORITE, "POST", null));
+                .ifPresent(u -> behaviorLogger.log(u.getId(), postId, BehaviorType.FAVORITE, BehaviorScene.POST, null));
     }
 
     /** 取消收藏（状态表删行；同时记 UNFAVORITE 行为事件，与收藏成对） */
@@ -68,7 +69,7 @@ public class FavoriteService {
                 .orElseThrow(() -> new BusinessException("你还没有收藏过这篇帖子"));
         favoriteRepository.delete(favorite);                        // ① 状态表删行（Favorite=当前状态，非历史）
         userRepository.findByUsername(username)
-                .ifPresent(u -> behaviorLogger.log(u.getId(), postId, BehaviorType.UNFAVORITE, "POST", null)); // ② 事件流
+                .ifPresent(u -> behaviorLogger.log(u.getId(), postId, BehaviorType.UNFAVORITE, BehaviorScene.POST, null)); // ② 事件流
     }
 
     /** 当前用户是否已收藏该帖子 */

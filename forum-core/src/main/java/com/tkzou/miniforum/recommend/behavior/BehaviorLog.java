@@ -31,8 +31,8 @@ public class BehaviorLog {
     /** 阅读停留时长（秒，仅 DWELL 行为；仿抖音"观看时长/完播"信号） */
     private Double durationSec;
 
-    /** 来源场景：POST（业务动作）/ TRACK（前端上报）/ RECOMMEND_FEED（推荐流曝光）/ RECOMMEND_DETAIL */
-    private String scene;
+    /** 来源场景（业务动作 / 前端打点 / 推荐流曝光等，见 {@link BehaviorScene}） */
+    private BehaviorScene scene;
 
     /** AB 实验组 ID（记录本次推荐所属实验，用于离线归因） */
     private String expId;
@@ -96,11 +96,11 @@ public class BehaviorLog {
         this.durationSec = durationSec;
     }
 
-    public String getScene() {
+    public BehaviorScene getScene() {
         return scene;
     }
 
-    public void setScene(String scene) {
+    public void setScene(BehaviorScene scene) {
         this.scene = scene;
     }
 

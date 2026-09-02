@@ -15,6 +15,7 @@ import com.tkzou.miniforum.recommend.config.ConfigService;
 import com.tkzou.miniforum.recommend.config.RecConfig;
 import com.tkzou.miniforum.recommend.domain.RankedItem;
 import com.tkzou.miniforum.recommend.domain.RecommendContext;
+import com.tkzou.miniforum.recommend.domain.RecommendScene;
 import com.tkzou.miniforum.recommend.feature.ItemFeature;
 import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
 import com.tkzou.miniforum.recommend.profile.UserProfile;
@@ -123,7 +124,7 @@ class RecommendServiceSentinelTest {
     }
 
     private RecommendContext ctx(Long userId, String username) {
-        return new RecommendContext(userId, "HOME", LocalDateTime.now(), 10);
+        return new RecommendContext(userId, RecommendScene.HOME, LocalDateTime.now(), 10);
     }
 
     @Test

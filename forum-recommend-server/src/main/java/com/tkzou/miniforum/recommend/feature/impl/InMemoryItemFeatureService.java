@@ -1,8 +1,9 @@
 package com.tkzou.miniforum.recommend.feature.impl;
+import com.tkzou.miniforum.recommend.feature.ItemFeature;
+import com.tkzou.miniforum.recommend.feature.ItemFeatureFormula;
+import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
 import com.tkzou.miniforum.recommend.feature.RealtimeFeature;
 import com.tkzou.miniforum.recommend.feature.RealtimeFeatureStore;
-import com.tkzou.miniforum.recommend.feature.ItemFeature;
-import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
 
 import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLog;
@@ -18,7 +19,6 @@ import com.tkzou.miniforum.util.TtlCache;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -49,6 +49,9 @@ public class InMemoryItemFeatureService implements ItemFeatureService {
     /** 物品特征缓存：postId → 特征。构造 ttl=0（禁用），由 setter 注入启用；单飞重建防击穿 */
     private final TtlCache<Long, ItemFeature> itemFeatureCache = new TtlCache<>(0, ITEM_JITTER_MS);
 
+    /** 特征公式（纯算法、无依赖 → 内联，不参与 DI；权重见 {@link ItemFeatureFormula}） */
+    private final ItemFeatureFormula formula = new ItemFeatureFormula();
+
     /**
      * 物品特征缓存 TTL（ms），Spring 注入。>0 启用：热度/计数是"读多写少"，缓存后排序/热门路径
      * 从"N 次 count 聚合"降为"一次缓存读"；≤0 禁用。
@@ -74,13 +77,19 @@ public class InMemoryItemFeatureService implements ItemFeatureService {
         this.behaviorLogRepository = behaviorLogRepository;
     }
 
+    /**
+     * 物品特征（内容侧"这帖子怎么样"）——注意这是<b>读时现算 + 5s 短 TTL 缓存</b>，<b>不是主动更新的实时流</b>：
+     * 点赞/评论改变计数后，特征最长滞后 {@code app.rec.item-feature-cache-ttl-ms}（默认 5000ms）才重算一次
+     * （缓存过期即重算，见 {@link #computeItemFeature}）。与 {@link #realtimeMatch} 消费的
+     * RealtimeFeature（近线窗口滚动聚合、每 5s 推进）是两套互补特征，别混为一谈。
+     */
     @Override
     public ItemFeature itemFeature(Long postId) {
         // 短 TTL 缓存：热度/计数特征"读多写少"，命中免去多次 count 聚合；ttl<=0 自动现算
         return itemFeatureCache.get(postId, () -> computeItemFeature(postId));
     }
 
-    /** 现算物品特征（缓存 miss 时执行）：聚合计数 + 时效新鲜度 + 冷启标记 */
+    /** 现算物品特征（缓存 miss / 过期时执行）：聚合计数 + 时效新鲜度 + 冷启标记。非主动更新——数据源实时变，特征最长滞后一个 TTL */
     private ItemFeature computeItemFeature(Long postId) {
         ItemFeature f = new ItemFeature();
         Post post = postRepository.findById(postId).orElse(null);
@@ -107,23 +116,22 @@ public class InMemoryItemFeatureService implements ItemFeatureService {
                 .mapToDouble(BehaviorLog::getDurationSec)
                 .sum();
         f.setReadTimeSec(readTimeSec);
-        // 微博信号权重：转发>评论>点赞>收藏>浏览；阅读时长也计入热度
-        f.setHotScore(3.0 * repost + 2.0 * comment + 1.0 * like + 1.5 * favorite + 0.02 * view + 0.05 * readTimeSec);
-
-        LocalDateTime now = LocalDateTime.now();
-        double ageHours = post.getCreatedAt() == null
-                ? 0 : Math.max(0, Duration.between(post.getCreatedAt(), now).toMinutes() / 60.0);
-        f.setAgeHours(ageHours);
+        // 公式统一委托 ItemFeatureFormula（纯算法、可独立单测；权重为命名常量，将来可下沉 RecConfig 调参）
         RecConfig cfg = configService.current();
-        double halfLife = cfg.getHalfLifeHours();
-        f.setFreshness(Math.exp(-Math.log(2) * ageHours / halfLife));
-
-        boolean inNewPool = ageHours < cfg.getNewItemAgeHours()
-                || (like + comment + favorite + repost) < cfg.getNewItemMinInteractions();
-        f.setInNewPool(inNewPool);
+        f.setHotScore(formula.hotScore(repost, comment, like, favorite, view, readTimeSec));
+        double ageHours = formula.ageHours(post.getCreatedAt(), LocalDateTime.now());
+        f.setAgeHours(ageHours);
+        f.setFreshness(formula.freshness(ageHours, cfg.getHalfLifeHours()));
+        f.setInNewPool(formula.inNewPool(ageHours, (long) like + comment + favorite + repost,
+                cfg.getNewItemAgeHours(), cfg.getNewItemMinInteractions()));
         return f;
     }
 
+    /**
+     * 实时兴趣/热度加成（消费 {@link RealtimeFeatureStore} 的近线窗口特征，与 {@link #itemFeature} 互补）：
+     * ① 用户近 N 分钟点击过的话题 × 帖子话题重叠（实时兴趣投影）；② 帖子近 N 分钟互动爆发（log1p 平滑）。
+     * RealtimeFeature 才是"每 5s 滚动更新"的实时流（RealtimeFeatureWindow / Flink 窗口，第 3 章）；本方法只做读合并。
+     */
     @Override
     public double realtimeMatch(Long userId, Long postId) {
         double score = 0;

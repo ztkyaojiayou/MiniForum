@@ -5,6 +5,7 @@ import com.tkzou.miniforum.recommend.config.RecConfig;
 import com.tkzou.miniforum.recommend.domain.Candidate;
 import com.tkzou.miniforum.recommend.domain.RecallHit;
 import com.tkzou.miniforum.recommend.domain.RecommendContext;
+import com.tkzou.miniforum.recommend.domain.RecommendScene;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -58,7 +59,7 @@ class RecallServiceParallelTest {
         // 两路各睡 400ms：串行 ≥800ms，并行应 ~400ms（RecallService 固定 6 线程池，与机器核数无关）
         RecallService recall = service(channel("a", 400, false), channel("b", 400, false));
         long start = System.currentTimeMillis();
-        List<Candidate> result = recall.recall(new RecommendContext(1L, "HOME", LocalDateTime.now(), 20));
+        List<Candidate> result = recall.recall(new RecommendContext(1L, RecommendScene.HOME, LocalDateTime.now(), 20));
         long elapsed = System.currentTimeMillis() - start;
         assertFalse(result.isEmpty(), "两路并行后应有候选");
         assertTrue(elapsed < 700, "并行应远小于串行的 800ms，实际 " + elapsed + "ms");
@@ -67,7 +68,7 @@ class RecallServiceParallelTest {
     @Test
     void recall_oneChannelFails_othersStillContribute() {
         RecallService recall = service(channel("good", 0, false), channel("bad", 0, true));
-        List<Candidate> result = recall.recall(new RecommendContext(1L, "HOME", LocalDateTime.now(), 20));
+        List<Candidate> result = recall.recall(new RecommendContext(1L, RecommendScene.HOME, LocalDateTime.now(), 20));
         assertFalse(result.isEmpty(), "一路失败不应拖垮整次召回（多路召回互为兜底）");
     }
 }

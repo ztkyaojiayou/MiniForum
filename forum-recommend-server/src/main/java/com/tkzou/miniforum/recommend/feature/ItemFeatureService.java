@@ -1,5 +1,7 @@
 package com.tkzou.miniforum.recommend.feature;
 
+import com.tkzou.miniforum.recommend.feature.impl.InMemoryItemFeatureService;
+
 /**
  * 物品特征服务（特征域入口，标准推荐系统 ⑥特征）
  * <p>

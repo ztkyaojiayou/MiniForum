@@ -3,6 +3,7 @@ import com.tkzou.miniforum.recommend.mq.consumer.PostCreatedConsumer;
 import com.tkzou.miniforum.recommend.mq.PostCreatedEvent;
 
 import com.tkzou.miniforum.recommend.coldstart.TrafficPool;
+import com.tkzou.miniforum.recommend.mq.PostCreatedEventBus;
 import org.springframework.stereotype.Component;
 
 /**

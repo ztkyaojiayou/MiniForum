@@ -10,6 +10,7 @@ import com.tkzou.miniforum.exception.ResourceNotFoundException;
 import com.tkzou.miniforum.repository.PostRepository;
 import com.tkzou.miniforum.repository.UserRepository;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
+import com.tkzou.miniforum.recommend.behavior.BehaviorScene;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 import com.tkzou.miniforum.search.SearchIndex;
 import com.tkzou.miniforum.util.TtlCache;
@@ -119,7 +120,7 @@ public class PostQueryService {
             post.setViewCount(newViewCount); // 原子自增并回写本地对象（内存共享引用幂等）
             // 记录浏览行为（供画像/推荐信号，生产形态进 Kafka）
             userRepository.findByUsername(username)
-                    .ifPresent(u -> behaviorLogger.log(u.getId(), id, BehaviorType.VIEW, "POST", null));
+                    .ifPresent(u -> behaviorLogger.log(u.getId(), id, BehaviorType.VIEW, BehaviorScene.POST, null));
         }
         return toVO(post, username);
     }

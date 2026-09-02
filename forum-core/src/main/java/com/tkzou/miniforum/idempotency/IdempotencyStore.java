@@ -1,5 +1,6 @@
 package com.tkzou.miniforum.idempotency;
 
+import com.tkzou.miniforum.idempotency.impl.InMemoryIdempotencyStore;
 import java.util.Optional;
 
 /**

@@ -1,6 +1,8 @@
 package com.tkzou.miniforum.repository;
 
 import com.tkzou.miniforum.entity.Favorite;
+import com.tkzou.miniforum.repository.impl.InMemoryFavoriteRepository;
+
 import java.util.List;
 import java.util.Optional;
 

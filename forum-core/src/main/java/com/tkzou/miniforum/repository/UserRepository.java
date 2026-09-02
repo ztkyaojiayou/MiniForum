@@ -1,6 +1,7 @@
 package com.tkzou.miniforum.repository;
 
 import com.tkzou.miniforum.entity.User;
+import com.tkzou.miniforum.repository.impl.InMemoryUserRepository;
 import java.util.List;
 import java.util.Optional;
 

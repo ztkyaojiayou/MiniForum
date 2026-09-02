@@ -10,6 +10,7 @@ import com.tkzou.miniforum.recommend.coldstart.impl.ColdStartService;
 import com.tkzou.miniforum.recommend.config.ConfigService;
 import com.tkzou.miniforum.recommend.config.RecConfig;
 import com.tkzou.miniforum.recommend.domain.RecommendContext;
+import com.tkzou.miniforum.recommend.domain.RecommendScene;
 import com.tkzou.miniforum.recommend.feature.ItemFeature;
 import com.tkzou.miniforum.recommend.feature.ItemFeatureService;
 import com.tkzou.miniforum.recommend.profile.UserProfileService;
@@ -78,7 +79,7 @@ class RecommendServiceFallbackTest {
                 postRepository, itemCfModelStore);
 
         List<RecommendPostVO> result = service.recommend(
-                new RecommendContext(1L, "HOME", LocalDateTime.now(), 10), "alice", "rec-v1");
+                new RecommendContext(1L, RecommendScene.HOME, LocalDateTime.now(), 10), "alice", "rec-v1");
 
         assertFalse(result.isEmpty(), "主链路异常应降级为热门兜底，而非 500");
         assertEquals("推荐服务降级·热门兜底", result.get(0).getReason());

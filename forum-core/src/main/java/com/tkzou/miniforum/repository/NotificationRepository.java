@@ -2,6 +2,7 @@ package com.tkzou.miniforum.repository;
 
 import com.tkzou.miniforum.entity.Notification;
 
+import com.tkzou.miniforum.repository.impl.InMemoryNotificationRepository;
 import java.util.List;
 
 /**

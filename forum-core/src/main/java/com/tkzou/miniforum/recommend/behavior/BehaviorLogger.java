@@ -15,16 +15,16 @@ public interface BehaviorLogger {
      * @param userId 用户 ID
      * @param postId 帖子 ID（无帖子的行为如关注为 null）
      * @param type   行为类型
-     * @param scene  来源场景（POST/TRACK/RECOMMEND_FEED...）
+     * @param scene  来源场景（业务动作 / 前端打点 / 推荐流曝光等，见 {@link BehaviorScene}）
      * @param expId  AB 实验组 ID（可为 null）
      */
-    void log(Long userId, Long postId, BehaviorType type, String scene, String expId);
+    void log(Long userId, Long postId, BehaviorType type, BehaviorScene scene, String expId);
 
     /**
      * 记录一次带时长的行为（如 DWELL 阅读停留）。
      * 默认忽略时长，由具体实现决定是否记录（内存/生产实现会写入 durationSec）。
      */
-    default void log(Long userId, Long postId, BehaviorType type, String scene, String expId, Double durationSec) {
+    default void log(Long userId, Long postId, BehaviorType type, BehaviorScene scene, String expId, Double durationSec) {
         log(userId, postId, type, scene, expId);
     }
 }

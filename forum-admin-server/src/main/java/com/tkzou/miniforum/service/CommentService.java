@@ -8,6 +8,7 @@ import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.exception.BusinessException;
 import com.tkzou.miniforum.exception.ResourceNotFoundException;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
+import com.tkzou.miniforum.recommend.behavior.BehaviorScene;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 import com.tkzou.miniforum.repository.CommentRepository;
 import com.tkzou.miniforum.repository.PostRepository;
@@ -100,7 +101,7 @@ public class CommentService {
             comment.setParentId(parentId);
         }
         Comment saved = commentRepository.save(comment);
-        behaviorLogger.log(actorId, postId, BehaviorType.COMMENT, "POST", null);
+        behaviorLogger.log(actorId, postId, BehaviorType.COMMENT, BehaviorScene.POST, null);
         // 通知帖子作者（评论自己的帖子不通知）
         notificationService.notify(post.getAuthorId(), actorId, username,
                 Notification.TYPE_COMMENT, postId, "评论了你的帖子《" + post.getTitle() + "》");

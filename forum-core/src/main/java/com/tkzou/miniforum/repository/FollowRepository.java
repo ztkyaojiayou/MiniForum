@@ -2,6 +2,7 @@ package com.tkzou.miniforum.repository;
 
 import com.tkzou.miniforum.entity.Follow;
 
+import com.tkzou.miniforum.repository.impl.InMemoryFollowRepository;
 import java.util.List;
 import java.util.Optional;
 
@@ -10,7 +11,7 @@ import java.util.Optional;
  * <p>
  * 生产级关注关系常用 Redis 承载高频读写（isFollowing 判断、关注/粉丝列表、关注流 fanout）。
  * 默认使用内存实现（{@link InMemoryFollowRepository}，@Profile("!prod")），
- * 生产 profile 使用 Redis 实现（{@link MySqlFollowRepository}（demo-runner/src/prod，@Profile("prod")）。
+ * 生产 profile 使用 Redis 实现（{@code MySqlFollowRepository}（demo-runner/src/prod，@Profile("prod")）。
  */
 public interface FollowRepository {
 

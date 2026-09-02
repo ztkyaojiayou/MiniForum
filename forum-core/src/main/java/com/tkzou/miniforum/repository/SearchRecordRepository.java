@@ -2,6 +2,7 @@ package com.tkzou.miniforum.repository;
 
 import com.tkzou.miniforum.entity.SearchRecord;
 
+import com.tkzou.miniforum.repository.impl.InMemorySearchRecordRepository;
 import java.util.List;
 import java.util.Optional;
 

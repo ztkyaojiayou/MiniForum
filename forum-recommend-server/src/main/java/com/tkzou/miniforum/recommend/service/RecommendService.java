@@ -1,15 +1,12 @@
 package com.tkzou.miniforum.recommend.service;
 
-import com.alibaba.csp.sentinel.Entry;
-import com.alibaba.csp.sentinel.SphU;
-import com.alibaba.csp.sentinel.Tracer;
-import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.tkzou.miniforum.dto.PostAssembler;
 import com.tkzou.miniforum.dto.response.PostVO;
 import com.tkzou.miniforum.dto.response.RecommendPostVO;
 import com.tkzou.miniforum.entity.Post;
 import com.tkzou.miniforum.recommend.ab.AbExperimentService;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
+import com.tkzou.miniforum.recommend.behavior.BehaviorScene;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 import com.tkzou.miniforum.recommend.coldstart.impl.ColdStartService;
 import com.tkzou.miniforum.recommend.config.ConfigService;
@@ -28,11 +25,16 @@ import com.tkzou.miniforum.recommend.rank.RerankService;
 import com.tkzou.miniforum.recommend.recall.RecallService;
 import com.tkzou.miniforum.recommend.rank.RerankService;import com.tkzou.miniforum.repository.PostRepository;
 import com.tkzou.miniforum.util.TtlCache;
+import com.tkzou.miniforum.recommend.rank.impl.DiversifyRerankService;
+import com.alibaba.csp.sentinel.Entry;
+import com.alibaba.csp.sentinel.SphU;
+import com.alibaba.csp.sentinel.Tracer;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
 
+import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -122,7 +124,10 @@ public class RecommendService {
      * 高并发降级保护（P3-1/P3-2 Sentinel 接入点，prod 生效、演示无规则放行）：
      * <ul>
      *   <li><b>限流/熔断</b>：{@link SphU#entry} 对资源 {@value #SENTINEL_RESOURCE_FEED} 做 QPS 限流 + 异常比例熔断。
-     *       触发（{@link BlockException}）→ 直接降级全站热门兜底（"限流牺牲流量、降级牺牲功能"）；</li>
+     *       这行是"入口关卡"——同时检查 FlowRule（超 QPS → {@code FlowException} 限流）与 DegradeRule
+     *       （异常率超阈值 → {@code DegradeException} 熔断），都抛 {@link BlockException} 统一降级。
+     *       <b>Sentinel 是进程内治理，不用 Redis</b>：QPS/异常率/熔断状态都是本 JVM 本地统计
+     *       （每 pod 各自计数，单机配额；集群流控才需协调，见第 15 章 §3.2）；</li>
      *   <li><b>业务异常兜底</b>：主链路（召回/排序/重排）任一步异常 → {@link Tracer#trace} 给异常比例熔断供数
      *       + 降级热门兜底，接口不 500、只损失个性化。</li>
      * </ul>
@@ -131,7 +136,10 @@ public class RecommendService {
         int topN = RecConfig.defaults().getFinalTopN(); // 兜底默认条数（降级路径也要有界）
         Entry entry = null;
         try {
-            // Sentinel 埋点：prod 有规则则做 QPS 限流 + 异常比例熔断；无规则原样放行（演示行为不变）。
+            // Sentinel 埋点：SphU.entry = 资源 recommend-feed 的入口关卡，同时生效 QPS 限流 + 异常比例熔断
+            //（两类规则都下在 SentinelConfig/prod：FlowRule 超 QPS→FlowException 限流；DegradeRule 异常率超标→DegradeException
+            //  熔断——都抛 BlockException，统一被下面 catch 降级热门；演示无规则则原样放行，行为不变）。
+            // 注意：Sentinel 的 QPS/异常率/熔断状态都是本进程本地统计，不用 Redis（集群流控才需外部协调，见第 15 章 §3.2）。
             // 放最前面：超限/熔断的请求在进入漏斗前就被拦截（不占昂贵算力）。
             entry = SphU.entry(SENTINEL_RESOURCE_FEED);
             // AB 实验：实验组 B 走多样性变体配置
@@ -173,7 +181,7 @@ public class RecommendService {
 
         // 5. 曝光日志（服务端自动记录，前端无需打点）
         for (RankedItem item : finalList) {
-            behaviorLogger.log(ctx.getUserId(), item.getItemId(), BehaviorType.EXPOSE, "RECOMMEND_FEED", expId);
+            behaviorLogger.log(ctx.getUserId(), item.getItemId(), BehaviorType.EXPOSE, BehaviorScene.RECOMMEND_FEED, expId);
         }
 
         // 6. 组装 VO

@@ -12,6 +12,7 @@ import com.tkzou.miniforum.exception.BusinessException;
 import com.tkzou.miniforum.exception.ResourceNotFoundException;
 import com.tkzou.miniforum.feed.FollowFeedStore;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
+import com.tkzou.miniforum.recommend.behavior.BehaviorScene;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 import com.tkzou.miniforum.repository.FollowRepository;
 import com.tkzou.miniforum.repository.FavoriteRepository;
@@ -93,7 +94,7 @@ public class FollowService {
         follow.setFolloweeId(followeeId);
         follow.setCreatedAt(LocalDateTime.now());
         followRepository.save(follow);
-        behaviorLogger.log(followerId, null, BehaviorType.FOLLOW, "POST", null);
+        behaviorLogger.log(followerId, null, BehaviorType.FOLLOW, BehaviorScene.POST, null);
         // 大V集合事件驱动维护：关注让被关注者粉丝数 +1，可能跨过阈值
         followFeedStore.refreshBigV(followeeId);
         // 关注回填：inbox 已建立时，把新关注作者的近期帖子补进我的关注流；
@@ -112,7 +113,7 @@ public class FollowService {
                 .orElseThrow(() -> new BusinessException("你还没有关注该用户"));
         followRepository.delete(follow);                        // ① 状态表删边（Follow=当前关注关系，非历史）
         followFeedStore.refreshBigV(followeeId);                // ② 大V集合维护：粉丝数 -1，可能掉出阈值
-        behaviorLogger.log(followerId, null, BehaviorType.UNFOLLOW, "POST", null); // ③ 事件流（社交图负信号）
+        behaviorLogger.log(followerId, null, BehaviorType.UNFOLLOW, BehaviorScene.POST, null); // ③ 事件流（社交图负信号）
     }
 
     /** 是否已关注 */

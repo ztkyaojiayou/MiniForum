@@ -6,8 +6,10 @@ import com.tkzou.miniforum.dto.response.RecommendPostVO;
 import com.tkzou.miniforum.dto.request.TrackRequest;
 import com.tkzou.miniforum.exception.UnauthorizedException;
 import com.tkzou.miniforum.recommend.behavior.BehaviorLogger;
+import com.tkzou.miniforum.recommend.behavior.BehaviorScene;
 import com.tkzou.miniforum.recommend.behavior.BehaviorType;
 import com.tkzou.miniforum.recommend.domain.RecommendContext;
+import com.tkzou.miniforum.recommend.domain.RecommendScene;
 import com.tkzou.miniforum.recommend.service.RecommendService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -62,7 +64,7 @@ public class RecommendController {
         int safePage = Math.max(page, 1);
         int safeSize = Math.min(Math.max(size, 1), 20);
         // 一次多取便于分页切片（每次请求重新计算，弱一致性，学习项目可接受）
-        RecommendContext ctx = new RecommendContext(userId, "HOME", LocalDateTime.now(), safePage * safeSize);
+        RecommendContext ctx = new RecommendContext(userId, RecommendScene.HOME, LocalDateTime.now(), safePage * safeSize);
         // AB 实验：行为日志携带 expId 便于离线归因；实验组 B 走多样性变体配置
         List<RecommendPostVO> all = recommendService.recommend(ctx, username, "rec-v1");
         int from = Math.min((safePage - 1) * safeSize, all.size());
@@ -98,7 +100,7 @@ public class RecommendController {
         if (type == BehaviorType.VIEW && duration != null) {
             type = BehaviorType.DWELL;
         }
-        behaviorLogger.log(userId, request.getPostId(), type, "TRACK", null, duration);
+        behaviorLogger.log(userId, request.getPostId(), type, BehaviorScene.TRACK, null, duration);
         return ResponseEntity.ok(Result.success("已记录", null));
     }
 }

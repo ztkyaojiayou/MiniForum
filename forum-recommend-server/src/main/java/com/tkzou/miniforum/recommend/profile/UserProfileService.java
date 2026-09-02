@@ -1,4 +1,5 @@
 package com.tkzou.miniforum.recommend.profile;
+import com.tkzou.miniforum.recommend.profile.impl.InMemoryUserProfileService;
 
 /**
  * 用户画像服务（画像域入口，标准推荐系统 ②用户画像）

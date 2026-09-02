@@ -4,6 +4,7 @@ import com.tkzou.miniforum.recommend.config.ConfigService;
 import com.tkzou.miniforum.recommend.config.RecConfig;
 import com.tkzou.miniforum.recommend.domain.Candidate;
 import com.tkzou.miniforum.recommend.domain.RecommendContext;
+import com.tkzou.miniforum.recommend.domain.RecommendScene;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -36,7 +37,7 @@ class RuleCoarseRankServiceTest {
         RuleCoarseRankService svc = service(RecConfig.defaults()); // coarseTopN=200
         List<Candidate> candidates = List.of(cand(1, 0.1), cand(2, 0.9), cand(3, 0.5));
         List<Candidate> out = svc.coarseRank(
-                new RecommendContext(1L, "HOME", LocalDateTime.now(), 10), candidates);
+                new RecommendContext(1L, RecommendScene.HOME, LocalDateTime.now(), 10), candidates);
         assertEquals(3, out.size(), "默认 coarseTopN=200 应透传全部候选");
         assertEquals(2L, out.get(0).getItemId(), "按 mergeScore 降序");
         assertEquals(3L, out.get(1).getItemId());
@@ -49,7 +50,7 @@ class RuleCoarseRankServiceTest {
         RuleCoarseRankService svc = service(cfg);
         List<Candidate> candidates = List.of(cand(1, 0.1), cand(2, 0.9), cand(3, 0.5));
         List<Candidate> out = svc.coarseRank(
-                new RecommendContext(1L, "HOME", LocalDateTime.now(), 10), candidates);
+                new RecommendContext(1L, RecommendScene.HOME, LocalDateTime.now(), 10), candidates);
         assertEquals(2, out.size(), "coarseTopN=2 应截断到前 2");
         assertEquals(2L, out.get(0).getItemId());
         assertEquals(3L, out.get(1).getItemId());
@@ -58,7 +59,7 @@ class RuleCoarseRankServiceTest {
     @Test
     void coarseRank_emptyOrNull_returnsEmpty() {
         RuleCoarseRankService svc = service(RecConfig.defaults());
-        RecommendContext ctx = new RecommendContext(1L, "HOME", LocalDateTime.now(), 10);
+        RecommendContext ctx = new RecommendContext(1L, RecommendScene.HOME, LocalDateTime.now(), 10);
         assertEquals(0, svc.coarseRank(ctx, List.of()).size());
         assertEquals(0, svc.coarseRank(ctx, null).size());
     }

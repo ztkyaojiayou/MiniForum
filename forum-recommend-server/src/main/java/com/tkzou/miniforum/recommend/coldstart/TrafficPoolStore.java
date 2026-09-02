@@ -1,5 +1,6 @@
 package com.tkzou.miniforum.recommend.coldstart;
 
+import com.tkzou.miniforum.recommend.coldstart.impl.InMemoryTrafficPoolStore;
 import java.util.Map;
 import java.util.Optional;
 
