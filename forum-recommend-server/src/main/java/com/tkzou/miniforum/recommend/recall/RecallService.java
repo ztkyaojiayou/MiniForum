@@ -88,15 +88,18 @@ public class RecallService {
                             log.warn("召回通道失败（丢弃该路，其余继续）：source={}", channel.name(), e);
                             return List.<RecallHit>of();
                         }))
-                .collect(Collectors.toList());
+                .toList();
         // 再统一等待：召回耗时 = 6 路耗时最大值（而非求和）
         List<RecallHit> hits = futures.stream()
                 .flatMap(future -> future.join().stream())
                 .collect(Collectors.toList());
+        // 多路融合：把 6 路 RecallHit 按归一化分 + 通道权重融合、去重成候选集（见 MergeRecallService）
         return merger.merge(hits, cfg, cfg.getMergeTopN());
     }
 
-    /** 调试：各路召回命中数 */
+    /**
+     * 调试：各路召回命中数
+     */
     public Map<String, Integer> channelHitCount(RecommendContext ctx) {
         Map<String, Integer> counts = new HashMap<>();
         int perChannel = configService.current().getRecallPerChannel();

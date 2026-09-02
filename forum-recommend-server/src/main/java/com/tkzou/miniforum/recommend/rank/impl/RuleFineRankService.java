@@ -102,11 +102,14 @@ public class RuleFineRankService implements FineRankService {
      */
     @Override
     public List<RankedItem> rank(RecommendContext ctx, List<Candidate> candidates) {
-        RecConfig cfg = configService.current();
-        UserProfile profile = userProfileService.userProfile(ctx.getUserId());
-        List<Long> history = profile.getRecentItemIds();
-        ItemCfModel model = itemCfModelStore.get();
-        Set<Long> followedRepostedIds = socialGraphService.followedRepostedIds(ctx.getUserId());
+        // ═══ 前置①：一次请求拉齐"所有候选共享"的上下文/依赖——必须提在循环外，否则 N 个候选各查一遍 ═══
+        //   这 5 个值来自三域底座（第 08 章）：cfg=策略 / profile+history=画像 / model=模型 / followedReposted=图谱。
+        //   它们与本请求的用户绑定、与"哪个候选"无关 → 只需拉一次，循环内直接复用。
+        RecConfig cfg = configService.current();                                // ① 排序权重配置（AB 变体已由 configFor 解析，第 10 章）
+        UserProfile profile = userProfileService.userProfile(ctx.getUserId());  // ② 画像：用户话题/类目兴趣 —— interest 特征 + 推荐理由的数据源（域内缓存）
+        List<Long> history = profile.getRecentItemIds();                        // ③ 我最近交互过的帖 id 序列 → ItemCF"行为相似"的输入（interest 特征 itemcf 侧）
+        ItemCfModel model = itemCfModelStore.get();                             // ④ ItemCF 相似度模型（帖→相似帖 TopK，离线每 30min 重建，第 13 章）
+        Set<Long> followedRepostedIds = socialGraphService.followedRepostedIds(ctx.getUserId()); // ⑤ 我关注的人转发的帖集合 —— social 特征"+0.5（二度）"的依据（图谱域一次查）
 
         // 预扫描一轮：取本批候选的最大互动热度（log1p 压缩量级），供 hot 特征做"批内相对归一化"——
         // hot = 本候选热度 / 批内最高 ∈(0,1]，区分"这批里谁更热"，而非比全局绝对值（各批尺度不一）

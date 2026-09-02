@@ -19,7 +19,10 @@ public class UserProfile {
 
     private Long userId;
 
-    /** 话题兴趣权重（归一化，Σ=1），key=话题名 */
+    /**
+     * 话题兴趣权重（归一化，Σ=1），key=话题名。
+     * 注意：只聚合内容自动提取的 topics（#话题#），不含 Post.tags 手动标签——tag 不进画像/推荐（见第 02 章）。
+     */
     private Map<String, Double> topicWeight = new LinkedHashMap<>();
 
     /** 类目兴趣权重（归一化，Σ=1），key=类目名 */

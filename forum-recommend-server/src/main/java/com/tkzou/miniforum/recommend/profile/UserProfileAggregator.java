@@ -41,7 +41,17 @@ public class UserProfileAggregator {
         this.postRepository = postRepository;
     }
 
-    /** 构建用户画像 */
+    /**
+     * 构建用户画像（画像域核心）：把行为日志中"每条行为"折算成一份兴趣贡献分，按帖子话题/类目摊进桶、累加、归一化。
+     * <p>
+     * <b>一条行为 → 一份贡献分 effective</b>：
+     * <pre>effective = 行为权重(type) × 时长系数(DWELL) × 时间衰减(0.7^天数)</pre>
+     * - 行为权重：转发3 > 评论2 > 收藏1.5 > 赞1=点击1 > 搜索0.5 > 浏览0.02（互动越深越说明"喜欢"）；
+     * - 时间衰减：老行为权重指数下降——画像反映"最近"兴趣，不是一辈子总和；
+     * - 时长系数：DWELL 停留越久兴趣越强（30s 封顶 3 倍，仿抖音观看时长）。
+     * <p>
+     * 然后把 effective "摊"进该帖子的每个话题/类目桶（merge 累加）→ 归一化(Σ=1) 变"兴趣占比"，供召回与排序消费。
+     */
     public UserProfile build(Long userId) {
         List<BehaviorLog> behaviors = behaviorLogRepository.findByUserId(userId);
         Map<String, Double> topicWeight = new HashMap<>();
@@ -52,30 +62,33 @@ public class UserProfileAggregator {
             if (b.getPostId() == null) {
                 continue;
             }
-            double w = weightOf(b.getType());
+            double w = weightOf(b.getType());   // ① 行为基础权重（转发3/评论2/…/浏览0.02；曝光/取关=0）
             if (w <= 0) {
-                continue;
+                continue;                       //    权重 0（EXPOSE/UNLIKE/UNFOLLOW 等非"正兴趣"行为）直接跳过
             }
-            // 阅读停留（DWELL）：权重 × 时长系数，停留越久兴趣越强（30s 封顶 3 倍；仿抖音"观看时长"）
+            // ② 阅读停留（DWELL）时长加成：权重 × 时长系数，停留越久兴趣越强（30s 封顶 3 倍；仿抖音"观看时长"）
             if (b.getType() == BehaviorType.DWELL && b.getDurationSec() != null) {
                 w *= Math.min(1 + b.getDurationSec() / 10.0, 3.0);
             }
             Post post = postRepository.findById(b.getPostId()).orElse(null);
             if (post == null || !Post.STATUS_PUBLISHED.equals(post.getStatus()) || post.isDeleted()) {
-                continue;
+                continue;                       //    帖子没了/不可见 → 行为无意义，跳过
             }
-            double effective = w * interestDecay(b.getTimestamp(), now);
+            double effective = w * interestDecay(b.getTimestamp(), now);   // ③ 实际贡献分 = 权重×时长 × 时间衰减(0.7^天)
             if (post.getTopics() != null) {
                 for (String topic : post.getTopics()) {
+                    // ④ 把这份贡献"摊"进帖子的每个话题桶：merge(topic, effective, Double::sum)
+                    //    = topicWeight[topic] += effective（话题缺席即置为 effective）
+                    //    同话题被多帖多次行为命中 → 累加 → 归一化后即"我对该话题的兴趣占比"
                     topicWeight.merge(topic, effective, Double::sum);
                 }
             }
             String cat = post.getCategory() == null || post.getCategory().isBlank() ? "其他" : post.getCategory();
-            categoryWeight.merge(cat, effective, Double::sum);
+            categoryWeight.merge(cat, effective, Double::sum);              // 同上，按类目摊
         }
 
-        normalize(topicWeight);
-        normalize(categoryWeight);
+        normalize(topicWeight);     // ⑤ 归一化(Σ=1)：兴趣从"绝对累加分"变"相对占比"——跨用户可比，
+        normalize(categoryWeight);  //    防行为多的用户兴趣虚高；空/全 0 保持不动
 
         // 最近交互序列：去重、最近在前（行为时间升序，从后往前收集）
         List<Long> recent = new ArrayList<>();
@@ -93,6 +106,10 @@ public class UserProfileAggregator {
             }
         }
 
+        // 活跃度 = log1p(行为总数) = ln(1+n)：把"行为条数"（长尾，0~几十万）压成 0~12 的连续活跃度，
+        // 使"重度用户 10 万条"与"普通用户 100 条"的差距从 1000 倍缩到 2.5 倍（log 压缩长尾，同 hotScore 套路）。
+        // log1p 而非 log：0 行为时 log1p(0)=0（log(0)=-∞ 会炸）。⚠ 当前未被消费——画像里"算好备用"，
+        // 供"活跃度"作排序/AB 信号扩展；真正生效的是上面 raw 行为数驱动的 isCold 冷启动判定（UserProfile）。
         double activeLevel = Math.log1p(behaviors.size());
         return new UserProfile(userId, topicWeight, categoryWeight, recent, behaviors.size(), activeLevel);
     }
